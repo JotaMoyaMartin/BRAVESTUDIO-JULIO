@@ -1,0 +1,140 @@
+export interface StoryInput {
+  service: string
+  count: 1 | 2 | 3
+  mode: 'text' | 'camera'
+  detail?: string
+  brandContext?: string
+}
+
+export interface SingleStory {
+  number: number
+  role: string
+  text: string
+  stickerSuggestion: string
+  visualIdea: string
+}
+
+export interface StoriesOutput {
+  stories: SingleStory[]
+}
+
+export interface QuestionBoxOutput {
+  questions: string[]
+}
+
+export function buildStoriesPrompt(input: StoryInput): string {
+  return `Eres un experto en Stories de Instagram para salones de belleza. Crea ${input.count} Story(ies) siguiendo la metodología BRÄVE.
+
+SERVICIO REALIZADO: ${input.service}
+${input.detail ? `DETALLE ADICIONAL: ${input.detail}` : ''}
+MODO: ${input.mode === 'camera' ? 'Guion para grabar a cámara (conversacional)' : 'Texto para copiar y pegar'}
+${input.brandContext ? `CONTEXTO DEL SALÓN: ${input.brandContext}` : ''}
+
+METODOLOGÍA OBLIGATORIA:
+- Story 1: PROBLEMA/IDENTIFICACIÓN - Conseguir atención. Usar problema real, frase de clienta, duda frecuente o curiosidad.
+- Story 2 (si aplica): AUTORIDAD - La estilista demuestra su criterio profesional. Explica qué detectó, analizó y decidió.
+- Story 3 (si aplica): RESULTADO + ACCIÓN - Muestra el beneficio final + CTA conversacional como "Escribe RUBIO y te asesoro."
+
+IMPORTANTE: No construyas la historia alrededor del servicio. Constrúyela alrededor de la clienta.
+Las ideas visuales deben ser NATURALES: selfie, espejo, resultado en movimiento, mano tocando cabello, etc.
+
+Devuelve EXACTAMENTE este JSON:
+{
+  "stories": [
+    {
+      "number": 1,
+      "role": "Problema/Identificación",
+      "text": "Texto de la story",
+      "stickerSuggestion": "Sticker recomendado (encuesta, pregunta, emoji, etc.)",
+      "visualIdea": "Idea visual natural"
+    }
+  ]
+}`
+}
+
+export function getMockStories(input: StoryInput): StoriesOutput {
+  const storyTemplates: SingleStory[] = [
+    {
+      number: 1,
+      role: 'Problema / Identificación',
+      text: input.mode === 'camera'
+        ? `¿Llevas tiempo queriendo hacerte un ${input.service} pero no sabes si es para ti? Hoy quiero contarte algo que puede cambiarte la idea completamente.`
+        : `¿Tu ${input.service} no está durandote lo que debería? Puede que no sea culpa del producto. 👇`,
+      stickerSuggestion: 'Encuesta: "¿Has pensado en hacerte un ' + input.service + '?" Sí / No sé',
+      visualIdea: 'Selfie natural en el salón o mirando a cámara con buena luz',
+    },
+    {
+      number: 2,
+      role: 'Autoridad',
+      text: input.mode === 'camera'
+        ? `Cuando esta clienta vino, lo primero que hice fue analizar su cabello. No empecé con el producto. Empecé por entender qué necesitaba realmente. Y eso lo cambia todo.`
+        : `Antes de empezar cualquier ${input.service}, siempre analizo el estado del cabello, la historia de tratamientos y el resultado que la clienta quiere conseguir. Cada persona necesita una solución diferente.`,
+      stickerSuggestion: 'Emoji de diamante o estrella para destacar el valor',
+      visualIdea: 'Vídeo o foto del proceso de trabajo, lavacabezas, o manos trabajando el cabello',
+    },
+    {
+      number: 3,
+      role: 'Resultado + Acción',
+      text: input.mode === 'camera'
+        ? `El resultado habla solo. Más brillo, más movimiento, más natural. Si llevas tiempo pensando en hacerte algo así, escríbeme. Cuéntame qué quieres y vemos qué opción encaja contigo.`
+        : `Más luz. Más naturalidad. Menos mantenimiento. ✨ Si quieres algo así, escribe ${input.service.toUpperCase()} y te cuento cómo podemos conseguirlo.`,
+      stickerSuggestion: 'Caja de preguntas: "¿Qué quieres mejorar de tu cabello?"',
+      visualIdea: 'Foto o vídeo del resultado final. Movimiento del cabello. Clienta feliz (de espaldas o de espaldas).',
+    },
+  ]
+
+  return {
+    stories: storyTemplates.slice(0, input.count),
+  }
+}
+
+export function getMockQuestions(topic: string): QuestionBoxOutput {
+  const questionMap: Record<string, string[]> = {
+    rubios: [
+      '¿Por qué mi rubio se vuelve amarillo tan rápido?',
+      '¿Cada cuánto tiempo necesito retocar mi rubio?',
+      '¿Qué champú debo usar para mantener mi rubio bonito?',
+      '¿Es verdad que el rubio daña mucho el cabello?',
+      '¿Puedo pasar de oscuro a rubio en una sola sesión?',
+      '¿Cómo puedo mantener mi rubio bonito en verano?',
+      '¿Qué diferencia hay entre balayage y mechas?',
+      '¿Cada cuánto debo usar la mascarilla matizadora?',
+      '¿Por qué mi rubio pierde brillo tan rápido?',
+      '¿Qué puedo hacer si mi rubio queda con tono verdoso?',
+    ],
+    balayage: [
+      '¿Qué es exactamente el balayage?',
+      '¿Cuánto dura un balayage normalmente?',
+      '¿El balayage funciona para todos los tipos de cabello?',
+      '¿Cuánto tiempo tarda en hacerse un balayage?',
+      '¿Necesito mucho mantenimiento con el balayage?',
+      '¿Puedo hacerme balayage si tengo el cabello muy oscuro?',
+      '¿Cómo cuido el balayage en casa?',
+      '¿El balayage daña mucho el cabello?',
+      '¿Con qué frecuencia debo retocarlo?',
+      '¿Qué productos me recomiendas para el balayage?',
+    ],
+    default: [
+      '¿Cada cuánto debería cortarme las puntas?',
+      '¿Es necesario usar protector térmico siempre?',
+      '¿Cómo sé si mi cabello necesita hidratación o proteína?',
+      '¿Por qué se me abre el cabello aunque lo cuide?',
+      '¿Qué rutina recomiendas para cabello teñido?',
+      '¿Cada cuánto debería hacerme un tratamiento?',
+      '¿Por qué mi color dura tan poco?',
+      '¿Qué puedo hacer si mi cabello se rompe mucho?',
+      '¿Cómo evito el encrespamiento en días de humedad?',
+      '¿Qué champú es mejor para mi tipo de cabello?',
+      '¿Puedo teñir el cabello si está muy dañado?',
+      '¿Cuándo es el momento de hacer un cambio de look?',
+      '¿Cómo cuido el cabello en verano?',
+      '¿Por qué el cabello pierde brillo con el tiempo?',
+      '¿Qué diferencia hay entre hidratación y nutrición?',
+    ],
+  }
+
+  const key = topic.toLowerCase()
+  const questions = questionMap[key] || questionMap.default
+
+  return { questions }
+}

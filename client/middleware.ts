@@ -61,6 +61,18 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
+  // Billing/access endpoints: a logged-in user must be able to reach these
+  // even WITHOUT active access — they are the means to obtain/manage it.
+  // (Otherwise the access gate below redirects the checkout POST to /access.)
+  const isBillingRoute =
+    pathname.startsWith('/api/stripe/create-checkout-session') ||
+    pathname.startsWith('/api/stripe/create-portal-session') ||
+    pathname.startsWith('/api/promo/redeem')
+
+  if (isBillingRoute) {
+    return supabaseResponse
+  }
+
   // Admin protection
   if (pathname.startsWith('/admin')) {
     const { data: profile } = await supabase

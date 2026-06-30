@@ -1,32 +1,43 @@
 import 'dotenv/config'
 
 /**
- * Centralized, validated environment configuration.
- * Throws early at boot if a required variable is missing.
+ * Centralized environment configuration.
+ *
+ * IMPORTANT: this module must NEVER throw at import time. On a serverless
+ * platform (Vercel) a throw during module load crashes the whole function
+ * invocation (FUNCTION_INVOCATION_FAILED) before it can return a response.
+ * Instead we read everything defensively and expose `getMissingEnv()` so
+ * routes can report misconfiguration as a clean JSON error.
  */
-function required(name: string): string {
-  const value = process.env[name]
-  if (!value) {
-    throw new Error(`Missing required environment variable: ${name}`)
-  }
-  return value
-}
-
-function optional(name: string, fallback: string): string {
+function read(name: string, fallback = ''): string {
   return process.env[name] || fallback
 }
 
 export const env = {
-  port: Number(optional('PORT', '4000')),
-  nodeEnv: optional('NODE_ENV', 'development'),
-  isProduction: optional('NODE_ENV', 'development') === 'production',
-  corsOrigin: optional('CORS_ORIGIN', 'http://localhost:3000')
+  port: Number(read('PORT', '4000')),
+  nodeEnv: read('NODE_ENV', 'development'),
+  isProduction: read('NODE_ENV', 'development') === 'production',
+  corsOrigin: read('CORS_ORIGIN', 'http://localhost:3000')
     .split(',')
     .map((o) => o.trim())
     .filter(Boolean),
   supabase: {
-    url: required('SUPABASE_URL'),
-    anonKey: required('SUPABASE_ANON_KEY'),
-    serviceRoleKey: required('SUPABASE_SERVICE_ROLE_KEY'),
+    url: read('SUPABASE_URL'),
+    anonKey: read('SUPABASE_ANON_KEY'),
+    serviceRoleKey: read('SUPABASE_SERVICE_ROLE_KEY'),
   },
+}
+
+/** Returns the names of any required env vars that are missing. */
+export function getMissingEnv(): string[] {
+  const missing: string[] = []
+  if (!env.supabase.url) missing.push('SUPABASE_URL')
+  if (!env.supabase.anonKey) missing.push('SUPABASE_ANON_KEY')
+  if (!env.supabase.serviceRoleKey) missing.push('SUPABASE_SERVICE_ROLE_KEY')
+  return missing
+}
+
+/** True when all required configuration is present. */
+export function isConfigured(): boolean {
+  return getMissingEnv().length === 0
 }

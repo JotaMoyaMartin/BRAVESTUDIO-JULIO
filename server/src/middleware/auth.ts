@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from 'express'
-import { supabaseAdmin } from '../lib/supabase'
+import { getSupabaseAdmin } from '../lib/supabase'
+import { isConfigured } from '../config/env'
 
 export interface AuthedRequest extends Request {
   user?: { id: string; email?: string }
@@ -23,7 +24,12 @@ export async function requireAuth(
     return
   }
 
-  const { data, error } = await supabaseAdmin.auth.getUser(token)
+  if (!isConfigured()) {
+    res.status(503).json({ error: 'Server not configured' })
+    return
+  }
+
+  const { data, error } = await getSupabaseAdmin().auth.getUser(token)
   if (error || !data.user) {
     res.status(401).json({ error: 'Invalid or expired token' })
     return

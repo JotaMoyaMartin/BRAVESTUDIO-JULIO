@@ -2,68 +2,59 @@
 import { useState, Suspense } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { hasActiveAccess } from '@/lib/access'
 import { IS_DEMO } from '@/lib/demo'
 
-function LoginForm() {
+function SignupForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [info, setInfo] = useState('')
   const router = useRouter()
 
-  async function handleLogin(e: React.FormEvent) {
+  async function handleSignup(e: React.FormEvent) {
     e.preventDefault()
-    setLoading(true)
     setError('')
+    setInfo('')
 
-    // Demo mode: simular login sin Supabase real
+    if (password.length < 6) {
+      setError('La contraseña debe tener al menos 6 caracteres.')
+      return
+    }
+
+    if (password !== confirmPassword) {
+      setError('Las contraseñas no coinciden.')
+      return
+    }
+
+    setLoading(true)
+
+    // Demo mode: simular signup sin Supabase real
     if (IS_DEMO) {
-      if (email === 'admin@bravestudio.com') {
-        router.push('/admin')
-      } else {
-        router.push('/onboarding')
-      }
+      router.push('/onboarding')
       router.refresh()
       return
     }
 
     const supabase = createClient()
 
-    const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
+    const { data, error: authError } = await supabase.auth.signUp({ email, password })
     if (authError) {
-      setError('Email o contraseña incorrectos. Inténtalo de nuevo.')
+      setError(authError.message || 'No se pudo crear la cuenta.')
       setLoading(false)
       return
     }
 
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role, access_status, subscription_status, is_active, access_source, access_expires_at, full_name, salon_name')
-        .eq('id', user.id)
-        .single()
-
-      // Si no ha completado onboarding → ir directo a onboarding (evita doble redirect)
-      if (profile && (!profile.full_name || !profile.salon_name)) {
-        router.push('/onboarding')
-        return
-      }
-
-      if (!profile || !hasActiveAccess(profile)) {
-        router.push('/access')
-        return
-      }
-
-      if (profile.role === 'superadmin' || profile.role === 'admin') {
-        router.push('/admin')
-        router.refresh()
-        return
-      }
+    // Si Supabase requiere confirmación por email
+    if (data.user && !data.session) {
+      setInfo('Revisa tu email para confirmar tu cuenta antes de entrar.')
+      setLoading(false)
+      return
     }
 
-    router.push('/inicio')
+    // Sin confirmación requerida → ir a onboarding
+    router.push('/onboarding')
     router.refresh()
   }
 
@@ -93,7 +84,7 @@ function LoginForm() {
           <div className="flex flex-col items-center gap-3 mb-8 text-center">
             <span style={{ fontSize: 44 }}>🤖</span>
             <p className="text-sm leading-relaxed" style={{ color: '#591427', opacity: 0.8 }}>
-              Acceso exclusivo para miembros activos de la comunidad BRÄVE
+              Crea tu cuenta y empieza a generar contenido estratégico para tu salón
             </p>
           </div>
 
@@ -106,7 +97,16 @@ function LoginForm() {
             </div>
           )}
 
-          <form onSubmit={handleLogin} className="space-y-4">
+          {info && (
+            <div
+              className="mb-4 p-3 rounded-xl text-sm text-center"
+              style={{ background: '#e8f5e9', color: '#2a8a4a' }}
+            >
+              {info}
+            </div>
+          )}
+
+          <form onSubmit={handleSignup} className="space-y-4">
             <div>
               <label className="block text-sm font-medium mb-1.5" style={{ color: '#591427' }}>
                 Email
@@ -132,6 +132,23 @@ function LoginForm() {
                 type="password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
+                placeholder="Mínimo 6 caracteres"
+                required
+                className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+                style={{ border: '1.5px solid rgba(122,24,50,0.2)', background: '#FFFDF5' }}
+                onFocus={e => (e.target.style.borderColor = '#7A1832')}
+                onBlur={e => (e.target.style.borderColor = 'rgba(122,24,50,0.2)')}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1.5" style={{ color: '#591427' }}>
+                Repite la contraseña
+              </label>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={e => setConfirmPassword(e.target.value)}
                 placeholder="••••••••"
                 required
                 className="w-full px-4 py-3 rounded-xl text-sm outline-none"
@@ -152,24 +169,17 @@ function LoginForm() {
                 cursor: loading ? 'not-allowed' : 'pointer',
               }}
             >
-              {loading ? 'Entrando...' : 'Entrar'}
+              {loading ? 'Creando cuenta...' : 'Crear cuenta'}
             </button>
           </form>
 
-          <div className="mt-5 text-center space-y-2">
+          <div className="mt-5 text-center">
             <a
-              href="/reset-password"
-              className="block text-xs hover:underline underline-offset-2"
-              style={{ color: '#7A1832', opacity: 0.45 }}
-            >
-              ¿Olvidaste tu contraseña?
-            </a>
-            <a
-              href="/signup"
-              className="block text-xs hover:underline underline-offset-2"
+              href="/login"
+              className="text-xs hover:underline underline-offset-2"
               style={{ color: '#7A1832', opacity: 0.55 }}
             >
-              ¿No tienes cuenta? Crear cuenta
+              ¿Ya tienes cuenta? Inicia sesión
             </a>
           </div>
         </div>
@@ -178,10 +188,10 @@ function LoginForm() {
   )
 }
 
-export default function LoginPage() {
+export default function SignupPage() {
   return (
     <Suspense>
-      <LoginForm />
+      <SignupForm />
     </Suspense>
   )
 }

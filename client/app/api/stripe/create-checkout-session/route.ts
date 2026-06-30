@@ -32,6 +32,7 @@ export async function POST(req: NextRequest) {
       ? { customer: profile.stripe_customer_id }
       : { customer_email: profile?.email || user.email }),
     line_items: [{ price: priceId, quantity: 1 }],
+    subscription_data: { trial_period_days: 3 },
     success_url: `${appUrl}/inicio?checkout=success`,
     cancel_url: `${appUrl}/access`,
     metadata: { user_id: user.id },

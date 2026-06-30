@@ -14,7 +14,7 @@ export default async function AccessPage() {
       is_active: false, role: 'user', access_status: 'inactive', access_source: 'none',
       stripe_customer_id: null, stripe_subscription_id: null,
       subscription_status: 'none', subscription_plan: null, promo_code_used: null,
-      access_expires_at: null,
+      access_expires_at: null, city: null, professional_role: null,
       created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
     }
     return <AccessClient profile={demoProfile} />

@@ -34,12 +34,32 @@ export async function POST(req: NextRequest) {
         const userId = session.metadata?.user_id
         if (!userId) break
 
+        // Determinar el plan (monthly/yearly) comparando el price ID
+        const monthlyPriceId = process.env.NEXT_PUBLIC_STRIPE_MONTHLY_PRICE_ID
+        const yearlyPriceId = process.env.NEXT_PUBLIC_STRIPE_YEARLY_PRICE_ID
+        let subscriptionPlan: 'monthly' | 'yearly' | null = null
+
+        if (session.subscription && typeof session.subscription === 'string') {
+          const sub = await stripeClient.subscriptions.retrieve(session.subscription, {
+            expand: ['items.data.price'],
+          })
+          const priceId = sub.items.data[0]?.price?.id
+          if (priceId === monthlyPriceId) subscriptionPlan = 'monthly'
+          else if (priceId === yearlyPriceId) subscriptionPlan = 'yearly'
+        }
+
+        // El estado puede ser 'trialing' si hay trial activo
+        const subStatus = session.subscription
+          ? (await stripeClient.subscriptions.retrieve(session.subscription as string)).status
+          : 'active'
+
         await supabase.from('profiles').update({
           stripe_customer_id: session.customer as string,
           stripe_subscription_id: session.subscription as string,
           access_status: 'active',
           access_source: 'stripe',
-          subscription_status: 'active',
+          subscription_status: subStatus as 'active' | 'trialing',
+          subscription_plan: subscriptionPlan,
           is_active: true,
         }).eq('id', userId)
         break

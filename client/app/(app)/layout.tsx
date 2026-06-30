@@ -20,6 +20,8 @@ const DEMO_PROFILE: Profile = {
   subscription_plan: null,
   promo_code_used: null,
   access_expires_at: null,
+  city: null,
+  professional_role: null,
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
 }

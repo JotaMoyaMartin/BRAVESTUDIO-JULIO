@@ -234,3 +234,19 @@ create policy "Superadmins can manage promo codes"
 -- Fecha de expiracion del acceso por promo (now + access_days al canjear)
 alter table profiles
   add column if not exists access_expires_at timestamptz;
+
+-- ============================================================
+-- MIGRATION v5: signup, onboarding, school codes
+-- Run this in your Supabase SQL editor
+-- ============================================================
+
+-- Tipo de codigo: promo (caduca) vs skool (indefinido, revocable manualmente)
+alter table promo_codes
+  add column if not exists code_type text default 'promo' check (code_type in ('promo', 'skool'));
+
+-- Datos de onboarding del usuario
+alter table profiles
+  add column if not exists city text;
+
+alter table profiles
+  add column if not exists professional_role text;

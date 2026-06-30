@@ -34,7 +34,7 @@ export default function AdminClient({ currentUserId, currentUserRole, users: ini
   const [loadingUser, setLoadingUser] = useState<string | null>(null)
   const [loadingPromo, setLoadingPromo] = useState<string | null>(null)
   const [showCreatePromo, setShowCreatePromo] = useState(false)
-  const [newPromo, setNewPromo] = useState({ code: '', description: '', access_days: 30, max_redemptions: '', expires_at: '' })
+  const [newPromo, setNewPromo] = useState({ code: '', description: '', access_days: 30, max_redemptions: '', expires_at: '', code_type: 'promo' as 'promo' | 'skool' })
   const [creatingPromo, setCreatingPromo] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<Profile | null>(null)
   const [deletingUser, setDeletingUser] = useState(false)
@@ -43,11 +43,12 @@ export default function AdminClient({ currentUserId, currentUserRole, users: ini
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all')
   const [filterRole, setFilterRole] = useState<'all' | 'user' | 'admin' | 'superadmin'>('all')
+  const [filterSource, setFilterSource] = useState<'all' | Profile['access_source']>('all')
   const [page, setPage] = useState(0)
 
   // Edicion de usuario
   const [editUser, setEditUser] = useState<Profile | null>(null)
-  const [editForm, setEditForm] = useState<{ full_name: string; salon_name: string; role: Profile['role'] }>({ full_name: '', salon_name: '', role: 'user' })
+  const [editForm, setEditForm] = useState<{ full_name: string; salon_name: string; city: string; professional_role: string; role: Profile['role'] }>({ full_name: '', salon_name: '', city: '', professional_role: '', role: 'user' })
   const [savingEdit, setSavingEdit] = useState(false)
 
   // Cancelar suscripcion
@@ -56,7 +57,7 @@ export default function AdminClient({ currentUserId, currentUserRole, users: ini
 
   // Edicion / borrado de promos
   const [editPromo, setEditPromo] = useState<PromoCode | null>(null)
-  const [editPromoForm, setEditPromoForm] = useState<{ description: string; access_days: number; max_redemptions: string; expires_at: string }>({ description: '', access_days: 30, max_redemptions: '', expires_at: '' })
+  const [editPromoForm, setEditPromoForm] = useState<{ description: string; access_days: number; max_redemptions: string; expires_at: string; code_type: 'promo' | 'skool' }>({ description: '', access_days: 30, max_redemptions: '', expires_at: '', code_type: 'promo' })
   const [savingPromoEdit, setSavingPromoEdit] = useState(false)
   const [deletePromoConfirm, setDeletePromoConfirm] = useState<PromoCode | null>(null)
   const [deletingPromo, setDeletingPromo] = useState(false)
@@ -70,13 +71,14 @@ export default function AdminClient({ currentUserId, currentUserRole, users: ini
       if (filterStatus === 'active' && !hasActiveAccess(u)) return false
       if (filterStatus === 'inactive' && hasActiveAccess(u)) return false
       if (filterRole !== 'all' && u.role !== filterRole) return false
+      if (filterSource !== 'all' && u.access_source !== filterSource) return false
       if (q) {
         const hay = `${u.full_name ?? ''} ${u.email ?? ''} ${u.salon_name ?? ''}`.toLowerCase()
         if (!hay.includes(q)) return false
       }
       return true
     })
-  }, [users, search, filterStatus, filterRole])
+  }, [users, search, filterStatus, filterRole, filterSource])
 
   const totalPages = Math.max(1, Math.ceil(filteredUsers.length / PAGE_SIZE))
   const safePage = Math.min(page, totalPages - 1)
@@ -86,16 +88,16 @@ export default function AdminClient({ currentUserId, currentUserRole, users: ini
 
   function openEdit(user: Profile) {
     setEditUser(user)
-    setEditForm({ full_name: user.full_name ?? '', salon_name: user.salon_name ?? '', role: user.role })
+    setEditForm({ full_name: user.full_name ?? '', salon_name: user.salon_name ?? '', city: user.city ?? '', professional_role: user.professional_role ?? '', role: user.role })
   }
 
   async function saveUserEdit() {
     if (!editUser) return
     setSavingEdit(true)
     const supabase = createClient()
-    // Guardar nombre y salon (RLS permite a admins actualizar profiles)
+    // Guardar nombre, salon, ciudad y rol profesional (RLS permite a admins actualizar profiles)
     await supabase.from('profiles')
-      .update({ full_name: editForm.full_name || null, salon_name: editForm.salon_name || null })
+      .update({ full_name: editForm.full_name || null, salon_name: editForm.salon_name || null, city: editForm.city || null, professional_role: editForm.professional_role || null })
       .eq('id', editUser.id)
     // Si cambio el rol y no es a si mismo, llamar al API
     if (editForm.role !== editUser.role && editUser.id !== currentUserId) {
@@ -105,7 +107,7 @@ export default function AdminClient({ currentUserId, currentUserRole, users: ini
         body: JSON.stringify({ userId: editUser.id, role: editForm.role }),
       })
     }
-    setUsers(prev => prev.map(u => u.id === editUser.id ? { ...u, full_name: editForm.full_name || null, salon_name: editForm.salon_name || null, role: editForm.role } : u))
+    setUsers(prev => prev.map(u => u.id === editUser.id ? { ...u, full_name: editForm.full_name || null, salon_name: editForm.salon_name || null, city: editForm.city || null, professional_role: editForm.professional_role || null, role: editForm.role } : u))
     setEditUser(null)
     setSavingEdit(false)
   }
@@ -180,10 +182,11 @@ export default function AdminClient({ currentUserId, currentUserRole, users: ini
       access_days: newPromo.access_days,
       max_redemptions: newPromo.max_redemptions ? parseInt(newPromo.max_redemptions) : null,
       expires_at: newPromo.expires_at || null,
+      code_type: newPromo.code_type,
     }
     const { data } = await supabase.from('promo_codes').insert(insert).select().single()
     if (data) setPromoCodes(prev => [data as PromoCode, ...prev])
-    setNewPromo({ code: '', description: '', access_days: 30, max_redemptions: '', expires_at: '' })
+    setNewPromo({ code: '', description: '', access_days: 30, max_redemptions: '', expires_at: '', code_type: 'promo' })
     setShowCreatePromo(false)
     setCreatingPromo(false)
   }
@@ -195,6 +198,7 @@ export default function AdminClient({ currentUserId, currentUserRole, users: ini
       access_days: promo.access_days,
       max_redemptions: promo.max_redemptions?.toString() ?? '',
       expires_at: promo.expires_at ? promo.expires_at.slice(0, 10) : '',
+      code_type: promo.code_type ?? 'promo',
     })
   }
 
@@ -207,6 +211,7 @@ export default function AdminClient({ currentUserId, currentUserRole, users: ini
       access_days: editPromoForm.access_days,
       max_redemptions: editPromoForm.max_redemptions ? parseInt(editPromoForm.max_redemptions) : null,
       expires_at: editPromoForm.expires_at || null,
+      code_type: editPromoForm.code_type,
     }
     await supabase.from('promo_codes').update(update).eq('id', editPromo.id)
     setPromoCodes(prev => prev.map(p => p.id === editPromo.id ? { ...p, ...update } : p))
@@ -288,9 +293,17 @@ export default function AdminClient({ currentUserId, currentUserRole, users: ini
               <option value="admin">Admins</option>
               {isSuperAdmin && <option value="superadmin">Super Admins</option>}
             </select>
-            {(search || filterStatus !== 'all' || filterRole !== 'all') && (
+            <select value={filterSource} onChange={e => { setFilterSource(e.target.value as typeof filterSource); setPage(0) }} style={selectStyle}>
+              <option value="all">Todas las fuentes</option>
+              <option value="stripe">Stripe</option>
+              <option value="skool">School</option>
+              <option value="promo">Promo</option>
+              <option value="manual">Manual</option>
+              <option value="none">Sin acceso</option>
+            </select>
+            {(search || filterStatus !== 'all' || filterRole !== 'all' || filterSource !== 'all') && (
               <button
-                onClick={() => { setSearch(''); setFilterStatus('all'); setFilterRole('all'); setPage(0) }}
+                onClick={() => { setSearch(''); setFilterStatus('all'); setFilterRole('all'); setFilterSource('all'); setPage(0) }}
                 className="px-2 py-1 rounded-lg text-xs"
                 style={{ background: '#FFF1B5', color: '#591427', cursor: 'pointer' }}
               >Limpiar</button>
@@ -460,7 +473,7 @@ export default function AdminClient({ currentUserId, currentUserRole, users: ini
         <div className="rounded-3xl overflow-hidden" style={{ background: 'white', border: '1.5px solid rgba(255,241,181,0.8)' }}>
           <div className="flex items-center gap-2 px-6 py-4" style={{ borderBottom: '1.5px solid rgba(255,241,181,0.5)' }}>
             <Tag size={18} style={{ color: '#7A1832' }} />
-            <h2 className="font-semibold" style={{ color: '#1a1a1a' }}>Códigos Promocionales</h2>
+            <h2 className="font-semibold" style={{ color: '#1a1a1a' }}>Códigos (Promo & School)</h2>
             <button
               onClick={() => setShowCreatePromo(v => !v)}
               className="ml-auto flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-xl"
@@ -479,9 +492,12 @@ export default function AdminClient({ currentUserId, currentUserRole, users: ini
                     placeholder="BRAVE2024" style={{ ...inputStyle, fontFamily: 'monospace', letterSpacing: '0.05em' }} />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium mb-1" style={{ color: '#591427' }}>Días de acceso *</label>
-                  <input required type="number" min={1} value={newPromo.access_days} onChange={e => setNewPromo(p => ({ ...p, access_days: +e.target.value }))}
-                    style={inputStyle} />
+                  <label className="block text-xs font-medium mb-1" style={{ color: '#591427' }}>Tipo de código</label>
+                  <select value={newPromo.code_type} onChange={e => setNewPromo(p => ({ ...p, code_type: e.target.value as 'promo' | 'skool' }))}
+                    style={selectStyle}>
+                    <option value="promo">Promo (caduca)</option>
+                    <option value="skool">School (indefinido)</option>
+                  </select>
                 </div>
               </div>
               <div>
@@ -489,6 +505,13 @@ export default function AdminClient({ currentUserId, currentUserRole, users: ini
                 <input value={newPromo.description} onChange={e => setNewPromo(p => ({ ...p, description: e.target.value }))}
                   placeholder="Ej: Acceso para comunidad BRÄVE" style={inputStyle} />
               </div>
+              {newPromo.code_type === 'promo' && (
+                <div>
+                  <label className="block text-xs font-medium mb-1" style={{ color: '#591427' }}>Días de acceso *</label>
+                  <input required type="number" min={1} value={newPromo.access_days} onChange={e => setNewPromo(p => ({ ...p, access_days: +e.target.value }))}
+                    style={inputStyle} />
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium mb-1" style={{ color: '#591427' }}>Usos máx. (vacío = ilimitado)</label>
@@ -527,6 +550,9 @@ export default function AdminClient({ currentUserId, currentUserRole, users: ini
                       <code className="text-sm font-bold" style={{ color: '#591427' }}>{promo.code}</code>
                       <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: promo.is_active ? '#F0FDF4' : '#FEF2F2', color: promo.is_active ? '#15803d' : '#b91c1c' }}>
                         {promo.is_active ? 'Activo' : 'Inactivo'}
+                      </span>
+                      <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: (promo.code_type ?? 'promo') === 'skool' ? '#F0FDF4' : '#FFF7ED', color: (promo.code_type ?? 'promo') === 'skool' ? '#15803d' : '#c2410c' }}>
+                        {(promo.code_type ?? 'promo') === 'skool' ? 'School' : 'Promo'}
                       </span>
                     </div>
                     {promo.description && <p className="text-xs mt-0.5" style={{ color: '#591427', opacity: 0.6 }}>{promo.description}</p>}
@@ -594,6 +620,16 @@ export default function AdminClient({ currentUserId, currentUserRole, users: ini
                 <label className="block text-xs font-medium mb-1" style={{ color: '#591427' }}>Salón</label>
                 <input value={editForm.salon_name} onChange={e => setEditForm(f => ({ ...f, salon_name: e.target.value }))}
                   placeholder="Nombre del salón" style={inputStyle} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium mb-1" style={{ color: '#591427' }}>Ciudad</label>
+                <input value={editForm.city} onChange={e => setEditForm(f => ({ ...f, city: e.target.value }))}
+                  placeholder="Ciudad" style={inputStyle} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium mb-1" style={{ color: '#591427' }}>Especialidad</label>
+                <input value={editForm.professional_role} onChange={e => setEditForm(f => ({ ...f, professional_role: e.target.value }))}
+                  placeholder="Ej. Estilista, Colorista…" style={inputStyle} />
               </div>
               {editUser.id !== currentUserId && (
                 <div>
@@ -692,26 +728,36 @@ export default function AdminClient({ currentUserId, currentUserRole, users: ini
             </div>
             <div className="space-y-3">
               <div>
+                <label className="block text-xs font-medium mb-1" style={{ color: '#591427' }}>Tipo de código</label>
+                <select value={editPromoForm.code_type} onChange={e => setEditPromoForm(f => ({ ...f, code_type: e.target.value as 'promo' | 'skool' }))}
+                  style={selectStyle}>
+                  <option value="promo">Promo (caduca)</option>
+                  <option value="skool">School (indefinido)</option>
+                </select>
+              </div>
+              <div>
                 <label className="block text-xs font-medium mb-1" style={{ color: '#591427' }}>Descripción</label>
                 <input value={editPromoForm.description} onChange={e => setEditPromoForm(f => ({ ...f, description: e.target.value }))}
                   style={inputStyle} />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              {editPromoForm.code_type === 'promo' && (
                 <div>
                   <label className="block text-xs font-medium mb-1" style={{ color: '#591427' }}>Días de acceso</label>
                   <input type="number" min={1} value={editPromoForm.access_days} onChange={e => setEditPromoForm(f => ({ ...f, access_days: +e.target.value }))}
                     style={inputStyle} />
                 </div>
+              )}
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium mb-1" style={{ color: '#591427' }}>Usos máx.</label>
                   <input type="number" min={1} value={editPromoForm.max_redemptions} onChange={e => setEditPromoForm(f => ({ ...f, max_redemptions: e.target.value }))}
                     placeholder="Vacío = ilimitado" style={inputStyle} />
                 </div>
-              </div>
-              <div>
-                <label className="block text-xs font-medium mb-1" style={{ color: '#591427' }}>Expira</label>
-                <input type="date" value={editPromoForm.expires_at} onChange={e => setEditPromoForm(f => ({ ...f, expires_at: e.target.value }))}
-                  style={inputStyle} />
+                <div>
+                  <label className="block text-xs font-medium mb-1" style={{ color: '#591427' }}>Expira</label>
+                  <input type="date" value={editPromoForm.expires_at} onChange={e => setEditPromoForm(f => ({ ...f, expires_at: e.target.value }))}
+                    style={inputStyle} />
+                </div>
               </div>
             </div>
             <div className="flex gap-2 pt-1">

@@ -37,18 +37,31 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Este código ha alcanzado el límite de usos.' }, { status: 400 })
   }
 
-  // Calcular fecha de expiracion (now + access_days)
-  const expiresAt = new Date()
-  expiresAt.setDate(expiresAt.getDate() + promo.access_days)
+  // Determinar el tipo de código: 'skool' da acceso indefinido, 'promo' caduca
+  const codeType = (promo as { code_type?: string }).code_type || 'promo'
 
-  // Apply to user profile
-  await supabase.from('profiles').update({
-    access_status: 'active',
-    access_source: 'promo',
-    promo_code_used: code,
-    is_active: true,
-    access_expires_at: expiresAt.toISOString(),
-  }).eq('id', user.id)
+  if (codeType === 'skool') {
+    // Acceso School: indefinido, sin fecha de expiración, revocable manualmente desde admin
+    await supabase.from('profiles').update({
+      access_status: 'active',
+      access_source: 'skool',
+      promo_code_used: code,
+      is_active: true,
+      access_expires_at: null,
+    }).eq('id', user.id)
+  } else {
+    // Promo: acceso con caducidad (now + access_days)
+    const expiresAt = new Date()
+    expiresAt.setDate(expiresAt.getDate() + promo.access_days)
+
+    await supabase.from('profiles').update({
+      access_status: 'active',
+      access_source: 'promo',
+      promo_code_used: code,
+      is_active: true,
+      access_expires_at: expiresAt.toISOString(),
+    }).eq('id', user.id)
+  }
 
   // Increment redemptions count
   await supabase.from('promo_codes').update({

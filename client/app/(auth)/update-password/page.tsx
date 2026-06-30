@@ -2,68 +2,41 @@
 import { useState, Suspense } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { hasActiveAccess } from '@/lib/access'
-import { IS_DEMO } from '@/lib/demo'
 
-function LoginForm() {
-  const [email, setEmail] = useState('')
+function UpdatePasswordForm() {
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
 
-  async function handleLogin(e: React.FormEvent) {
+  async function handleUpdate(e: React.FormEvent) {
     e.preventDefault()
-    setLoading(true)
     setError('')
 
-    // Demo mode: simular login sin Supabase real
-    if (IS_DEMO) {
-      if (email === 'admin@bravestudio.com') {
-        router.push('/admin')
-      } else {
-        router.push('/onboarding')
-      }
-      router.refresh()
+    if (password.length < 6) {
+      setError('La contraseña debe tener al menos 6 caracteres.')
       return
     }
 
+    if (password !== confirmPassword) {
+      setError('Las contraseñas no coinciden.')
+      return
+    }
+
+    setLoading(true)
     const supabase = createClient()
 
-    const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
-    if (authError) {
-      setError('Email o contraseña incorrectos. Inténtalo de nuevo.')
+    const { error: updateError } = await supabase.auth.updateUser({ password })
+
+    if (updateError) {
+      setError('No se pudo actualizar la contraseña. El enlace puede haber expirado.')
       setLoading(false)
       return
     }
 
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role, access_status, subscription_status, is_active, access_source, access_expires_at, full_name, salon_name')
-        .eq('id', user.id)
-        .single()
-
-      // Si no ha completado onboarding → ir directo a onboarding (evita doble redirect)
-      if (profile && (!profile.full_name || !profile.salon_name)) {
-        router.push('/onboarding')
-        return
-      }
-
-      if (!profile || !hasActiveAccess(profile)) {
-        router.push('/access')
-        return
-      }
-
-      if (profile.role === 'superadmin' || profile.role === 'admin') {
-        router.push('/admin')
-        router.refresh()
-        return
-      }
-    }
-
-    router.push('/inicio')
+    // Tras actualizar, redirigir a login
+    router.push('/login')
     router.refresh()
   }
 
@@ -81,8 +54,8 @@ function LoginForm() {
           >
             <span className="text-white text-xl">✦</span>
           </div>
-          <h1 className="text-3xl font-bold" style={{ color: '#591427', letterSpacing: '-0.5px' }}>
-            BRÄVE Studio
+          <h1 className="text-2xl font-bold" style={{ color: '#591427' }}>
+            Nueva contraseña
           </h1>
         </div>
 
@@ -90,12 +63,9 @@ function LoginForm() {
           className="rounded-3xl p-8"
           style={{ background: 'white', border: '1.5px solid rgba(122,24,50,0.1)', boxShadow: '0 4px 24px rgba(89,20,39,0.07)' }}
         >
-          <div className="flex flex-col items-center gap-3 mb-8 text-center">
-            <span style={{ fontSize: 44 }}>🤖</span>
-            <p className="text-sm leading-relaxed" style={{ color: '#591427', opacity: 0.8 }}>
-              Acceso exclusivo para miembros activos de la comunidad BRÄVE
-            </p>
-          </div>
+          <p className="text-sm mb-6 text-center" style={{ color: '#591427', opacity: 0.7 }}>
+            Introduce tu nueva contraseña para acceder a BRÄVE Studio.
+          </p>
 
           {error && (
             <div
@@ -106,16 +76,16 @@ function LoginForm() {
             </div>
           )}
 
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleUpdate} className="space-y-4">
             <div>
               <label className="block text-sm font-medium mb-1.5" style={{ color: '#591427' }}>
-                Email
+                Nueva contraseña
               </label>
               <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="tu@email.com"
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="Mínimo 6 caracteres"
                 required
                 className="w-full px-4 py-3 rounded-xl text-sm outline-none"
                 style={{ border: '1.5px solid rgba(122,24,50,0.2)', background: '#FFFDF5' }}
@@ -126,12 +96,12 @@ function LoginForm() {
 
             <div>
               <label className="block text-sm font-medium mb-1.5" style={{ color: '#591427' }}>
-                Contraseña
+                Repite la contraseña
               </label>
               <input
                 type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
+                value={confirmPassword}
+                onChange={e => setConfirmPassword(e.target.value)}
                 placeholder="••••••••"
                 required
                 className="w-full px-4 py-3 rounded-xl text-sm outline-none"
@@ -152,36 +122,19 @@ function LoginForm() {
                 cursor: loading ? 'not-allowed' : 'pointer',
               }}
             >
-              {loading ? 'Entrando...' : 'Entrar'}
+              {loading ? 'Guardando...' : 'Actualizar contraseña'}
             </button>
           </form>
-
-          <div className="mt-5 text-center space-y-2">
-            <a
-              href="/reset-password"
-              className="block text-xs hover:underline underline-offset-2"
-              style={{ color: '#7A1832', opacity: 0.45 }}
-            >
-              ¿Olvidaste tu contraseña?
-            </a>
-            <a
-              href="/signup"
-              className="block text-xs hover:underline underline-offset-2"
-              style={{ color: '#7A1832', opacity: 0.55 }}
-            >
-              ¿No tienes cuenta? Crear cuenta
-            </a>
-          </div>
         </div>
       </div>
     </div>
   )
 }
 
-export default function LoginPage() {
+export default function UpdatePasswordPage() {
   return (
     <Suspense>
-      <LoginForm />
+      <UpdatePasswordForm />
     </Suspense>
   )
 }

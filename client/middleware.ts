@@ -33,24 +33,38 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   const { pathname } = request.nextUrl
 
-  // Public auth routes
+  // Public auth routes (incluye landing page /)
   const isPublicAuthRoute =
+    pathname === '/' ||
     pathname.startsWith('/login') ||
+    pathname.startsWith('/signup') ||
+    pathname.startsWith('/reset-password') ||
+    pathname.startsWith('/update-password') ||
     pathname.startsWith('/access') ||
     pathname.startsWith('/acceso-bloqueado') ||
     pathname.startsWith('/api/auth') ||
     pathname.startsWith('/api/stripe/webhook')
 
   if (isPublicAuthRoute) {
-    // Redirect authenticated users with active access away from login/access
-    if (user && (pathname.startsWith('/login') || pathname === '/access')) {
+    // Redirect authenticated users with active access away from landing/login/access/signup
+    if (user && (pathname === '/' || pathname.startsWith('/login') || pathname === '/access' || pathname.startsWith('/signup'))) {
       const { data: profile } = await supabase
         .from('profiles')
-        .select('access_status, subscription_status, is_active, access_source, access_expires_at')
+        .select('access_status, subscription_status, is_active, access_source, access_expires_at, full_name, salon_name')
         .eq('id', user.id)
         .single()
-      if (profile && hasActiveAccess(profile)) {
-        return NextResponse.redirect(new URL('/inicio', request.url))
+      if (profile) {
+        // Si ya tiene acceso activo pero no ha completado onboarding → onboarding
+        if (hasActiveAccess(profile)) {
+          if (!profile.full_name || !profile.salon_name) {
+            return NextResponse.redirect(new URL('/onboarding', request.url))
+          }
+          return NextResponse.redirect(new URL('/inicio', request.url))
+        }
+        // Si está en /signup pero ya tiene cuenta (sin acceso) → /access
+        if (pathname.startsWith('/signup')) {
+          return NextResponse.redirect(new URL('/access', request.url))
+        }
       }
     }
     return supabaseResponse
@@ -59,6 +73,11 @@ export async function middleware(request: NextRequest) {
   // Protected routes — require session
   if (!user) {
     return NextResponse.redirect(new URL('/login', request.url))
+  }
+
+  // Onboarding route: logged-in users can access it without active access
+  if (pathname.startsWith('/onboarding')) {
+    return supabaseResponse
   }
 
   // Billing/access endpoints: a logged-in user must be able to reach these
@@ -89,9 +108,15 @@ export async function middleware(request: NextRequest) {
   // Check active access for app routes
   const { data: profile } = await supabase
     .from('profiles')
-    .select('access_status, subscription_status, is_active, access_source, access_expires_at')
+    .select('access_status, subscription_status, is_active, access_source, access_expires_at, full_name, salon_name')
     .eq('id', user.id)
     .single()
+
+  // Onboarding gate: si el usuario no ha completado sus datos básicos,
+  // redirigir a /onboarding antes de dejarle entrar a la app o al access
+  if (profile && (!profile.full_name || !profile.salon_name)) {
+    return NextResponse.redirect(new URL('/onboarding', request.url))
+  }
 
   if (!profile || !hasActiveAccess(profile)) {
     // Lazy deactivation: si el acceso por promo ha expirado pero la DB sigue marcándolo activo,

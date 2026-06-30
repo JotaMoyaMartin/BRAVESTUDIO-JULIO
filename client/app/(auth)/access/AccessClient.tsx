@@ -19,7 +19,6 @@ export default function AccessClient({ profile }: Props) {
   const [promoError, setPromoError] = useState('')
   const [promoSuccess, setPromoSuccess] = useState('')
   const [checkoutLoading, setCheckoutLoading] = useState<'monthly' | 'yearly' | null>(null)
-  const [showSkoolInfo, setShowSkoolInfo] = useState(false)
 
   async function handleCheckout(plan: 'monthly' | 'yearly') {
     if (!STRIPE_READY) return
@@ -119,9 +118,15 @@ export default function AccessClient({ profile }: Props) {
         <div className="grid grid-cols-2 gap-4 mb-5">
           {/* Monthly */}
           <div
-            className="rounded-2xl p-5 flex flex-col gap-3"
+            className="rounded-2xl p-5 flex flex-col gap-3 relative"
             style={{ background: 'white', border: '1.5px solid rgba(122,24,50,0.12)' }}
           >
+            <div
+              className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-2.5 py-0.5 rounded-full text-xs font-bold whitespace-nowrap"
+              style={{ background: '#e8f5e9', color: '#2a8a4a' }}
+            >
+              3 días gratis
+            </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#7A1832', opacity: 0.6 }}>Mensual</p>
               <p className="text-2xl font-bold mt-1" style={{ color: '#591427' }}>29€</p>
@@ -138,7 +143,7 @@ export default function AccessClient({ profile }: Props) {
                 opacity: checkoutLoading === 'monthly' ? 0.65 : 1,
               }}
             >
-              {checkoutLoading === 'monthly' ? '...' : STRIPE_READY ? 'Suscribirme' : 'Próximamente'}
+              {checkoutLoading === 'monthly' ? '...' : STRIPE_READY ? 'Empezar prueba' : 'Próximamente'}
             </button>
           </div>
 
@@ -148,10 +153,10 @@ export default function AccessClient({ profile }: Props) {
             style={{ background: '#7A1832', border: '1.5px solid #591427' }}
           >
             <div
-              className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full text-xs font-bold"
+              className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-2.5 py-0.5 rounded-full text-xs font-bold whitespace-nowrap"
               style={{ background: '#FFF1B5', color: '#591427' }}
             >
-              Mejor precio
+              3 días gratis
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'rgba(255,241,181,0.8)' }}>Anual</p>
@@ -169,7 +174,7 @@ export default function AccessClient({ profile }: Props) {
                 opacity: checkoutLoading === 'yearly' ? 0.65 : 1,
               }}
             >
-              {checkoutLoading === 'yearly' ? '...' : STRIPE_READY ? 'Suscribirme' : 'Próximamente'}
+              {checkoutLoading === 'yearly' ? '...' : STRIPE_READY ? 'Empezar prueba' : 'Próximamente'}
             </button>
           </div>
         </div>
@@ -181,12 +186,15 @@ export default function AccessClient({ profile }: Props) {
           <div className="flex-1 h-px" style={{ background: 'rgba(122,24,50,0.12)' }} />
         </div>
 
-        {/* Promo code */}
+        {/* Promo / School code */}
         <div
-          className="rounded-2xl p-5 mb-4"
+          className="rounded-2xl p-5 mb-5"
           style={{ background: 'white', border: '1.5px solid rgba(122,24,50,0.12)' }}
         >
-          <p className="text-sm font-medium mb-3" style={{ color: '#591427' }}>Tengo un código</p>
+          <p className="text-sm font-medium mb-1" style={{ color: '#591427' }}>Tengo un código</p>
+          <p className="text-xs mb-3" style={{ color: '#591427', opacity: 0.55 }}>
+            Código promo o de School (miembros de la comunidad)
+          </p>
           <form onSubmit={handlePromo} className="flex gap-2">
             <input
               type="text"
@@ -216,30 +224,6 @@ export default function AccessClient({ profile }: Props) {
           )}
           {promoSuccess && (
             <p className="mt-2 text-xs font-medium" style={{ color: '#2a8a4a' }}>{promoSuccess}</p>
-          )}
-        </div>
-
-        {/* Skool member */}
-        <div
-          className="rounded-2xl p-5 mb-5"
-          style={{ background: 'white', border: '1.5px solid rgba(122,24,50,0.12)' }}
-        >
-          <button
-            onClick={() => setShowSkoolInfo(v => !v)}
-            className="w-full text-sm font-semibold text-left flex items-center justify-between"
-            style={{ color: '#591427', background: 'none', border: 'none', cursor: 'pointer' }}
-          >
-            Soy miembro de la comunidad BRÄVE
-            <span style={{ fontSize: 18 }}>{showSkoolInfo ? '↑' : '↓'}</span>
-          </button>
-          {showSkoolInfo && (
-            <p className="mt-3 text-sm leading-relaxed" style={{ color: '#591427', opacity: 0.75 }}>
-              Usa el mismo email con el que estás en Skool. Si no tienes acceso, escríbenos a{' '}
-              <a href="mailto:hola@bravestudio.com" className="underline font-medium">
-                hola@bravestudio.com
-              </a>{' '}
-              con el asunto <strong>"Acceso Skool"</strong> y te activaremos manualmente en menos de 24h.
-            </p>
           )}
         </div>
 

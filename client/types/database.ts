@@ -19,6 +19,8 @@ export interface Database {
           subscription_plan: 'monthly' | 'yearly' | null
           promo_code_used: string | null
           access_expires_at: string | null
+          city: string | null
+          professional_role: string | null
           created_at: string
           updated_at: string
         }
@@ -37,6 +39,8 @@ export interface Database {
           subscription_plan?: 'monthly' | 'yearly' | null
           promo_code_used?: string | null
           access_expires_at?: string | null
+          city?: string | null
+          professional_role?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -54,6 +58,8 @@ export interface Database {
           subscription_plan?: 'monthly' | 'yearly' | null
           promo_code_used?: string | null
           access_expires_at?: string | null
+          city?: string | null
+          professional_role?: string | null
           updated_at?: string
         }
       }
@@ -193,6 +199,7 @@ export interface Database {
           max_redemptions: number | null
           redemptions_count: number
           access_days: number
+          code_type: 'promo' | 'skool'
           created_at: string
           expires_at: string | null
         }
@@ -204,6 +211,7 @@ export interface Database {
           max_redemptions?: number | null
           redemptions_count?: number
           access_days?: number
+          code_type?: 'promo' | 'skool'
           created_at?: string
           expires_at?: string | null
         }
@@ -214,6 +222,7 @@ export interface Database {
           max_redemptions?: number | null
           redemptions_count?: number
           access_days?: number
+          code_type?: 'promo' | 'skool'
           expires_at?: string | null
         }
       }

@@ -1,17 +1,30 @@
+# ============================================================
+# BRÄVE Studio monorepo — root .gitignore (covers client/ + server/)
+# ============================================================
+
 # dependencies
 node_modules/
 
-# next.js
+# next.js (client)
 .next/
 out/
+
+# builds
+dist/
+build/
+tsconfig.tsbuildinfo
 
 # env files — NEVER commit
 .env
 .env.local
 .env*.local
 
-# build
-tsconfig.tsbuildinfo
+# vercel
+.vercel/
+
+# logs
+*.log
+npm-debug.log*
 
 # misc
 .DS_Store

@@ -28,12 +28,18 @@ function LoginForm() {
     if (user) {
       const { data: profile } = await supabase
         .from('profiles')
-        .select('access_status, subscription_status, is_active')
+        .select('role, access_status, subscription_status, is_active, access_source, access_expires_at')
         .eq('id', user.id)
         .single()
 
       if (!profile || !hasActiveAccess(profile)) {
         router.push('/access')
+        return
+      }
+
+      if (profile.role === 'superadmin' || profile.role === 'admin') {
+        router.push('/admin')
+        router.refresh()
         return
       }
     }

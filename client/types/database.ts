@@ -10,7 +10,7 @@ export interface Database {
           full_name: string | null
           salon_name: string | null
           is_active: boolean
-          role: 'user' | 'admin'
+          role: 'user' | 'admin' | 'superadmin'
           access_status: 'active' | 'inactive'
           access_source: 'manual' | 'stripe' | 'skool' | 'promo' | 'none'
           stripe_customer_id: string | null
@@ -18,6 +18,7 @@ export interface Database {
           subscription_status: 'active' | 'trialing' | 'past_due' | 'canceled' | 'none' | null
           subscription_plan: 'monthly' | 'yearly' | null
           promo_code_used: string | null
+          access_expires_at: string | null
           created_at: string
           updated_at: string
         }
@@ -27,7 +28,7 @@ export interface Database {
           full_name?: string | null
           salon_name?: string | null
           is_active?: boolean
-          role?: 'user' | 'admin'
+          role?: 'user' | 'admin' | 'superadmin'
           access_status?: 'active' | 'inactive'
           access_source?: 'manual' | 'stripe' | 'skool' | 'promo' | 'none'
           stripe_customer_id?: string | null
@@ -35,6 +36,7 @@ export interface Database {
           subscription_status?: 'active' | 'trialing' | 'past_due' | 'canceled' | 'none' | null
           subscription_plan?: 'monthly' | 'yearly' | null
           promo_code_used?: string | null
+          access_expires_at?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -43,7 +45,7 @@ export interface Database {
           full_name?: string | null
           salon_name?: string | null
           is_active?: boolean
-          role?: 'user' | 'admin'
+          role?: 'user' | 'admin' | 'superadmin'
           access_status?: 'active' | 'inactive'
           access_source?: 'manual' | 'stripe' | 'skool' | 'promo' | 'none'
           stripe_customer_id?: string | null
@@ -51,6 +53,7 @@ export interface Database {
           subscription_status?: 'active' | 'trialing' | 'past_due' | 'canceled' | 'none' | null
           subscription_plan?: 'monthly' | 'yearly' | null
           promo_code_used?: string | null
+          access_expires_at?: string | null
           updated_at?: string
         }
       }

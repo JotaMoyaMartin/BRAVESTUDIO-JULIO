@@ -10,6 +10,7 @@ const DEMO_PROFILE: Profile = {
   access_status: 'active', access_source: 'manual',
   stripe_customer_id: null, stripe_subscription_id: null,
   subscription_status: 'none', subscription_plan: null, promo_code_used: null,
+  access_expires_at: null,
   created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
 }
 

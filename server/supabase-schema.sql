@@ -196,3 +196,41 @@ begin
   return new;
 end;
 $$ language plpgsql security definer;
+
+-- ============================================================
+-- MIGRATION v3: superadmin role
+-- Run this in your Supabase SQL editor
+-- ============================================================
+
+-- Ampliar el check constraint del campo role para incluir superadmin
+alter table profiles drop constraint if exists profiles_role_check;
+alter table profiles add constraint profiles_role_check
+  check (role in ('user', 'admin', 'superadmin'));
+
+-- Para convertir tu usuario en superadmin, ejecuta:
+-- update profiles set role = 'superadmin' where email = 'TU_EMAIL_AQUI';
+
+-- Políticas RLS para superadmin
+create policy "Superadmins can read all profiles"
+  on profiles for select using (
+    exists (select 1 from profiles where id = auth.uid() and role = 'superadmin')
+  );
+
+create policy "Superadmins can update all profiles"
+  on profiles for update using (
+    exists (select 1 from profiles where id = auth.uid() and role = 'superadmin')
+  );
+
+create policy "Superadmins can manage promo codes"
+  on promo_codes for all using (
+    exists (select 1 from profiles where id = auth.uid() and role = 'superadmin')
+  );
+
+-- ============================================================
+-- MIGRATION v4: promo access expiration (lazy)
+-- Run this in your Supabase SQL editor
+-- ============================================================
+
+-- Fecha de expiracion del acceso por promo (now + access_days al canjear)
+alter table profiles
+  add column if not exists access_expires_at timestamptz;

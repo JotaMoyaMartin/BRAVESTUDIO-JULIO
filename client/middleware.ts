@@ -46,7 +46,7 @@ export async function middleware(request: NextRequest) {
     if (user && (pathname.startsWith('/login') || pathname === '/access')) {
       const { data: profile } = await supabase
         .from('profiles')
-        .select('access_status, subscription_status, is_active')
+        .select('access_status, subscription_status, is_active, access_source, access_expires_at')
         .eq('id', user.id)
         .single()
       if (profile && hasActiveAccess(profile)) {
@@ -80,7 +80,7 @@ export async function middleware(request: NextRequest) {
       .select('role')
       .eq('id', user.id)
       .single()
-    if (!profile || profile.role !== 'admin') {
+    if (!profile || (profile.role !== 'admin' && profile.role !== 'superadmin')) {
       return NextResponse.redirect(new URL('/inicio', request.url))
     }
     return supabaseResponse
@@ -89,11 +89,25 @@ export async function middleware(request: NextRequest) {
   // Check active access for app routes
   const { data: profile } = await supabase
     .from('profiles')
-    .select('access_status, subscription_status, is_active')
+    .select('access_status, subscription_status, is_active, access_source, access_expires_at')
     .eq('id', user.id)
     .single()
 
   if (!profile || !hasActiveAccess(profile)) {
+    // Lazy deactivation: si el acceso por promo ha expirado pero la DB sigue marcándolo activo,
+    // sincronizamos el estado a 'inactive' (una sola vez) para que el admin lo vea correcto.
+    if (
+      profile &&
+      profile.access_status === 'active' &&
+      profile.access_source === 'promo' &&
+      profile.access_expires_at &&
+      new Date(profile.access_expires_at).getTime() < Date.now()
+    ) {
+      await supabase
+        .from('profiles')
+        .update({ access_status: 'inactive', is_active: false })
+        .eq('id', user.id)
+    }
     return NextResponse.redirect(new URL(ACCESS_REDIRECT, request.url))
   }
 

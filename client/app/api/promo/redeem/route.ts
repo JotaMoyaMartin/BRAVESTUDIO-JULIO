@@ -37,12 +37,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Este código ha alcanzado el límite de usos.' }, { status: 400 })
   }
 
+  // Calcular fecha de expiracion (now + access_days)
+  const expiresAt = new Date()
+  expiresAt.setDate(expiresAt.getDate() + promo.access_days)
+
   // Apply to user profile
   await supabase.from('profiles').update({
     access_status: 'active',
     access_source: 'promo',
     promo_code_used: code,
     is_active: true,
+    access_expires_at: expiresAt.toISOString(),
   }).eq('id', user.id)
 
   // Increment redemptions count

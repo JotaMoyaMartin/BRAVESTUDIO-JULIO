@@ -1,5 +1,5 @@
--- BRÄVE Studio — Supabase Schema
--- Run this in your Supabase SQL editor
+-- BRÄVE Studio — Supabase Schema (idempotente)
+-- Run this in your Supabase SQL editor — safe to run multiple times
 
 -- Enable UUID extension
 create extension if not exists "uuid-ossp";
@@ -11,7 +11,7 @@ create table if not exists profiles (
   full_name text,
   salon_name text,
   is_active boolean not null default false,
-  role text not null default 'user' check (role in ('user', 'admin')),
+  role text not null default 'user' check (role in ('user', 'admin', 'superadmin')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -68,6 +68,18 @@ alter table profiles enable row level security;
 alter table brand_profiles enable row level security;
 alter table content_items enable row level security;
 
+-- Drop existing policies first (idempotency)
+drop policy if exists "Users can read own profile" on profiles;
+drop policy if exists "Users can update own profile" on profiles;
+drop policy if exists "Admins can read all profiles" on profiles;
+drop policy if exists "Admins can update all profiles" on profiles;
+drop policy if exists "Superadmins can read all profiles" on profiles;
+drop policy if exists "Superadmins can update all profiles" on profiles;
+drop policy if exists "Users can manage own brand profile" on brand_profiles;
+drop policy if exists "Users can manage own content" on content_items;
+drop policy if exists "Admins can manage promo codes" on promo_codes;
+drop policy if exists "Superadmins can manage promo codes" on promo_codes;
+
 -- Profiles policies
 create policy "Users can read own profile"
   on profiles for select using (auth.uid() = id);
@@ -85,6 +97,16 @@ create policy "Admins can update all profiles"
     exists (select 1 from profiles where id = auth.uid() and role = 'admin')
   );
 
+create policy "Superadmins can read all profiles"
+  on profiles for select using (
+    exists (select 1 from profiles where id = auth.uid() and role = 'superadmin')
+  );
+
+create policy "Superadmins can update all profiles"
+  on profiles for update using (
+    exists (select 1 from profiles where id = auth.uid() and role = 'superadmin')
+  );
+
 -- Brand profiles policies
 create policy "Users can manage own brand profile"
   on brand_profiles for all using (auth.uid() = user_id);
@@ -97,19 +119,22 @@ create policy "Users can manage own content"
 create or replace function handle_new_user()
 returns trigger as $$
 begin
-  insert into public.profiles (id, email, full_name, is_active, role)
+  insert into public.profiles (id, email, full_name, is_active, role, access_status, access_source)
   values (
     new.id,
     new.email,
     new.raw_user_meta_data->>'full_name',
-    false,  -- inactive by default, admin must activate
-    'user'
+    false,
+    'user',
+    'inactive',
+    'none'
   );
   return new;
 end;
 $$ language plpgsql security definer;
 
-create or replace trigger on_auth_user_created
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure handle_new_user();
 
@@ -122,21 +147,22 @@ begin
 end;
 $$ language plpgsql;
 
+drop trigger if exists profiles_updated_at on profiles;
 create trigger profiles_updated_at before update on profiles
   for each row execute procedure update_updated_at();
 
+drop trigger if exists brand_profiles_updated_at on brand_profiles;
 create trigger brand_profiles_updated_at before update on brand_profiles
   for each row execute procedure update_updated_at();
 
+drop trigger if exists content_items_updated_at on content_items;
 create trigger content_items_updated_at before update on content_items
   for each row execute procedure update_updated_at();
 
 -- ============================================================
 -- MIGRATION v2: SaaS access architecture
--- Run this in your Supabase SQL editor after the initial schema
 -- ============================================================
 
--- Add new access fields to profiles
 alter table profiles
   add column if not exists access_status text not null default 'inactive'
     check (access_status in ('active', 'inactive')),
@@ -150,7 +176,6 @@ alter table profiles
     check (subscription_plan in ('monthly', 'yearly')),
   add column if not exists promo_code_used text;
 
--- Backfill existing users
 update profiles set access_status = 'active', access_source = 'manual' where is_active = true;
 update profiles set access_status = 'inactive', access_source = 'none' where is_active = false;
 
@@ -169,56 +194,9 @@ create table if not exists promo_codes (
 
 alter table promo_codes enable row level security;
 
--- Admins can manage promo codes
 create policy "Admins can manage promo codes"
   on promo_codes for all using (
     exists (select 1 from profiles where id = auth.uid() and role = 'admin')
-  );
-
--- Indices for fast lookups
-create index if not exists idx_profiles_stripe_customer on profiles(stripe_customer_id);
-create index if not exists idx_promo_codes_code on promo_codes(code);
-
--- Update handle_new_user to include new fields
-create or replace function handle_new_user()
-returns trigger as $$
-begin
-  insert into public.profiles (id, email, full_name, is_active, role, access_status, access_source)
-  values (
-    new.id,
-    new.email,
-    new.raw_user_meta_data->>'full_name',
-    false,
-    'user',
-    'inactive',
-    'none'
-  );
-  return new;
-end;
-$$ language plpgsql security definer;
-
--- ============================================================
--- MIGRATION v3: superadmin role
--- Run this in your Supabase SQL editor
--- ============================================================
-
--- Ampliar el check constraint del campo role para incluir superadmin
-alter table profiles drop constraint if exists profiles_role_check;
-alter table profiles add constraint profiles_role_check
-  check (role in ('user', 'admin', 'superadmin'));
-
--- Para convertir tu usuario en superadmin, ejecuta:
--- update profiles set role = 'superadmin' where email = 'TU_EMAIL_AQUI';
-
--- Políticas RLS para superadmin
-create policy "Superadmins can read all profiles"
-  on profiles for select using (
-    exists (select 1 from profiles where id = auth.uid() and role = 'superadmin')
-  );
-
-create policy "Superadmins can update all profiles"
-  on profiles for update using (
-    exists (select 1 from profiles where id = auth.uid() and role = 'superadmin')
   );
 
 create policy "Superadmins can manage promo codes"
@@ -226,25 +204,34 @@ create policy "Superadmins can manage promo codes"
     exists (select 1 from profiles where id = auth.uid() and role = 'superadmin')
   );
 
+create index if not exists idx_profiles_stripe_customer on profiles(stripe_customer_id);
+create index if not exists idx_promo_codes_code on promo_codes(code);
+
 -- ============================================================
--- MIGRATION v4: promo access expiration (lazy)
--- Run this in your Supabase SQL editor
+-- MIGRATION v3: superadmin role
 -- ============================================================
 
--- Fecha de expiracion del acceso por promo (now + access_days al canjear)
+alter table profiles drop constraint if exists profiles_role_check;
+alter table profiles add constraint profiles_role_check
+  check (role in ('user', 'admin', 'superadmin'));
+
+-- Para convertir tu usuario en superadmin, ejecuta:
+-- update profiles set role = 'superadmin' where email = 'TU_EMAIL_AQUI';
+
+-- ============================================================
+-- MIGRATION v4: promo access expiration (lazy)
+-- ============================================================
+
 alter table profiles
   add column if not exists access_expires_at timestamptz;
 
 -- ============================================================
 -- MIGRATION v5: signup, onboarding, school codes
--- Run this in your Supabase SQL editor
 -- ============================================================
 
--- Tipo de codigo: promo (caduca) vs skool (indefinido, revocable manualmente)
 alter table promo_codes
   add column if not exists code_type text default 'promo' check (code_type in ('promo', 'skool'));
 
--- Datos de onboarding del usuario
 alter table profiles
   add column if not exists city text;
 

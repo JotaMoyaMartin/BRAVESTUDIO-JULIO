@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { detectPlan } from '@/lib/stripe-prices'
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -34,9 +35,6 @@ export async function POST(req: NextRequest) {
         const userId = session.metadata?.user_id
         if (!userId) break
 
-        // Determinar el plan (monthly/yearly) comparando el price ID
-        const monthlyPriceId = process.env.NEXT_PUBLIC_STRIPE_MONTHLY_PRICE_ID
-        const yearlyPriceId = process.env.NEXT_PUBLIC_STRIPE_YEARLY_PRICE_ID
         let subscriptionPlan: 'monthly' | 'yearly' | null = null
 
         if (session.subscription && typeof session.subscription === 'string') {
@@ -44,8 +42,9 @@ export async function POST(req: NextRequest) {
             expand: ['items.data.price'],
           })
           const priceId = sub.items.data[0]?.price?.id
-          if (priceId === monthlyPriceId) subscriptionPlan = 'monthly'
-          else if (priceId === yearlyPriceId) subscriptionPlan = 'yearly'
+          if (priceId) {
+            subscriptionPlan = detectPlan(priceId)
+          }
         }
 
         // El estado puede ser 'trialing' si hay trial activo

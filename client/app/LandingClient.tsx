@@ -1,37 +1,57 @@
 'use client'
 import Link from 'next/link'
-import { CheckCircle } from 'lucide-react'
+import BraviMascot from '../components/bravi/BraviMascot'
+import { DeviceMockups } from '../components/Mockups'
 
-const FEATURES = [
-  'Planes de contenido semanal y mensual con IA',
-  'Reels y Carruseles con la metodología BRÄVE',
-  'Stories estratégicas + Caja de Preguntas',
-  'Perfil de marca guiado por Bravi, tu asistente IA',
-  'Calendario editorial visual',
-  'Biblioteca de contenido guardado',
-]
-
-const PLANS = [
+const BENEFITS = [
   {
-    name: 'Mensual',
-    price: '29€',
-    period: 'por mes',
-    features: ['3 días de prueba gratis', 'Sin permanencia', 'Todo el contenido de BRÄVE Studio'],
-    highlighted: false,
+    emoji: '🤔',
+    title: 'Nunca más te quedes sin ideas.',
+    desc: 'Bravi te propone ganchos, temas y enfoques nuevos cada semana.',
   },
   {
-    name: 'Anual',
-    price: '199€',
-    period: 'por año · ahorra 149€',
-    features: ['3 días de prueba gratis', 'Mejor precio', 'Todo el contenido de BRÄVE Studio'],
-    highlighted: true,
+    emoji: '🎬',
+    title: 'Crea guiones para hablar a cámara.',
+    desc: 'Reels con la metodología BRÄVE: gancho, contexto, solución y CTA listos para grabar.',
+  },
+  {
+    emoji: '📅',
+    title: 'Planifica tu contenido del mes.',
+    desc: 'Un calendario entero en minutos, con ideas para cada día y formato.',
+  },
+  {
+    emoji: '💬',
+    title: 'Crea Stories que generan conversación.',
+    desc: 'Secuencias estratégicas + caja de preguntas que conectan con tu clienta.',
+  },
+  {
+    emoji: '✂️',
+    title: 'Diseñado para estilistas y salones de belleza.',
+    desc: 'Lenguaje, servicios y objetivos pensados para tu sector.',
+  },
+]
+
+const STEPS = [
+  {
+    n: 1,
+    title: 'Configura tu salón.',
+    desc: 'Cuéntale a Bravi sobre tu marca una vez. Lo recordará para siempre.',
+  },
+  {
+    n: 2,
+    title: 'Elige qué quieres crear.',
+    desc: 'Reels, carruseles, Stories o planificación mensual. Tú decides.',
+  },
+  {
+    n: 3,
+    title: 'Copia, graba y publica.',
+    desc: 'Textos listos para copiar y pegar. Ideas visuales para grabar sin pensar.',
   },
 ]
 
 export default function LandingClient() {
   return (
     <div className="min-h-screen" style={{ background: '#FFF8E7' }}>
-
       {/* Header */}
       <header className="flex items-center justify-between px-6 py-5 max-w-5xl mx-auto">
         <div className="flex items-center gap-2">
@@ -53,138 +73,171 @@ export default function LandingClient() {
       </header>
 
       {/* Hero */}
-      <section className="max-w-3xl mx-auto px-6 pt-12 pb-8 text-center">
-        <div className="text-5xl mb-4">🤖</div>
-        <h1
-          className="text-4xl font-bold mb-4"
-          style={{ color: '#591427', letterSpacing: '-0.5px' }}
-        >
-          Crea contenido estratégico para tu salón en minutos
-        </h1>
-        <p className="text-base leading-relaxed mb-8" style={{ color: '#591427', opacity: 0.7 }}>
-          Bravi, tu asistente de IA, te ayuda a planificar, crear y publicar contenido que atrae clientes y hace crecer tu marca. Sin bloqueo creativo, sin perder horas.
-        </p>
-        <Link
-          href="/signup"
-          className="inline-block px-8 py-3.5 rounded-2xl font-semibold text-sm"
-          style={{ background: '#7A1832', color: 'white' }}
-        >
-          Crear cuenta gratis
-        </Link>
-        <p className="text-xs mt-3" style={{ color: '#591427', opacity: 0.5 }}>
-          3 días de prueba gratis · sin permanencia
-        </p>
-      </section>
-
-      {/* Features */}
-      <section className="max-w-3xl mx-auto px-6 py-10">
-        <div className="grid sm:grid-cols-2 gap-4">
-          {FEATURES.map(f => (
-            <div
-              key={f}
-              className="flex items-start gap-3 p-4 rounded-2xl"
-              style={{ background: 'white', border: '1.5px solid rgba(122,24,50,0.08)' }}
-            >
-              <CheckCircle size={18} style={{ color: '#2a8a4a', flexShrink: 0, marginTop: 1 }} />
-              <p className="text-sm" style={{ color: '#591427', opacity: 0.85 }}>{f}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Pricing */}
-      <section className="max-w-3xl mx-auto px-6 py-10">
-        <h2 className="text-2xl font-bold text-center mb-8" style={{ color: '#591427' }}>
-          Planes
-        </h2>
-        <div className="grid sm:grid-cols-2 gap-5">
-          {PLANS.map(plan => (
-            <div
-              key={plan.name}
-              className="rounded-3xl p-6 flex flex-col gap-4 relative"
-              style={{
-                background: plan.highlighted ? '#7A1832' : 'white',
-                border: plan.highlighted ? '1.5px solid #591427' : '1.5px solid rgba(122,24,50,0.12)',
-              }}
-            >
-              {plan.highlighted && (
-                <div
-                  className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full text-xs font-bold whitespace-nowrap"
-                  style={{ background: '#FFF1B5', color: '#591427' }}
-                >
-                  Mejor precio
-                </div>
-              )}
-              <div>
-                <p
-                  className="text-xs font-semibold uppercase tracking-wide"
-                  style={{ color: plan.highlighted ? 'rgba(255,241,181,0.8)' : '#7A1832', opacity: plan.highlighted ? 1 : 0.6 }}
-                >
-                  {plan.name}
-                </p>
-                <p
-                  className="text-3xl font-bold mt-1"
-                  style={{ color: plan.highlighted ? 'white' : '#591427' }}
-                >
-                  {plan.price}
-                </p>
-                <p
-                  className="text-xs"
-                  style={{ color: plan.highlighted ? 'rgba(255,255,255,0.6)' : '#591427', opacity: plan.highlighted ? 1 : 0.5 }}
-                >
-                  {plan.period}
-                </p>
-              </div>
-              <ul className="space-y-2 flex-1">
-                {plan.features.map(f => (
-                  <li key={f} className="flex items-center gap-2 text-sm" style={{ color: plan.highlighted ? 'rgba(255,255,255,0.9)' : '#591427', opacity: plan.highlighted ? 1 : 0.8 }}>
-                    <CheckCircle size={14} style={{ color: plan.highlighted ? '#FFF1B5' : '#2a8a4a', flexShrink: 0 }} />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-              <Link
-                href="/signup"
-                className="w-full py-2.5 rounded-xl text-sm font-semibold text-center"
-                style={{
-                  background: plan.highlighted ? '#FFF1B5' : '#7A1832',
-                  color: plan.highlighted ? '#591427' : 'white',
-                }}
-              >
-                Empezar prueba de 3 días
-              </Link>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* School section */}
-      <section className="max-w-3xl mx-auto px-6 py-8">
+      <section className="max-w-4xl mx-auto px-6 pt-10 pb-12">
         <div
-          className="rounded-3xl p-6 text-center"
-          style={{ background: 'white', border: '1.5px solid rgba(122,24,50,0.12)' }}
+          className="relative rounded-3xl p-8 sm:p-12 text-center"
+          style={{ background: '#FFFDF5', border: '1.5px solid rgba(255,241,181,0.8)' }}
         >
-          <p className="text-sm font-medium mb-2" style={{ color: '#591427' }}>
-            ¿Eres miembro de School?
+          {/* Bravi mascot floating top-right */}
+          <div className="absolute top-4 right-4 hidden sm:block">
+            <BraviMascot size={72} />
+          </div>
+
+          <h1
+            className="text-4xl sm:text-5xl font-bold mb-4"
+            style={{ color: '#591427', letterSpacing: '-0.5px' }}
+          >
+            BRÄVE Studio
+          </h1>
+          <p className="text-base sm:text-lg leading-relaxed mb-4 max-w-xl mx-auto" style={{ color: '#591427', opacity: 0.75 }}>
+            Tu asistente de IA para crear contenido que atrae más clientas a tu salón.
           </p>
-          <p className="text-sm mb-4" style={{ color: '#591427', opacity: 0.7 }}>
-            Los miembros de la comunidad BRÄVE en School tienen acceso gratuito. Crea tu cuenta y canjea tu código.
+          <p className="text-base sm:text-lg font-bold mb-8 max-w-xl mx-auto" style={{ color: '#591427' }}>
+            Crea un mes entero de contenido para Instagram en menos de 10 minutos.
+          </p>
+
+          <div className="flex flex-col sm:flex-row gap-3 justify-center mb-4">
+            <Link
+              href="/signup"
+              className="inline-block px-8 py-3.5 rounded-2xl font-semibold text-sm transition-transform hover:-translate-y-0.5"
+              style={{ background: '#7A1832', color: 'white' }}
+            >
+              Empieza gratis
+            </Link>
+            <Link
+              href="/pricing"
+              className="inline-block px-8 py-3.5 rounded-2xl font-semibold text-sm transition-transform hover:-translate-y-0.5"
+              style={{ background: '#FFF1B5', color: '#591427' }}
+            >
+              Ver planes
+            </Link>
+          </div>
+          <p className="text-xs" style={{ color: '#591427', opacity: 0.5 }}>
+            Prueba gratuita de 3 días. Cancela cuando quieras.
+          </p>
+        </div>
+
+        {/* Device mockups */}
+        <div className="mt-12">
+          <DeviceMockups />
+        </div>
+      </section>
+
+      {/* Divider */}
+      <div className="max-w-4xl mx-auto px-6">
+        <div className="h-px" style={{ background: 'rgba(255,241,181,0.8)' }} />
+      </div>
+
+      {/* Benefits */}
+      <section className="max-w-4xl mx-auto px-6 py-12 sm:py-16">
+        <div className="space-y-5">
+          {BENEFITS.map((b, i) => (
+            <div
+              key={i}
+              className="flex items-start gap-4 p-5 sm:p-6 rounded-2xl"
+              style={{ background: '#FFFDF5', border: '1.5px solid rgba(255,241,181,0.8)' }}
+            >
+              <div className="text-3xl flex-shrink-0">{b.emoji}</div>
+              <div>
+                <p className="font-bold text-base mb-1" style={{ color: '#591427' }}>{b.title}</p>
+                <p className="text-sm leading-relaxed" style={{ color: '#591427', opacity: 0.7 }}>{b.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Divider */}
+      <div className="max-w-4xl mx-auto px-6">
+        <div className="h-px" style={{ background: 'rgba(255,241,181,0.8)' }} />
+      </div>
+
+      {/* Cómo funciona */}
+      <section className="max-w-4xl mx-auto px-6 py-12 sm:py-16">
+        <h2 className="text-2xl sm:text-3xl font-bold text-center mb-10" style={{ color: '#591427' }}>
+          Cómo funciona
+        </h2>
+        <div className="grid sm:grid-cols-3 gap-5">
+          {STEPS.map((s) => (
+            <div
+              key={s.n}
+              className="rounded-2xl p-6 text-center"
+              style={{ background: '#FFFDF5', border: '1.5px solid rgba(255,241,181,0.8)' }}
+            >
+              <div
+                className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg mx-auto mb-4"
+                style={{ background: '#7A1832', color: '#FFF1B5' }}
+              >
+                {s.n}
+              </div>
+              <p className="font-bold text-base mb-2" style={{ color: '#591427' }}>{s.title}</p>
+              <p className="text-sm leading-relaxed" style={{ color: '#591427', opacity: 0.7 }}>{s.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* CTA final */}
+      <section className="max-w-4xl mx-auto px-6 py-12 sm:py-16">
+        <div
+          className="rounded-3xl p-8 sm:p-12 text-center"
+          style={{ background: '#7A1832' }}
+        >
+          <p className="text-xl sm:text-2xl font-bold mb-6" style={{ color: '#FFF1B5' }}>
+            Empieza gratis con 3 días de prueba.
           </p>
           <Link
             href="/signup"
-            className="inline-block px-6 py-2.5 rounded-xl text-sm font-semibold"
-            style={{ background: '#FFF1B5', color: '#591427', border: '1.5px solid rgba(122,24,50,0.2)' }}
+            className="inline-block px-8 py-3.5 rounded-2xl font-semibold text-sm transition-transform hover:-translate-y-0.5"
+            style={{ background: '#FFF1B5', color: '#591427' }}
           >
-            Crear cuenta con código School
+            Empeza gratis
+          </Link>
+          <p className="text-xs mt-4" style={{ color: 'rgba(255,241,181,0.6)' }}>
+            Sin permanencia. Cancela cuando quieras.
+          </p>
+        </div>
+      </section>
+
+      {/* Divider */}
+      <div className="max-w-4xl mx-auto px-6">
+        <div className="h-px" style={{ background: 'rgba(255,241,181,0.8)' }} />
+      </div>
+
+      {/* Skool section */}
+      <section className="max-w-4xl mx-auto px-6 py-12 sm:py-16">
+        <div
+          className="rounded-3xl p-6 sm:p-8 text-center"
+          style={{ background: '#FFFDF5', border: '1.5px solid rgba(255,241,181,0.8)' }}
+        >
+          <p className="text-base font-bold mb-2" style={{ color: '#591427' }}>
+            ¿Eres miembro de BRÄVE en Skool?
+          </p>
+          <p className="text-sm mb-5 max-w-md mx-auto" style={{ color: '#591427', opacity: 0.7 }}>
+            Los miembros de la comunidad BRÄVE en Skool tienen acceso gratuito. Crea tu cuenta con tu email e introduce tu código de acceso.
+          </p>
+          <Link
+            href="/skool-access"
+            className="inline-block px-6 py-3 rounded-xl text-sm font-semibold"
+            style={{ background: '#7A1832', color: 'white' }}
+          >
+            Activar acceso gratuito
           </Link>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="max-w-3xl mx-auto px-6 py-10 text-center">
-        <p className="text-xs" style={{ color: '#591427', opacity: 0.4 }}>
+      <footer className="max-w-4xl mx-auto px-6 py-10 text-center">
+        <p className="text-xs mb-2" style={{ color: '#591427', opacity: 0.4 }}>
           BRÄVE Studio · Contenido estratégico para estilistas y salones
         </p>
+        <a
+          href="mailto:bravefourquarters@gmail.com"
+          className="text-xs"
+          style={{ color: '#591427', opacity: 0.5 }}
+        >
+          ¿Tienes dudas? Escríbenos a bravefourquarters@gmail.com
+        </a>
       </footer>
     </div>
   )

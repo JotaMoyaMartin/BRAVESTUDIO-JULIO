@@ -22,7 +22,7 @@ export default async function OnboardingPage() {
 
   // Si ya completó el onboarding, no tiene sentido estar aquí
   if (profile && (profile as Profile).full_name && (profile as Profile).salon_name) {
-    redirect('/access')
+    redirect('/inicio')
   }
 
   return <OnboardingClient profile={profile as Profile | null} />

@@ -2,6 +2,7 @@
 import { useState, Suspense } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { IS_DEMO } from '@/lib/demo'
+import SupportButton from '@/components/SupportButton'
 
 function ResetForm() {
   const [email, setEmail] = useState('')
@@ -81,12 +82,17 @@ function ResetForm() {
               </p>
 
               {error && (
-                <div
-                  className="mb-4 p-3 rounded-xl text-sm text-center"
-                  style={{ background: '#FFF1B5', color: '#591427' }}
-                >
-                  {error}
-                </div>
+                <>
+                  <div
+                    className="mb-4 p-3 rounded-xl text-sm text-center"
+                    style={{ background: '#FFF1B5', color: '#591427' }}
+                  >
+                    {error}
+                  </div>
+                  <div className="mb-4 flex justify-center">
+                    <SupportButton variant="compact" subject="No puedo recuperar mi contraseña en BRÄVE Studio" />
+                  </div>
+                </>
               )}
 
               <form onSubmit={handleReset} className="space-y-4">

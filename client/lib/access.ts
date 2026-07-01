@@ -1,6 +1,6 @@
 import { Profile } from '@/types/database'
 
-export const ACCESS_REDIRECT = '/access'
+export const ACCESS_REDIRECT = '/access-blocked'
 
 export function hasActiveAccess(
   profile: Pick<Profile, 'access_status' | 'subscription_status' | 'is_active' | 'access_source' | 'access_expires_at'>

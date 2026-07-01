@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
 import { createClient } from '@/lib/supabase/server'
+import { getPriceId, Currency, Plan } from '@/lib/stripe-prices'
 
 export async function POST(req: NextRequest) {
   if (!stripe) {
@@ -13,9 +14,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { priceId } = await req.json()
+  const body = await req.json()
+  let priceId: string | null = null
+
+  // Legacy: direct priceId
+  if (body.priceId) {
+    priceId = body.priceId
+  }
+  // New: plan + currency
+  else if (body.plan && body.currency) {
+    priceId = getPriceId(body.plan as Plan, body.currency as Currency)
+  }
+
   if (!priceId) {
-    return NextResponse.json({ error: 'Missing priceId' }, { status: 400 })
+    return NextResponse.json({ error: 'Missing priceId or plan+currency' }, { status: 400 })
   }
 
   const { data: profile } = await supabase
@@ -33,8 +45,8 @@ export async function POST(req: NextRequest) {
       : { customer_email: profile?.email || user.email }),
     line_items: [{ price: priceId, quantity: 1 }],
     subscription_data: { trial_period_days: 3 },
-    success_url: `${appUrl}/inicio?checkout=success`,
-    cancel_url: `${appUrl}/access`,
+    success_url: `${appUrl}/onboarding?checkout=success`,
+    cancel_url: `${appUrl}/pricing`,
     metadata: { user_id: user.id },
   })
 

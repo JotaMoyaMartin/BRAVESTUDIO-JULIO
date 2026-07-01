@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { hasActiveAccess } from '@/lib/access'
 import { IS_DEMO } from '@/lib/demo'
+import SupportButton from '@/components/SupportButton'
 
 function LoginForm() {
   const [email, setEmail] = useState('')
@@ -52,7 +53,7 @@ function LoginForm() {
       }
 
       if (!profile || !hasActiveAccess(profile)) {
-        router.push('/access')
+        router.push('/access-blocked')
         return
       }
 
@@ -171,6 +172,15 @@ function LoginForm() {
             >
               ¿No tienes cuenta? Crear cuenta
             </a>
+          </div>
+
+          <div className="mt-5 pt-5" style={{ borderTop: '1px solid rgba(122,24,50,0.1)' }}>
+            <p className="text-xs mb-2 text-center" style={{ color: '#591427', opacity: 0.6 }}>
+              ¿Tienes problemas para entrar?
+            </p>
+            <div className="flex justify-center">
+              <SupportButton variant="inline" subject="Problema para entrar en BRÄVE Studio" />
+            </div>
           </div>
         </div>
       </div>

@@ -1,34 +1,22 @@
 'use client'
-import { useState, Suspense } from 'react'
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter, useSearchParams } from 'next/navigation'
 import { IS_DEMO } from '@/lib/demo'
-import { Currency, Plan, getPriceId } from '@/lib/stripe-prices'
 import SupportButton from '@/components/SupportButton'
 
-function SignupForm() {
+export default function SkoolAccessClient() {
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [code, setCode] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [info, setInfo] = useState('')
   const router = useRouter()
-  const searchParams = useSearchParams()
 
-  const plan = searchParams.get('plan') as Plan | null
-  const currency = (searchParams.get('currency') as Currency | null) || 'eur'
-
-  const symbol = currency === 'eur' ? '€' : '$'
-
-  const planLabel = plan === 'monthly'
-    ? `Mensual 29 ${symbol}/mes`
-    : plan === 'yearly'
-      ? `Anual 199 ${symbol}/año`
-      : null
-
-  async function handleSignup(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
     setInfo('')
@@ -37,23 +25,30 @@ function SignupForm() {
       setError('El nombre debe tener al menos 2 caracteres.')
       return
     }
-
     if (password.length < 6) {
       setError('La contraseña debe tener al menos 6 caracteres.')
       return
     }
-
     if (password !== confirmPassword) {
       setError('Las contraseñas no coinciden.')
+      return
+    }
+    if (!code.trim()) {
+      setError('Introduce tu código de acceso.')
       return
     }
 
     setLoading(true)
 
-    // Demo mode: simular signup sin Supabase real
+    // Demo mode
     if (IS_DEMO) {
-      router.push('/onboarding')
-      router.refresh()
+      if (code.toUpperCase() === 'SKOOL') {
+        router.push('/onboarding')
+        router.refresh()
+        return
+      }
+      setError('Este código no es válido o ha caducado.')
+      setLoading(false)
       return
     }
 
@@ -66,14 +61,14 @@ function SignupForm() {
       return
     }
 
-    // Si Supabase requiere confirmación por email
+    // Email confirmation required
     if (data.user && !data.session) {
-      setInfo('Revisa tu email para confirmar tu cuenta antes de entrar.')
+      setInfo('Revisa tu email para confirmar tu cuenta, luego entra e introduce tu código en /access-blocked.')
       setLoading(false)
       return
     }
 
-    // Sin confirmación requerida → actualizar perfil y redirigir
+    // Session returned — update profile and redeem code
     if (data.user && data.session) {
       // Update profile full_name
       await supabase
@@ -81,34 +76,26 @@ function SignupForm() {
         .update({ full_name: fullName.trim() })
         .eq('id', data.user.id)
 
-      // If plan is set, redirect to Stripe checkout
-      if (plan && currency) {
-        const priceId = getPriceId(plan, currency)
-        if (!priceId) {
-          // No Stripe configured → go to onboarding
+      // Redeem code
+      try {
+        const res = await fetch('/api/promo/redeem', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code: code.toUpperCase() }),
+        })
+        const redeemData = await res.json()
+        if (res.ok && redeemData.ok) {
           router.push('/onboarding')
           router.refresh()
           return
         }
-        try {
-          const res = await fetch('/api/stripe/create-checkout-session', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ plan, currency }),
-          })
-          const checkoutData = await res.json()
-          if (checkoutData.url) {
-            window.location.href = checkoutData.url
-            return
-          }
-        } catch {
-          // If checkout fails, fall back to onboarding
-        }
+        setError('Este código no es válido o ha caducado.')
+        setLoading(false)
+      } catch {
+        setError('Este código no es válido o ha caducado.')
+        setLoading(false)
       }
     }
-
-    router.push('/onboarding')
-    router.refresh()
   }
 
   return (
@@ -118,6 +105,7 @@ function SignupForm() {
     >
       <div className="w-full max-w-sm">
 
+        {/* Header */}
         <div className="text-center mb-8">
           <div
             className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4"
@@ -125,8 +113,8 @@ function SignupForm() {
           >
             <span className="text-white text-xl">✦</span>
           </div>
-          <h1 className="text-3xl font-bold" style={{ color: '#591427', letterSpacing: '-0.5px' }}>
-            BRÄVE Studio
+          <h1 className="text-2xl font-bold" style={{ color: '#591427' }}>
+            Acceso para miembros BRÄVE
           </h1>
         </div>
 
@@ -134,21 +122,12 @@ function SignupForm() {
           className="rounded-3xl p-8"
           style={{ background: 'white', border: '1.5px solid rgba(122,24,50,0.1)', boxShadow: '0 4px 24px rgba(89,20,39,0.07)' }}
         >
-          <div className="flex flex-col items-center gap-3 mb-8 text-center">
+          <div className="flex flex-col items-center gap-3 mb-6 text-center">
             <span style={{ fontSize: 44 }}>🤖</span>
             <p className="text-sm leading-relaxed" style={{ color: '#591427', opacity: 0.8 }}>
-              Crea tu cuenta y empieza a generar contenido estratégico para tu salón
+              Si formas parte de la comunidad, crea tu cuenta con tu email e introduce tu código de acceso.
             </p>
           </div>
-
-          {planLabel && (
-            <div
-              className="mb-4 p-3 rounded-xl text-sm text-center font-medium"
-              style={{ background: '#FFF1B5', color: '#591427', border: '1.5px solid rgba(122,24,50,0.15)' }}
-            >
-              Plan seleccionado: {planLabel}
-            </div>
-          )}
 
           {error && (
             <div className="mb-4 space-y-2">
@@ -158,7 +137,7 @@ function SignupForm() {
               >
                 {error}
               </div>
-              <SupportButton variant="compact" subject="Problema creando cuenta en BRÄVE Studio" />
+              <SupportButton variant="compact" subject="No pude crear cuenta Skool en BRÄVE Studio" />
             </div>
           )}
 
@@ -171,7 +150,7 @@ function SignupForm() {
             </div>
           )}
 
-          <form onSubmit={handleSignup} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium mb-1.5" style={{ color: '#591427' }}>
                 Nombre
@@ -240,6 +219,23 @@ function SignupForm() {
               />
             </div>
 
+            <div>
+              <label className="block text-sm font-medium mb-1.5" style={{ color: '#591427' }}>
+                Código de acceso
+              </label>
+              <input
+                type="text"
+                value={code}
+                onChange={e => setCode(e.target.value.toUpperCase())}
+                placeholder="CÓDIGO"
+                required
+                className="w-full px-4 py-3 rounded-xl text-sm outline-none font-mono"
+                style={{ border: '1.5px solid rgba(122,24,50,0.2)', background: '#FFFDF5', letterSpacing: '0.05em' }}
+                onFocus={e => (e.target.style.borderColor = '#7A1832')}
+                onBlur={e => (e.target.style.borderColor = 'rgba(122,24,50,0.2)')}
+              />
+            </div>
+
             <button
               type="submit"
               disabled={loading}
@@ -251,7 +247,7 @@ function SignupForm() {
                 cursor: loading ? 'not-allowed' : 'pointer',
               }}
             >
-              {loading ? 'Creando cuenta...' : 'Crear cuenta'}
+              {loading ? 'Activando...' : 'Activar acceso gratuito'}
             </button>
           </form>
 
@@ -267,13 +263,5 @@ function SignupForm() {
         </div>
       </div>
     </div>
-  )
-}
-
-export default function SignupPage() {
-  return (
-    <Suspense>
-      <SignupForm />
-    </Suspense>
   )
 }

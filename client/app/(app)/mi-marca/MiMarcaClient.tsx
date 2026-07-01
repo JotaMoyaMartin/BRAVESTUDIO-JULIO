@@ -3,7 +3,9 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { demoGetBrand, demoSaveBrand } from '@/lib/demo-store'
 import { BrandProfile } from '@/types/database'
-import { Mic, Sparkles, Star } from 'lucide-react'
+import { Sparkles, Star } from 'lucide-react'
+import { buildProfile } from '@/lib/brand-extract'
+import VoiceButton from '@/components/VoiceButton'
 
 const QUESTION_BLOCKS = [
   {
@@ -43,42 +45,8 @@ const QUESTION_BLOCKS = [
   },
 ]
 
-// Known services we can recognise inside the free text to suggest content topics.
-const KNOWN_TOPICS = ['Balayage', 'Rubios', 'Canas', 'Alisados', 'Tratamientos', 'Corte', 'Color', 'Mechas', 'Keratina', 'Decoloración', 'Extensiones', 'Peinados']
-
-// Lightweight extraction so the profile card feels personalised without a real AI in demo.
-function extractField(text: string, patterns: RegExp[]): string | null {
-  for (const re of patterns) {
-    const m = text.match(re)
-    if (m && m[1]) return m[1].trim().replace(/[.,;]$/, '')
-  }
-  return null
-}
-
-function buildProfile(text: string) {
-  const lower = text.toLowerCase()
-  const firstLine = text.split('\n').map(l => l.trim()).find(l => l.length > 0) || ''
-
-  const salon = extractField(text, [
-    /(?:salón|salon|peluquer[ií]a|centro|estudio)\s+(?:se llama\s+)?["“]?([A-ZÁÉÍÓÚÑa-záéíóúñ0-9&'\s]{2,40})["”]?/,
-    /me llamo\s+([A-ZÁÉÍÓÚÑa-záéíóúñ\s]{2,30})/i,
-  ]) || (firstLine.length <= 40 ? firstLine : null)
-
-  const city = extractField(text, [
-    /(?:en|ciudad de|estoy en|ubicad[oa] en)\s+([A-ZÁÉÍÓÚÑ][A-Za-záéíóúñ]{2,25})/,
-  ])
-
-  const topics = KNOWN_TOPICS.filter(t => lower.includes(t.toLowerCase()))
-
-  return {
-    salon_name: salon,
-    city,
-    main_services: topics.length ? topics.slice(0, 3) : null,
-    service_to_promote: topics[0] || null,
-    content_topics: topics.length ? topics : null,
-    optimized_summary: text.trim(),
-  }
-}
+// Known services and extraction helpers live in `@/lib/brand-extract`.
+// VoiceButton lives in `@/components/VoiceButton`.
 
 export default function MiMarcaClient({ userId, brand }: { userId: string; brand: BrandProfile | null }) {
   const isDemoMode = userId === 'demo'
@@ -231,54 +199,5 @@ function ProfileCard({ profile }: { profile: Partial<BrandProfile> }) {
         </div>
       </div>
     </div>
-  )
-}
-
-function VoiceButton({ onTranscript }: { onTranscript: (t: string) => void }) {
-  const [listening, setListening] = useState(false)
-  const [supported, setSupported] = useState(true)
-
-  useEffect(() => {
-    const w = window as unknown as Record<string, unknown>
-    setSupported(!!(w.SpeechRecognition || w.webkitSpeechRecognition))
-  }, [])
-
-  function start() {
-    const w = window as unknown as Record<string, unknown>
-    const SpeechRecognition = w.SpeechRecognition || w.webkitSpeechRecognition
-    if (!SpeechRecognition) { setSupported(false); return }
-    const recognition = new (SpeechRecognition as new () => {
-      lang: string; continuous: boolean; interimResults: boolean
-      onresult: (e: { results: { transcript: string }[][] }) => void
-      onerror: () => void; onend: () => void; start: () => void
-    })()
-    recognition.lang = 'es-ES'
-    recognition.continuous = false
-    recognition.interimResults = false
-    recognition.onresult = (e) => onTranscript(e.results[0][0].transcript)
-    recognition.onerror = () => setListening(false)
-    recognition.onend = () => setListening(false)
-    recognition.start()
-    setListening(true)
-  }
-
-  if (!supported) {
-    return (
-      <p className="text-xs" style={{ color: '#7A1832', opacity: 0.7 }}>
-        Tu navegador no permite grabar audio. Puedes escribir la información manualmente.
-      </p>
-    )
-  }
-
-  return (
-    <button
-      onClick={start}
-      disabled={listening}
-      className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
-      style={{ background: listening ? '#FFF1B5' : '#F5F0E8', color: '#591427' }}
-    >
-      <Mic size={16} className={listening ? 'animate-pulse' : ''} />
-      {listening ? 'Escuchando...' : '🎙️ Grabar respuesta con voz'}
-    </button>
   )
 }

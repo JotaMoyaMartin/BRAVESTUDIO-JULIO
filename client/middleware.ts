@@ -39,15 +39,28 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/login') ||
     pathname.startsWith('/signup') ||
     pathname.startsWith('/reset-password') ||
+    pathname.startsWith('/forgot-password') ||
     pathname.startsWith('/update-password') ||
     pathname.startsWith('/access') ||
-    pathname.startsWith('/acceso-bloqueado') ||
+    pathname.startsWith('/access-blocked') ||
+    pathname.startsWith('/pricing') ||
+    pathname.startsWith('/skool-access') ||
     pathname.startsWith('/api/auth') ||
     pathname.startsWith('/api/stripe/webhook')
 
   if (isPublicAuthRoute) {
-    // Redirect authenticated users with active access away from landing/login/access/signup
-    if (user && (pathname === '/' || pathname.startsWith('/login') || pathname === '/access' || pathname.startsWith('/signup'))) {
+    // Redirect authenticated users with active access away from public marketing/auth pages
+    const isMarketingOrAuthPage =
+      pathname === '/' ||
+      pathname.startsWith('/login') ||
+      pathname.startsWith('/signup') ||
+      pathname.startsWith('/forgot-password') ||
+      pathname.startsWith('/reset-password') ||
+      pathname.startsWith('/skool-access') ||
+      pathname === '/access' ||
+      pathname === '/access-blocked' ||
+      pathname.startsWith('/pricing')
+    if (user && isMarketingOrAuthPage) {
       const { data: profile } = await supabase
         .from('profiles')
         .select('access_status, subscription_status, is_active, access_source, access_expires_at, full_name, salon_name')

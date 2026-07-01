@@ -1,4 +1,5 @@
 import { ContentObjective, serviceLabel } from './reels'
+import { generateAIContent, extractJSON } from '../client'
 
 export interface CarouselInput {
   service: string
@@ -120,4 +121,28 @@ export function getMockCarousel(input: CarouselInput): CarouselOutput {
     visualIdea: `Diseño limpio con fondo claro y una frase grande por slide. Mantén el mismo estilo en todas las slides. Puedes usar fotos del proceso o del resultado como fondo difuminado.`,
     captionWithHashtags: `Lo que nadie te cuenta sobre ${l.el} ✨ Guarda este carrusel para cuando lo necesites.\n\n#${topic.replace(/\s/g, '').toLowerCase()} #estilista #salonbelleza #consejoscabello #bellezaprofesional`,
   }
+}
+
+/** LLM-backed carousel generation with mock fallback. See generateReel. */
+export async function generateCarousel(input: CarouselInput): Promise<CarouselOutput> {
+  try {
+    const raw = await generateAIContent(buildCarouselPrompt(input))
+    const parsed = extractJSON<CarouselOutput>(raw)
+    if (
+      parsed &&
+      typeof parsed.title === 'string' &&
+      Array.isArray(parsed.slides) &&
+      parsed.slides.length > 0 &&
+      parsed.slides.every(
+        s => s && typeof s.number === 'number' && typeof s.role === 'string' && typeof s.text === 'string'
+      ) &&
+      typeof parsed.visualIdea === 'string' &&
+      typeof parsed.captionWithHashtags === 'string'
+    ) {
+      return parsed
+    }
+  } catch {
+    // fall through to mock
+  }
+  return getMockCarousel(input)
 }

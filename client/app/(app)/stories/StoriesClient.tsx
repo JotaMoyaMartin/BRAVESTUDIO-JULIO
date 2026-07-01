@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { demoSavePlan } from '@/lib/demo-store'
-import { getMockStories, getMockQuestions, StoriesOutput, SingleStory } from '@/lib/ai/prompts/stories'
+import { generateStories, getMockQuestions, StoriesOutput, SingleStory } from '@/lib/ai/prompts/stories'
 import { LayoutGrid, MessageSquare, Copy, BookOpen, Calendar, RefreshCw, Check } from 'lucide-react'
 
 const SERVICES = [
@@ -67,14 +67,14 @@ function StoriesCreator({ userId, brandContext }: { userId: string; brandContext
   async function generate() {
     if (!service && !freeText) return
     setGenerating(true)
-    await new Promise(r => setTimeout(r, 600))
-    setResult(getMockStories({
+    const out = await generateStories({
       service: service || freeText,
       count,
       mode,
       detail: detail || undefined,
       brandContext: brandContext || undefined,
-    }))
+    })
+    setResult(out)
     setGenerating(false)
   }
 
@@ -123,9 +123,9 @@ function StoriesCreator({ userId, brandContext }: { userId: string; brandContext
     )
   }
 
-  function regenerateSingle(number: number) {
+  async function regenerateSingle(number: number) {
     if (!result) return
-    const fresh = getMockStories({ service: service || freeText, count, mode, detail: detail || undefined })
+    const fresh = await generateStories({ service: service || freeText, count, mode, detail: detail || undefined })
     const newStory = fresh.stories[number - 1]
     if (!newStory) return
     setResult(prev => prev ? { stories: prev.stories.map(s => s.number === number ? newStory : s) } : prev)

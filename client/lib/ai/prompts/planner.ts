@@ -1,4 +1,5 @@
 import { serviceLabel } from './reels'
+import { generateAIContent, extractJSON } from '../client'
 
 export interface PlannerInput {
   duration: '1week' | '1month'
@@ -300,4 +301,93 @@ function getDayOffset(day: string): number {
     'Viernes': 4, 'Sábado': 5, 'Domingo': 6,
   }
   return map[day] || 0
+}
+
+export function buildPlanPrompt(input: PlannerInput): string {
+  const weeks = input.duration === '1week' ? 1 : 4
+  const total = weeks * input.postsPerWeek
+  const days = DEFAULT_DAYS[input.postsPerWeek]
+  const services = input.freeText?.trim() ? input.freeText.trim() : input.services.join(', ')
+  return `Eres un experto en planificación de contenido para salones de belleza en Instagram. Crea un plan de contenido siguiendo la metodología BRÄVE.
+
+DURACIÓN: ${input.duration === '1week' ? '1 semana' : '1 mes'} (${weeks} semana(s))
+PUBLICACIONES POR SEMANA: ${input.postsPerWeek}
+TOTAL: ${total} publicaciones
+FORMATO: ${input.format} (reels, carruseles o mixto)
+OBJETIVO: ${input.objective}
+SERVICIOS/TEMAS: ${services}
+${input.brandContext ? `CONTEXTO DEL SALÓN: ${input.brandContext}` : ''}
+
+DÍAS SUGERIDOS POR SEMANA: ${days.join(', ')}
+
+METODOLOGÍA OBLIGATORIA:
+- Cada item debe tener un título atractivo, específico y no repetido.
+- Variar entre formato reel y carrusel según el formato solicitado.
+- Si el objetivo es "autoridad", enfocar en criterio profesional y educación.
+- Si es "reservas", enfocar en transformaciones, resultados y CTA a reserva.
+- Si es "visibilidad", enfocar en tendencias, dudas frecuentes y contenido guardable.
+- Para cada item incluye una idea de gancho (hookIdea) breve.
+
+Devuelve EXACTAMENTE este JSON, sin texto adicional:
+{
+  "items": [
+    {
+      "type": "reel" | "carrusel",
+      "title": "Título atractivo de la publicación",
+      "service": "Servicio o tema al que pertenece",
+      "suggestedDay": "Uno de: ${days.join(', ')}",
+      "hookIdea": "Idea de gancho breve para esta publicación",
+      "format": "Reel 40-50 segundos" | "Carrusel 5 slides"
+    }
+  ],
+  "summary": "Resumen breve del plan"
+}`
+}
+
+/** LLM-backed planner with mock fallback. Assigns ids and computes suggestedDate client-side. */
+export async function generatePlan(input: PlannerInput): Promise<PlannerOutput> {
+  try {
+    const raw = await generateAIContent(buildPlanPrompt(input))
+    const parsed = extractJSON<{ items: Array<Omit<PlannerItem, 'id' | 'suggestedDate' | 'objective'>>, summary: string }>(raw)
+    if (
+      parsed &&
+      Array.isArray(parsed.items) &&
+      parsed.items.length > 0 &&
+      parsed.items.every(
+        it =>
+          it &&
+          (it.type === 'reel' || it.type === 'carrusel') &&
+          typeof it.title === 'string' &&
+          typeof it.service === 'string' &&
+          typeof it.suggestedDay === 'string' &&
+          typeof it.hookIdea === 'string' &&
+          typeof it.format === 'string'
+      )
+    ) {
+      const startDate = input.startDate ? new Date(input.startDate) : new Date()
+      const items: PlannerItem[] = parsed.items.map((it, i) => {
+        const weekNum = Math.floor(i / input.postsPerWeek)
+        const itemDate = new Date(startDate)
+        itemDate.setDate(itemDate.getDate() + weekNum * 7 + getDayOffset(it.suggestedDay))
+        return {
+          id: `plan-${i}`,
+          type: it.type,
+          title: it.title,
+          service: it.service,
+          objective: input.objective,
+          suggestedDay: it.suggestedDay,
+          suggestedDate: itemDate.toISOString().split('T')[0],
+          hookIdea: it.hookIdea,
+          format: it.format,
+        }
+      })
+      return {
+        items,
+        summary: typeof parsed.summary === 'string' ? parsed.summary : `${items.length} publicaciones planificadas.`,
+      }
+    }
+  } catch {
+    // fall through to mock
+  }
+  return generateMockPlan(input)
 }

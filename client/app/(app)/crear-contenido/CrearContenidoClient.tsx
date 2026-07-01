@@ -3,8 +3,8 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { demoSavePlan } from '@/lib/demo-store'
-import { getMockReel, ReelOutput, ContentObjective } from '@/lib/ai/prompts/reels'
-import { getMockCarousel, CarouselOutput } from '@/lib/ai/prompts/carousels'
+import { generateReel, ReelOutput, ContentObjective } from '@/lib/ai/prompts/reels'
+import { generateCarousel, CarouselOutput } from '@/lib/ai/prompts/carousels'
 import { Film, LayoutGrid, Copy, BookOpen, RefreshCw, Trash2, Check, ArrowRight } from 'lucide-react'
 
 const SERVICES = ['Balayage', 'Rubios', 'Canas', 'Alisados', 'Tratamientos', 'Corte', 'Color', 'General']
@@ -43,12 +43,13 @@ export default function CrearContenidoClient({
   async function generate() {
     setGenerating(true)
     const topicService = service || freeText || 'General'
-    await new Promise(r => setTimeout(r, 800))
 
     if (contentType === 'reel') {
-      setReelResult(getMockReel({ service: topicService, objective, brandContext: brandContext || undefined, freeText }))
+      const result = await generateReel({ service: topicService, objective, brandContext: brandContext || undefined, freeText })
+      setReelResult(result)
     } else {
-      setCarouselResult(getMockCarousel({ service: topicService, objective, slideCount, brandContext: brandContext || undefined, freeText }))
+      const result = await generateCarousel({ service: topicService, objective, slideCount, brandContext: brandContext || undefined, freeText })
+      setCarouselResult(result)
     }
     setGenerating(false)
     setStep('result')

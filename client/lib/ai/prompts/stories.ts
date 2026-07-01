@@ -1,3 +1,5 @@
+import { generateAIContent, extractJSON } from '../client'
+
 export interface StoryInput {
   service: string
   count: 1 | 2 | 3
@@ -137,4 +139,31 @@ export function getMockQuestions(topic: string): QuestionBoxOutput {
   const questions = questionMap[key] || questionMap.default
 
   return { questions }
+}
+
+/** LLM-backed Stories generation with mock fallback. */
+export async function generateStories(input: StoryInput): Promise<StoriesOutput> {
+  try {
+    const raw = await generateAIContent(buildStoriesPrompt(input))
+    const parsed = extractJSON<StoriesOutput>(raw)
+    if (
+      parsed &&
+      Array.isArray(parsed.stories) &&
+      parsed.stories.length > 0 &&
+      parsed.stories.every(
+        s =>
+          s &&
+          typeof s.number === 'number' &&
+          typeof s.role === 'string' &&
+          typeof s.text === 'string' &&
+          typeof s.stickerSuggestion === 'string' &&
+          typeof s.visualIdea === 'string'
+      )
+    ) {
+      return parsed
+    }
+  } catch {
+    // fall through to mock
+  }
+  return getMockStories(input)
 }

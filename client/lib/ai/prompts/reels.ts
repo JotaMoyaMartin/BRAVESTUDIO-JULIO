@@ -1,3 +1,5 @@
+import { generateAIContent, extractJSON } from '../client'
+
 export type ContentObjective =
   | 'autoridad' | 'reservas' | 'visibilidad'
   | 'educativo' | 'consejos' | 'venta'
@@ -161,4 +163,34 @@ export function getMockReel(input: ReelInput, seed?: number): ReelOutput {
     visualIdea: v.visualFn(input.service),
     captionWithHashtags: v.captionFn(input.service),
   }
+}
+
+/**
+ * Generates a Reel using the configured LLM (DeepSeek via Ollama), falling
+ * back to the deterministic mock on any error (route misconfigured, network
+ * failure, invalid JSON, or shape mismatch). The app always renders something.
+ */
+export async function generateReel(input: ReelInput): Promise<ReelOutput> {
+  try {
+    const prompt = buildReelPrompt(input)
+    const raw = await generateAIContent(prompt)
+    const parsed = extractJSON<ReelOutput>(raw)
+    if (
+      parsed &&
+      typeof parsed.title === 'string' &&
+      typeof parsed.coverText === 'string' &&
+      parsed.script &&
+      typeof parsed.script.hook === 'string' &&
+      typeof parsed.script.context === 'string' &&
+      typeof parsed.script.solution === 'string' &&
+      typeof parsed.script.cta === 'string' &&
+      typeof parsed.visualIdea === 'string' &&
+      typeof parsed.captionWithHashtags === 'string'
+    ) {
+      return parsed
+    }
+  } catch {
+    // fall through to mock
+  }
+  return getMockReel(input)
 }

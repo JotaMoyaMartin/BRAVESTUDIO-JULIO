@@ -4,9 +4,9 @@ import { createClient } from '@/lib/supabase/client'
 import {
   demoGetPlan, demoSavePlan, demoUpdatePlan, demoDeletePlan, demoReorderPlan,
 } from '@/lib/demo-store'
-import { generateMockPlan, PlannerItem } from '@/lib/ai/prompts/planner'
-import { getMockReel, ReelOutput } from '@/lib/ai/prompts/reels'
-import { getMockCarousel, CarouselOutput } from '@/lib/ai/prompts/carousels'
+import { generateMockPlan, generatePlan, PlannerItem } from '@/lib/ai/prompts/planner'
+import { generateReel, ReelOutput } from '@/lib/ai/prompts/reels'
+import { generateCarousel, CarouselOutput } from '@/lib/ai/prompts/carousels'
 import { BrandProfile, ContentItem } from '@/types/database'
 import {
   Sparkles, RefreshCw, Trash2, Calendar, ChevronDown, ChevronUp,
@@ -21,10 +21,10 @@ type PartialBrand = Pick<BrandProfile, 'optimized_summary' | 'salon_name' | 'mai
 type Objective = 'autoridad' | 'reservas' | 'visibilidad'
 type Guion = ReelOutput | CarouselOutput
 
-function genGuion(type: 'reel' | 'carrusel', service: string, objective: Objective): Guion {
+async function genGuion(type: 'reel' | 'carrusel', service: string, objective: Objective): Promise<Guion> {
   return type === 'reel'
-    ? getMockReel({ service, objective })
-    : getMockCarousel({ service, objective, slideCount: 5 })
+    ? await generateReel({ service, objective })
+    : await generateCarousel({ service, objective, slideCount: 5 })
 }
 
 function scriptToText(item: ContentItem): string {
@@ -108,8 +108,7 @@ function CrearTab({ userId, brand, isDemoMode, onSaved }: { userId: string; bran
   async function generate() {
     if (!canGenerate) return
     setGenerating(true)
-    await new Promise(r => setTimeout(r, 600))
-    const result = generateMockPlan({
+    const result = await generatePlan({
       duration, postsPerWeek, format, objective,
       services: services.length ? services : ['General'],
       freeText,
@@ -120,11 +119,11 @@ function CrearTab({ userId, brand, isDemoMode, onSaved }: { userId: string; bran
     setGenerating(false)
   }
 
-  function regenerateItem(id: string) {
+  async function regenerateItem(id: string) {
     if (!plan) return
     const item = plan.find(p => p.id === id)
     if (!item) return
-    const g = genGuion(item.type, item.service, objective)
+    const g = await genGuion(item.type, item.service, objective)
     const hookIdea = item.type === 'reel'
       ? (g as ReelOutput).script.hook
       : (g as CarouselOutput).slides[0]?.text || ''
@@ -166,7 +165,7 @@ function CrearTab({ userId, brand, isDemoMode, onSaved }: { userId: string; bran
     setSavingAll(true)
     const unsaved = plan.filter(item => !savedIds.has(item.id))
     for (const item of unsaved) {
-      const guion = genGuion(item.type, item.service, objective)
+      const guion = await genGuion(item.type, item.service, objective)
       const payload = {
         type: item.type,
         title: item.title,
@@ -335,12 +334,16 @@ function PlanDraftCard({ item, objective, isSaved, onRegenerate, onRemove, onSav
   const [copied, setCopied] = useState<string | null>(null)
   const [editingDate, setEditingDate] = useState(false)
   const [date, setDate] = useState(item.suggestedDate || '')
+  const [loadingGuion, setLoadingGuion] = useState(false)
 
-  function ensureGuion(): Guion {
+  function ensureGuion(): Guion | Promise<Guion> {
     if (guion) return guion
-    const g = genGuion(item.type, item.service, objective)
-    setGuion(g)
-    return g
+    setLoadingGuion(true)
+    return genGuion(item.type, item.service, objective).then(g => {
+      setGuion(g)
+      setLoadingGuion(false)
+      return g
+    })
   }
 
   function handleExpand() {
@@ -355,8 +358,9 @@ function PlanDraftCard({ item, objective, isSaved, onRegenerate, onRemove, onSav
     setTimeout(() => setCopied(null), 2000)
   }
 
-  function handleSave() {
-    onSave(ensureGuion(), date || null)
+  async function handleSave() {
+    const g = await ensureGuion()
+    onSave(g, date || null)
   }
 
   return (
@@ -377,6 +381,12 @@ function PlanDraftCard({ item, objective, isSaved, onRegenerate, onRemove, onSav
         </div>
         {expanded ? <ChevronUp size={16} style={{ color: '#7A1832', flexShrink: 0 }} /> : <ChevronDown size={16} style={{ color: '#7A1832', flexShrink: 0 }} />}
       </button>
+
+      {expanded && loadingGuion && (
+        <div className="border-t px-5 py-6 text-center" style={{ borderColor: 'rgba(255,241,181,0.5)' }}>
+          <p className="text-sm" style={{ color: '#591427', opacity: 0.7 }}>Generando guion…</p>
+        </div>
+      )}
 
       {expanded && guion && (
         <div className="border-t px-5 py-4 space-y-4" style={{ borderColor: 'rgba(255,241,181,0.5)' }}>
@@ -428,10 +438,10 @@ function VerTab({ userId, isDemoMode, items, setItems, refresh }: {
     setItems(prev => prev.map(i => i.id === id ? { ...i, scheduled_date: date, status: (date ? 'scheduled' : 'library') } as ContentItem : i))
   }
 
-  function persistRegenerate(item: ContentItem) {
+  async function persistRegenerate(item: ContentItem) {
     const obj = (item.objective as Objective) || 'autoridad'
     const type = item.type === 'carrusel' ? 'carrusel' : 'reel'
-    const g = genGuion(type, item.service || 'General', obj)
+    const g = await genGuion(type, item.service || 'General', obj)
     const patch = {
       content_json: g as unknown as Record<string, unknown>,
       caption_with_hashtags: g.captionWithHashtags,

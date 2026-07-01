@@ -1,50 +1,81 @@
-export type AIProvider = 'anthropic' | 'openai' | 'mock'
+/**
+ * Client-side helper for LLM content generation.
+ *
+ * The browser NEVER talks to the LLM provider directly — it calls our own
+ * server route `/api/ai/generate`, which holds the Ollama API key and proxies
+ * the request server-side. This keeps the key out of the bundle.
+ *
+ * If the server route is not configured (503) or errors, callers should fall
+ * back to the local mock generators (see `lib/ai/prompts/*`).
+ */
 
-const provider = (process.env.AI_PROVIDER || 'mock') as AIProvider
-const apiKey = process.env.AI_API_KEY
+/**
+ * Calls the server AI route with a built prompt and returns the raw model text.
+ * Throws on any non-200 response so callers can fall back to mock.
+ */
+export async function generateAIContent(prompt: string, opts: { signal?: AbortSignal } = {}): Promise<string> {
+  const res = await fetch('/api/ai/generate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt }),
+    signal: opts.signal,
+  })
 
-export async function generateContent(prompt: string): Promise<string> {
-  if (provider === 'mock' || !apiKey) {
-    return mockGenerate(prompt)
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '')
+    throw new Error(`AI route ${res.status}: ${detail.slice(0, 120)}`)
   }
 
-  if (provider === 'anthropic') {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'claude-3-haiku-20240307',
-        max_tokens: 2048,
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    })
-    const data = await res.json()
-    return data.content?.[0]?.text || ''
+  const data = await res.json()
+  const content = data?.content
+  if (typeof content !== 'string' || !content.trim()) {
+    throw new Error('AI route returned empty content')
   }
-
-  if (provider === 'openai') {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    })
-    const data = await res.json()
-    return data.choices?.[0]?.message?.content || ''
-  }
-
-  return mockGenerate(prompt)
+  return content
 }
 
-function mockGenerate(_prompt: string): string {
-  return JSON.stringify({ _mock: true })
+/**
+ * Extracts a JSON object from a model response that may wrap it in
+ * ```json ... ``` fences or include surrounding prose. Returns null if no
+ * parseable JSON object is found.
+ */
+export function extractJSON<T = unknown>(text: string): T | null {
+  if (!text) return null
+  // Strip ```json ... ``` or ``` ... ``` fences.
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i)
+  const candidate = fenced ? fenced[1] : text
+
+  // Find the first balanced {...} or [...].
+  const start = candidate.search(/[{[]/)
+  if (start === -1) return null
+  const open = candidate[start]
+  const close = open === '{' ? '}' : ']'
+  let depth = 0
+  let inStr = false
+  let esc = false
+  for (let i = start; i < candidate.length; i++) {
+    const c = candidate[i]
+    if (esc) { esc = false; continue }
+    if (c === '\\') { esc = true; continue }
+    if (c === '"') { inStr = !inStr; continue }
+    if (inStr) continue
+    if (c === open) depth++
+    else if (c === close) {
+      depth--
+      if (depth === 0) {
+        const slice = candidate.slice(start, i + 1)
+        try {
+          return JSON.parse(slice) as T
+        } catch {
+          return null
+        }
+      }
+    }
+  }
+  // Fallback: try parsing the whole trimmed candidate.
+  try {
+    return JSON.parse(candidate.trim()) as T
+  } catch {
+    return null
+  }
 }

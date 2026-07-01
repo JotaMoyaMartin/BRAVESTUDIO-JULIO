@@ -68,6 +68,22 @@ alter table profiles enable row level security;
 alter table brand_profiles enable row level security;
 alter table content_items enable row level security;
 
+-- Anti-recursion helper: SECURITY DEFINER function that reads profiles
+-- bypassing RLS. Using this inside profiles/promo_codes policies avoids the
+-- "infinite recursion detected in policy" error that occurs when a policy
+-- on `profiles` queries `profiles` directly.
+create or replace function public.is_admin()
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.profiles
+    where id = auth.uid() and role in ('admin', 'superadmin')
+  )
+$$;
+
 -- Drop existing policies first (idempotency)
 drop policy if exists "Users can read own profile" on profiles;
 drop policy if exists "Users can update own profile" on profiles;
@@ -88,24 +104,10 @@ create policy "Users can update own profile"
   on profiles for update using (auth.uid() = id);
 
 create policy "Admins can read all profiles"
-  on profiles for select using (
-    exists (select 1 from profiles where id = auth.uid() and role = 'admin')
-  );
+  on profiles for select using (public.is_admin());
 
 create policy "Admins can update all profiles"
-  on profiles for update using (
-    exists (select 1 from profiles where id = auth.uid() and role = 'admin')
-  );
-
-create policy "Superadmins can read all profiles"
-  on profiles for select using (
-    exists (select 1 from profiles where id = auth.uid() and role = 'superadmin')
-  );
-
-create policy "Superadmins can update all profiles"
-  on profiles for update using (
-    exists (select 1 from profiles where id = auth.uid() and role = 'superadmin')
-  );
+  on profiles for update using (public.is_admin());
 
 -- Brand profiles policies
 create policy "Users can manage own brand profile"
@@ -195,14 +197,7 @@ create table if not exists promo_codes (
 alter table promo_codes enable row level security;
 
 create policy "Admins can manage promo codes"
-  on promo_codes for all using (
-    exists (select 1 from profiles where id = auth.uid() and role = 'admin')
-  );
-
-create policy "Superadmins can manage promo codes"
-  on promo_codes for all using (
-    exists (select 1 from profiles where id = auth.uid() and role = 'superadmin')
-  );
+  on promo_codes for all using (public.is_admin());
 
 create index if not exists idx_profiles_stripe_customer on profiles(stripe_customer_id);
 create index if not exists idx_promo_codes_code on promo_codes(code);

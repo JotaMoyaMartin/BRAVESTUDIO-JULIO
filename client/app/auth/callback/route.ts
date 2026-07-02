@@ -62,6 +62,7 @@ export async function GET(request: NextRequest) {
             : { customer_email: profile?.email || user.email }),
           line_items: [{ price: priceId, quantity: 1 }],
           subscription_data: { trial_period_days: 3 },
+          phone_number_collection: { enabled: false },
           success_url: `${appUrl}/onboarding?checkout=success`,
           cancel_url: `${appUrl}/pricing`,
           metadata: { user_id: user.id },

@@ -1,6 +1,7 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 import { Currency, USD_READY } from '@/lib/stripe-prices'
 
 function fmt(amount: number, currency: Currency): string {
@@ -11,6 +12,43 @@ function fmt(amount: number, currency: Currency): string {
 export default function PricingClient() {
   const router = useRouter()
   const [currency, setCurrency] = useState<Currency>('eur')
+  const [hasSession, setHasSession] = useState(false)
+  const [checkoutLoading, setCheckoutLoading] = useState<null | 'monthly' | 'yearly'>(null)
+  const [checkoutError, setCheckoutError] = useState('')
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setHasSession(!!session)
+    })
+  }, [])
+
+  async function handlePlanClick(plan: 'monthly' | 'yearly') {
+    setCheckoutError('')
+    // Si ya hay sesión → directo a Stripe Checkout
+    if (hasSession) {
+      setCheckoutLoading(plan)
+      try {
+        const res = await fetch('/api/stripe/create-checkout-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ plan, currency }),
+        })
+        const data = await res.json()
+        if (data.url) {
+          window.location.href = data.url
+          return
+        }
+        setCheckoutError(data.error || 'No se pudo iniciar el pago. Inténtalo de nuevo.')
+      } catch {
+        setCheckoutError('Error al conectar con Stripe. Inténtalo de nuevo.')
+      }
+      setCheckoutLoading(null)
+      return
+    }
+    // Sin sesión → signup con plan preseleccionado
+    router.push(`/signup?plan=${plan}&currency=${currency}`)
+  }
 
   const symbol = currency === 'eur' ? '€' : '$'
   const monthlyEquivalent = (199 / 12).toFixed(2).replace('.', ',')
@@ -111,15 +149,17 @@ export default function PricingClient() {
               Prueba gratuita de 3 días
             </p>
             <button
-              onClick={() => router.push(`/signup?plan=monthly&currency=${currency}`)}
+              onClick={() => handlePlanClick('monthly')}
+              disabled={checkoutLoading !== null}
               className="w-full py-3 rounded-xl font-semibold text-sm mt-auto"
               style={{
                 background: '#7A1832',
                 color: 'white',
-                cursor: 'pointer',
+                cursor: checkoutLoading !== null ? 'not-allowed' : 'pointer',
+                opacity: checkoutLoading !== null ? 0.7 : 1,
               }}
             >
-              Empieza gratis
+              {checkoutLoading === 'monthly' ? 'Redirigiendo a Stripe...' : 'Empieza gratis'}
             </button>
           </div>
 
@@ -165,18 +205,29 @@ export default function PricingClient() {
               Prueba gratuita de 3 días
             </p>
             <button
-              onClick={() => router.push(`/signup?plan=yearly&currency=${currency}`)}
+              onClick={() => handlePlanClick('yearly')}
+              disabled={checkoutLoading !== null}
               className="w-full py-3 rounded-xl font-semibold text-sm mt-auto"
               style={{
                 background: '#FFF1B5',
                 color: '#591427',
-                cursor: 'pointer',
+                cursor: checkoutLoading !== null ? 'not-allowed' : 'pointer',
+                opacity: checkoutLoading !== null ? 0.7 : 1,
               }}
             >
-              Empieza gratis
+              {checkoutLoading === 'yearly' ? 'Redirigiendo a Stripe...' : 'Empieza gratis'}
             </button>
           </div>
         </div>
+
+        {checkoutError && (
+          <div
+            className="mt-4 p-3 rounded-xl text-sm text-center"
+            style={{ background: '#FFF1B5', color: '#591427' }}
+          >
+            {checkoutError}
+          </div>
+        )}
 
         {/* Trust badges */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

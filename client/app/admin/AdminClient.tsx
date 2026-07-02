@@ -320,6 +320,14 @@ export default function AdminClient({ currentUserId, currentUserRole, users: ini
               const canDelete = user.id !== currentUserId && (user.role !== 'superadmin' || isSuperAdmin)
               const stats = initialStats[user.id]
               const hasActiveSub = user.subscription_status === 'active' || user.subscription_status === 'trialing'
+              const subStatusStyles: Record<string, { bg: string; color: string }> = {
+                active:    { bg: '#F0FDF4', color: '#15803d' },
+                trialing:  { bg: '#FFF1B5', color: '#7A1832' },
+                canceled:  { bg: '#FEF2F2', color: '#b91c1c' },
+                past_due:  { bg: '#FEF2F2', color: '#b91c1c' },
+                unpaid:    { bg: '#FEF2F2', color: '#b91c1c' },
+              }
+              const subStyle = user.subscription_status ? subStatusStyles[user.subscription_status] : null
               return (
                 <div key={user.id} className="px-6 py-4 flex items-start gap-4">
                   <div className="flex-1 min-w-0">
@@ -338,8 +346,13 @@ export default function AdminClient({ currentUserId, currentUserRole, users: ini
                         <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: src.bg, color: src.color }}>{src.label}</span>
                       )}
                       {user.subscription_status && user.subscription_status !== 'none' && (
-                        <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: '#F1F5F9', color: '#475569' }}>
+                        <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={subStyle || { background: '#F1F5F9', color: '#475569' }}>
                           {user.subscription_status}{user.subscription_plan ? ` · ${user.subscription_plan}` : ''}
+                        </span>
+                      )}
+                      {user.subscription_status === 'canceled' && isActive && (
+                        <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: '#FFF7ED', color: '#c2410c' }}>
+                          Acceso hasta fin de periodo
                         </span>
                       )}
                     </div>

@@ -66,16 +66,28 @@ export async function POST(req: NextRequest) {
 
       case 'customer.subscription.updated': {
         const sub = event.data.object as Stripe.Subscription
-        const status = sub.status as 'active' | 'trialing' | 'past_due' | 'canceled' | 'unpaid'
-        const isActive = status === 'active' || status === 'trialing'
+        const stripeStatus = sub.status as 'active' | 'trialing' | 'past_due' | 'canceled' | 'unpaid'
+        // Stripe cancela "at period end" por defecto en el portal: la
+        // suscripción sigue activa/trialing hasta que termine el periodo,
+        // pero cancel_at_period_end = true indica que se cancelará.
+        // Lo detectamos para marcar subscription_status='canceled' en nuestra
+        // DB (visible en admin) sin revocar acceso todavía.
+        const cancelAtPeriodEnd =
+          (sub as { cancel_at_period_end?: boolean }).cancel_at_period_end === true
+        const isActiveAccess = stripeStatus === 'active' || stripeStatus === 'trialing'
 
-        // Antes de revocar acceso, comprobamos si el usuario tiene otra
-        // fuente de acceso activa (manual, skool, promo no caducado).
-        // Solo ponemos access_status=inactive cuando no haya otra fuente.
-        let finalAccessStatus: 'active' | 'inactive' = isActive ? 'active' : 'inactive'
-        let finalIsActive = isActive
+        // Estado que guardamos: si cancel_at_period_end=true → 'canceled'
+        // (aunque Stripe siga reportando active/trialing). Si no, el real.
+        const effectiveStatus = cancelAtPeriodEnd && isActiveAccess
+          ? 'canceled'
+          : stripeStatus
 
-        if (!isActive) {
+        // El acceso se mantiene mientras el periodo esté activo (trialing/active),
+        // incluso si está programado para cancelarse al final.
+        let finalAccessStatus: 'active' | 'inactive' = isActiveAccess ? 'active' : 'inactive'
+        let finalIsActive = isActiveAccess
+
+        if (!isActiveAccess) {
           const { data: current } = await supabase
             .from('profiles')
             .select('access_source, access_expires_at')
@@ -97,7 +109,7 @@ export async function POST(req: NextRequest) {
         }
 
         await supabase.from('profiles').update({
-          subscription_status: status,
+          subscription_status: effectiveStatus,
           access_status: finalAccessStatus,
           is_active: finalIsActive,
         }).eq('stripe_subscription_id', sub.id)

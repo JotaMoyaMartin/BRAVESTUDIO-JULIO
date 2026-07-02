@@ -59,7 +59,14 @@ function SignupForm() {
 
     const supabase = createClient()
 
-    const { data, error: authError } = await supabase.auth.signUp({ email, password })
+    const { data, error: authError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        data: { full_name: fullName.trim(), plan: plan || undefined, currency: currency || undefined },
+      },
+    })
     if (authError) {
       setError(authError.message || 'No se pudo crear la cuenta.')
       setLoading(false)
@@ -68,7 +75,7 @@ function SignupForm() {
 
     // Si Supabase requiere confirmación por email
     if (data.user && !data.session) {
-      setInfo('Revisa tu email para confirmar tu cuenta antes de entrar.')
+      setInfo('Te hemos enviado un email de confirmación. Ábrelo y haz clic en el enlace para continuar.')
       setLoading(false)
       return
     }

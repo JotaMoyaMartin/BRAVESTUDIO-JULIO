@@ -54,7 +54,14 @@ export default function SkoolAccessClient() {
 
     const supabase = createClient()
 
-    const { data, error: authError } = await supabase.auth.signUp({ email, password })
+    const { data, error: authError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        data: { full_name: fullName.trim(), promo_code: code.toUpperCase() },
+      },
+    })
     if (authError) {
       setError(authError.message || 'No se pudo crear la cuenta.')
       setLoading(false)
@@ -63,7 +70,7 @@ export default function SkoolAccessClient() {
 
     // Email confirmation required
     if (data.user && !data.session) {
-      setInfo('Revisa tu email para confirmar tu cuenta, luego entra e introduce tu código en /access-blocked.')
+      setInfo('Te hemos enviado un email de confirmación. Ábrelo y haz clic en el enlace para continuar — tu código se activará automáticamente.')
       setLoading(false)
       return
     }

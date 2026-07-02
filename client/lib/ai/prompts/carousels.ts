@@ -55,7 +55,7 @@ export function buildCarouselPrompt(input: CarouselInput): string {
   const count = CAROUSEL_PROMPT_STRUCTURES[input.slideCount] ? input.slideCount : 5
   const structure = CAROUSEL_PROMPT_STRUCTURES[count].join('\n')
 
-  return `Eres un experto en contenido para salones de belleza en Instagram. Crea un carrusel siguiendo la metodología BRÄVE.
+  return `Eres un experto en contenido para salones de belleza en Instagram. Crea un carrusel siguiendo EXACTAMENTE el manual oficial BRÄVE Content.
 
 SERVICIO: ${input.service}
 OBJETIVO: ${input.objective}
@@ -63,11 +63,19 @@ NÚMERO DE SLIDES: ${count}
 ${input.freeText ? `IDEA/TEMA: ${input.freeText}` : ''}
 ${input.brandContext ? `CONTEXTO DEL SALÓN: ${input.brandContext}` : ''}
 
-ESTRUCTURA OBLIGATORIA — CARRUSEL de ${count} slides (NO es un Reel, NO uses GANCHO/CONTEXTO/SOLUCIÓN/CTA):
+ESTRUCTURA OBLIGATORIA — CARRUSEL de ${count} slides:
 ${structure}
 
 Los textos de cada slide deben ser BREVES, CLAROS y FÁCILES DE LEER. Máximo 30-40 palabras por slide.
 Cada slide es una pantalla independiente: frases cortas, directas, impacto visual.
+
+PRINCIPIOS BRÄVE:
+- No vendemos servicios, vendemos confianza. No vendemos color, vendemos seguridad.
+- El proceso vende. El resultado atrae. El proceso convence.
+- La solution debe explicar QUÉ haces, CÓMO lo haces y POR QUÉ lo haces.
+
+CTA: NUNCA uses palabras clave ni automatizaciones. CTAs válidos: "Si tienes dudas, escríbenos y te asesoramos." / "Reserva tu diagnóstico y analizaremos tu caso."
+PROHIBIDO: "Comenta BALAYAGE", "Escribe INFO", "Pon un corazón", "Sígueme para más".
 
 Devuelve EXACTAMENTE este JSON:
 {
@@ -91,7 +99,7 @@ function buildSlide(role: string, service: string): { role: string; text: string
     'Explicación profesional': `En consulta analizo el estado del cabello antes de hacer ${l.el}. Así elijo la técnica y el producto adecuados para cada caso.`,
     'Solución / resultado': `Con el protocolo correcto, ${l.el} luce mejor y ${l.dura} mucho más. Diagnóstico + técnica + mantenimiento en casa.`,
     'Desarrollo / valor': `La clave de ${l.el} está en el diagnóstico previo y en usar el producto adecuado para tu tipo de cabello. No hay fórmulas mágicas, hay criterio.`,
-    CTA: `¿Quieres que hablemos de ${l.el}? Escribe ${l.cta} o reserva tu cita. 💌`,
+    CTA: `¿Quieres que hablemos de ${l.el}? Escríbeme y te ayudo a decidir. 💌`,
   }
   return { role, text: blocks[role] || `Todo lo que necesitas saber sobre ${l.el}.` }
 }

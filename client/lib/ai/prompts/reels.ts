@@ -72,30 +72,57 @@ export interface ReelOutput {
 }
 
 export function buildReelPrompt(input: ReelInput): string {
-  return `Eres un experto en contenido para salones de belleza en Instagram. Crea un guion de Reel siguiendo la metodología BRÄVE.
+  return `Eres un experto en contenido para salones de belleza en Instagram. Crea un guion de Reel siguiendo EXACTAMENTE el manual oficial BRÄVE Content.
 
 SERVICIO: ${input.service}
 OBJETIVO: ${input.objective}
 ${input.freeText ? `IDEA/TEMA: ${input.freeText}` : ''}
 ${input.brandContext ? `CONTEXTO DEL SALÓN: ${input.brandContext}` : ''}
 
-METODOLOGÍA OBLIGATORIA:
-- GANCHO: Capta atención en el primer segundo. Puede pinchar dolor, generar curiosidad, mostrar error o despertar deseo.
-- CONTEXTO: Explica la situación, problema o creencia.
-- SOLUCIÓN: Da criterio profesional, consejo, explicación o proceso.
-- CTA: Conversacional y directo. Ejemplos: "Escribe RUBIO y te asesoro." / "Guarda este vídeo si quieres cuidar mejor tu cabello."
+TIPO DE GUION: Guion de AUTORIDAD (35-45 segundos). El objetivo es posicionar, educar, generar confianza, justificar valor y conseguir reservas.
 
-Duración aproximada: 40-50 segundos hablando natural.
+ESTRUCTURA OBLIGATORIA — sigue este orden exacto, nunca lo cambies:
+
+1. GANCHO (3-5 segundos):
+   - Detener el scroll. Claro, directo, fácil de entender.
+   - Debe estar basado en un DOLOR, un ERROR, una FALSA CREENCIA o un DESEO.
+   - Ejemplos válidos: "Si tu rubio dura pocas semanas, algo está fallando." / "No todas las melenas deberían hacerse mechas." / "Antes de cambiar tu color tienes que saber esto."
+   - PROHIBIDO: "No vas a creer esto", "El secreto mejor guardado", "Tienes que ver esto", "Esto cambiará tu vida", o cualquier gancho vago que no plantee un problema concreto.
+
+2. CONTEXTO (5-10 segundos):
+   - Generar identificación. La clienta debe verse reflejada.
+   - Explica el problema, el error habitual o la situación que vive la clienta.
+   - NO expliques todavía la solución. Solo abre el problema.
+
+3. SOLUCIÓN (20-30 segundos) — la parte MÁS IMPORTANTE del guion:
+   - Demuestra autoridad, educa y justifica el valor del servicio.
+   - Debe explicar obligatoriamente: QUÉ haces, CÓMO lo haces y POR QUÉ lo haces.
+   - Ejemplo: "Antes de tocar el color realizamos un diagnóstico (QUÉ). Analizamos la base, el historial químico y la calidad de la fibra (CÓMO). Porque cada cabello tiene límites distintos (POR QUÉ)."
+   - La clienta debe pensar: "Ahora entiendo por qué esta profesional trabaja diferente." El proceso vende. El resultado atrae. El proceso convence.
+
+4. CTA (3-5 segundos):
+   - Generar conversación, consultas y reservas.
+   - NUNCA dependas de palabras clave ni automatizaciones.
+   - CTAs válidos: "Si estás pensando en hacerte este servicio, escríbenos y te ayudamos." / "Reserva tu diagnóstico y analizaremos tu caso." / "Si tienes dudas, escríbenos y te asesoramos." / "Agenda una cita y veremos qué necesita tu cabello."
+   - PROHIBIDO: "Comenta BALAYAGE", "Escribe INFO", "Pon un corazón", "Sígueme para más", o cualquier CTA basado en palabras clave.
+
+PRINCIPIOS BRÄVE:
+- No vendemos servicios, vendemos confianza.
+- No vendemos color, vendemos seguridad.
+- No vendemos mechas, vendemos resultados bien pensados.
+- Toda pieza debe aumentar: autoridad, confianza, valor percibido, diferenciación.
+
+Duración total: 35-45 segundos hablando natural.
 
 Devuelve EXACTAMENTE este JSON sin texto adicional:
 {
   "title": "Título corto y atractivo",
   "coverText": "Texto de portada (máx 8 palabras, impactante)",
   "script": {
-    "hook": "Guion del gancho (2-3 frases)",
-    "context": "Guion del contexto (3-4 frases)",
-    "solution": "Guion de la solución (4-5 frases)",
-    "cta": "CTA conversacional (1-2 frases)"
+    "hook": "Guion del gancho (1-2 frases, 3-5 segundos)",
+    "context": "Guion del contexto (2-3 frases, 5-10 segundos)",
+    "solution": "Guion de la solución explicando QUÉ, CÓMO y POR QUÉ (4-6 frases, 20-30 segundos)",
+    "cta": "CTA conversacional sin palabras clave (1 frase, 3-5 segundos)"
   },
   "visualIdea": "Idea visual natural para grabar (1-2 frases)",
   "captionWithHashtags": "Copy para Instagram + 5 hashtags relevantes para salones de belleza en español"
@@ -113,9 +140,9 @@ const REEL_VARIANTS = [
     },
     contextFn: (s: string) => { const l = serviceLabel(s); return `Cada semana vienen clientas a mi salón con el mismo problema. Llevan tiempo queriendo hacerse ${l.un}, han investigado, han visto miles de fotos… pero algo no cuadra. El resultado no es lo que esperaban o ${l.dura} mucho menos de lo normal.` },
     solutionFn: (_s: string) => `El secreto está en el diagnóstico previo. Antes de tocar ningún producto, analizo el estado del cabello, la historia de tratamientos anteriores y lo que realmente necesita cada persona. No existe una fórmula universal. Existe la fórmula correcta para ti.`,
-    ctaFn: (s: string) => { const l = serviceLabel(s); return `Si llevas tiempo pensando en hacerte ${l.un} y quieres que lo hagamos bien desde el principio, escribe ${l.cta} y te cuento cómo podríamos conseguirlo.` },
+    ctaFn: (s: string) => { const l = serviceLabel(s); return `Si llevas tiempo pensando en hacerte ${l.un} y quieres que lo hagamos bien desde el principio, escríbeme y te cuento cómo podríamos conseguirlo.` },
     visualFn: (_s: string) => `Grábate hablando a cámara en tu salón, con luz natural si es posible. Puedes mostrar el proceso de trabajo de fondo.`,
-    captionFn: (s: string) => { const l = serviceLabel(s); return `La diferencia entre ${l.un} que ${l.dura} y uno que no, está en el producto. Está en cómo se hace. ✨ Escribe ${l.cta} en los comentarios si quieres que hablemos.\n\n#estilista #${s.replace(/\s/g, '').toLowerCase()} #consejosbelleza #cabelloprofesional #salonbelleza` },
+    captionFn: (s: string) => { const l = serviceLabel(s); return `La diferencia entre ${l.un} que ${l.dura} y uno que no, está en el producto. Está en cómo se hace. ✨ Si tienes dudas, escríbeme y te asesoro.\n\n#estilista #${s.replace(/\s/g, '').toLowerCase()} #consejosbelleza #cabelloprofesional #salonbelleza` },
   },
   {
     titleFn: (s: string) => { const l = serviceLabel(s); return `Por qué ${l.el} no ${l.queda} como en las fotos` },
@@ -129,7 +156,7 @@ const REEL_VARIANTS = [
     solutionFn: (s: string) => { const l = serviceLabel(s); return `En mi salón, antes de hacer ${l.el}, hacemos una consulta de 15 minutos. Analizamos el estado del cabello, hablamos de objetivos realistas y diseñamos un plan personalizado. El resultado no es suerte: es técnica + planificación.` },
     ctaFn: (s: string) => { const l = serviceLabel(s); return `¿Tienes dudas sobre ${l.el}? Escríbeme directamente y te doy mi opinión profesional sin compromiso.` },
     visualFn: (s: string) => { const l = serviceLabel(s); return `Muestra el antes y después de ${l.el} en un corte rápido. O grábate explicando el proceso mientras trabajas.` },
-    captionFn: (s: string) => { const l = serviceLabel(s); return `Un buen trabajo con ${l.el} no es casualidad. Es diagnóstico + técnica + producto adecuado. 💇‍♀️ ¿Tienes alguna duda? Te leo en comentarios.\n\n#${s.replace(/\s/g, '').toLowerCase()} #estilista #capilar #salonbelleza #cabellosano` },
+    captionFn: (s: string) => { const l = serviceLabel(s); return `Un buen trabajo con ${l.el} no es casualidad. Es diagnóstico + técnica + producto adecuado. 💇‍♀️ ¿Tienes alguna duda? Escríbeme y te ayudo.\n\n#${s.replace(/\s/g, '').toLowerCase()} #estilista #capilar #salonbelleza #cabellosano` },
   },
   {
     titleFn: (s: string) => { const l = serviceLabel(s); return `Lo que cambia cuando ${l.el} se hace bien` },
@@ -143,7 +170,7 @@ const REEL_VARIANTS = [
     solutionFn: (s: string) => { const l = serviceLabel(s); return `El protocolo correcto para ${l.el} empieza mucho antes del sillón. Incluye análisis capilar, elección del producto adecuado y un plan de mantenimiento realista para casa. Sin eso, el resultado ${l.dura} la mitad.` },
     ctaFn: (s: string) => { const l = serviceLabel(s); return `Si quieres hacerte ${l.un} y que el resultado ${l.dura} de verdad, escríbeme. Te explico cómo trabajamos en el salón.` },
     visualFn: (_s: string) => `Grábate en el salón mostrando productos o herramientas mientras explicas. Fondo limpio y buena iluminación.`,
-    captionFn: (s: string) => { const l = serviceLabel(s); return `El resultado perfecto con ${l.el} existe. Solo necesita el proceso correcto. ✨ ¿Tienes preguntas? Escríbeme en comentarios o por DM.\n\n#estilista #${s.replace(/\s/g, '').toLowerCase()} #expertacapilar #salonbelleza #cabelloprofesional` },
+    captionFn: (s: string) => { const l = serviceLabel(s); return `El resultado perfecto con ${l.el} existe. Solo necesita el proceso correcto. ✨ ¿Tienes preguntas? Escríbeme y te ayudo.\n\n#estilista #${s.replace(/\s/g, '').toLowerCase()} #expertacapilar #salonbelleza #cabelloprofesional` },
   },
 ]
 

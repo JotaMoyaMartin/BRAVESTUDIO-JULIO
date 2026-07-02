@@ -25,7 +25,7 @@ export interface QuestionBoxOutput {
 }
 
 export function buildStoriesPrompt(input: StoryInput): string {
-  return `Eres un experto en Stories de Instagram para salones de belleza. Crea ${input.count} Story(ies) siguiendo la metodología BRÄVE.
+  return `Eres un experto en Stories de Instagram para salones de belleza. Crea ${input.count} Story(ies) siguiendo EXACTAMENTE el manual oficial BRÄVE Content.
 
 SERVICIO REALIZADO: ${input.service}
 ${input.detail ? `DETALLE ADICIONAL: ${input.detail}` : ''}
@@ -34,11 +34,17 @@ ${input.brandContext ? `CONTEXTO DEL SALÓN: ${input.brandContext}` : ''}
 
 METODOLOGÍA OBLIGATORIA:
 - Story 1: PROBLEMA/IDENTIFICACIÓN - Conseguir atención. Usar problema real, frase de clienta, duda frecuente o curiosidad.
-- Story 2 (si aplica): AUTORIDAD - La estilista demuestra su criterio profesional. Explica qué detectó, analizó y decidió.
-- Story 3 (si aplica): RESULTADO + ACCIÓN - Muestra el beneficio final + CTA conversacional como "Escribe RUBIO y te asesoro."
+- Story 2 (si aplica): AUTORIDAD - La estilista demuestra su criterio profesional. Explica qué detectó, analizó y decidió. Debe explicar QUÉ haces, CÓMO lo haces y POR QUÉ lo haces.
+- Story 3 (si aplica): RESULTADO + ACCIÓN - Muestra el beneficio final + CTA conversacional.
+
+CTA: NUNCA dependas de palabras clave ni automatizaciones.
+CTAs válidos: "Si estás pensando en hacerte este servicio, escríbeme y te ayudo." / "Reserva tu diagnóstico y analizamos tu caso." / "Si tienes dudas, escríbeme y te asesoramos."
+PROHIBIDO: "Escribe RUBIO", "Comenta BALAYAGE", "Escribe INFO", o cualquier CTA basado en palabras clave.
 
 IMPORTANTE: No construyas la historia alrededor del servicio. Constrúyela alrededor de la clienta.
 Las ideas visuales deben ser NATURALES: selfie, espejo, resultado en movimiento, mano tocando cabello, etc.
+
+PRINCIPIOS BRÄVE: No vendemos servicios, vendemos confianza. No vendemos color, vendemos seguridad. El proceso vende. El resultado atrae. El proceso convence.
 
 Devuelve EXACTAMENTE este JSON:
 {
@@ -79,7 +85,7 @@ export function getMockStories(input: StoryInput): StoriesOutput {
       role: 'Resultado + Acción',
       text: input.mode === 'camera'
         ? `El resultado habla solo. Más brillo, más movimiento, más natural. Si llevas tiempo pensando en hacerte algo así, escríbeme. Cuéntame qué quieres y vemos qué opción encaja contigo.`
-        : `Más luz. Más naturalidad. Menos mantenimiento. ✨ Si quieres algo así, escribe ${input.service.toUpperCase()} y te cuento cómo podemos conseguirlo.`,
+        : `Más luz. Más naturalidad. Menos mantenimiento. ✨ Si quieres algo así, escríbeme y te cuento cómo podemos conseguirlo.`,
       stickerSuggestion: 'Caja de preguntas: "¿Qué quieres mejorar de tu cabello?"',
       visualIdea: 'Foto o vídeo del resultado final. Movimiento del cabello. Clienta feliz (de espaldas o de espaldas).',
     },

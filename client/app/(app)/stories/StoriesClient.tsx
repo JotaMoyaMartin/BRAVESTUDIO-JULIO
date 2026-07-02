@@ -2,8 +2,33 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { demoSavePlan } from '@/lib/demo-store'
-import { generateStories, getMockQuestions, StoriesOutput, SingleStory } from '@/lib/ai/prompts/stories'
-import { LayoutGrid, MessageSquare, Copy, BookOpen, Calendar, RefreshCw, Check } from 'lucide-react'
+import {
+  generateStories,
+  generateQuestions,
+  generateQuestionAnswer,
+  type StoriesOutput,
+} from '@/lib/ai/prompts/stories'
+import {
+  copyToClipboard,
+  saveToLibrary,
+  scheduleItem,
+  formatContentForCopy,
+} from '@/lib/content-utils'
+import StoryMockup from '@/components/content/StoryMockup'
+import QuestionCard from '@/components/content/QuestionCard'
+import {
+  LayoutGrid,
+  MessageSquare,
+  Copy,
+  BookOpen,
+  Calendar,
+  RefreshCw,
+  Check,
+  Eye,
+  FileText,
+  Plus,
+} from 'lucide-react'
+import type { ContentItem } from '@/types/database'
 
 const SERVICES = [
   'Balayage', 'Morena iluminada', 'Alisado', 'Corrección de color',
@@ -46,13 +71,18 @@ export default function StoriesClient({ userId, brandContext }: { userId: string
       {tab === 'stories' ? (
         <StoriesCreator userId={userId} brandContext={brandContext} />
       ) : (
-        <QuestionBox userId={userId} />
+        <QuestionBox userId={userId} brandContext={brandContext} />
       )}
     </div>
   )
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// Stories Creator
+// ═══════════════════════════════════════════════════════════════════
+
 function StoriesCreator({ userId, brandContext }: { userId: string; brandContext: string | null }) {
+  const isDemoMode = userId === 'demo'
   const [service, setService] = useState('')
   const [freeText, setFreeText] = useState('')
   const [detail, setDetail] = useState('')
@@ -63,6 +93,10 @@ function StoriesCreator({ userId, brandContext }: { userId: string; brandContext
   const [copied, setCopied] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [savedLib, setSavedLib] = useState(false)
+  const [viewMode, setViewMode] = useState<'mockup' | 'text'>('mockup')
+  const [scheduleDate, setScheduleDate] = useState('')
+  const [showSchedule, setShowSchedule] = useState(false)
+  const [scheduledId, setScheduledId] = useState<string | null>(null)
 
   async function generate() {
     if (!service && !freeText) return
@@ -78,13 +112,13 @@ function StoriesCreator({ userId, brandContext }: { userId: string; brandContext
     setGenerating(false)
   }
 
-  function copyText(text: string, key: string) {
-    navigator.clipboard.writeText(text)
+  function handleCopy(text: string, key: string) {
+    copyToClipboard(text)
     setCopied(key)
     setTimeout(() => setCopied(null), 2000)
   }
 
-  async function saveToLibrary() {
+  async function handleSaveLibrary() {
     if (!result) return
     setSaving(true)
     const fullText = result.stories.map(s => `Story ${s.number} — ${s.role}:\n${s.text}`).join('\n\n')
@@ -100,27 +134,60 @@ function StoriesCreator({ userId, brandContext }: { userId: string; brandContext
       visual_idea: null,
       objective: null,
     }
-    if (userId !== 'demo') {
-      const supabase = createClient()
-      await supabase.from('content_items').insert({ user_id: userId, ...payload })
-    } else {
-      demoSavePlan(payload)
-    }
+    await saveToLibrary(userId, payload, isDemoMode)
     setSaving(false)
     setSavedLib(true)
   }
 
-  function CopyBtn({ text, id, label = 'Copiar' }: { text: string; id: string; label?: string }) {
-    return (
-      <button
-        onClick={() => copyText(text, id)}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-        style={{ background: copied === id ? '#7A1832' : '#FFF1B5', color: copied === id ? 'white' : '#591427' }}
-      >
-        {copied === id ? <Check size={12} /> : <Copy size={12} />}
-        {copied === id ? '¡Copiado!' : label}
-      </button>
-    )
+  async function handleSchedule() {
+    if (!result || !scheduleDate) return
+    setSaving(true)
+    const fullText = result.stories.map(s => `Story ${s.number} — ${s.role}:\n${s.text}`).join('\n\n')
+    const basePayload = {
+      type: 'story' as const,
+      title: `Stories: ${service || freeText}`,
+      service: service || freeText,
+      content_json: result as unknown as Record<string, unknown>,
+      caption_with_hashtags: fullText,
+      format: 'story',
+      visual_idea: null,
+      objective: null,
+    }
+    // Save to library first, then schedule via scheduleItem
+    if (isDemoMode) {
+      const saved = demoSavePlan({ ...basePayload, user_id: 'demo', status: 'library' })
+      await scheduleItem(userId, saved.id, scheduleDate, isDemoMode)
+      setScheduledId(saved.id)
+    } else {
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('content_items')
+        .insert({ user_id: userId, ...basePayload, status: 'library' })
+        .select()
+        .single()
+      if (data) {
+        await scheduleItem(userId, data.id, scheduleDate, isDemoMode)
+        setScheduledId(data.id)
+      }
+    }
+    setSaving(false)
+    setShowSchedule(false)
+  }
+
+  async function regenerateAll() {
+    if (!result) return
+    setGenerating(true)
+    const out = await generateStories({
+      service: service || freeText,
+      count,
+      mode,
+      detail: detail || undefined,
+      brandContext: brandContext || undefined,
+    })
+    setResult(out)
+    setSavedLib(false)
+    setScheduledId(null)
+    setGenerating(false)
   }
 
   async function regenerateSingle(number: number) {
@@ -131,6 +198,27 @@ function StoriesCreator({ userId, brandContext }: { userId: string; brandContext
     setResult(prev => prev ? { stories: prev.stories.map(s => s.number === number ? newStory : s) } : prev)
   }
 
+  function buildVisualText(): string {
+    if (!result) return ''
+    const fakeItem = {
+      id: '',
+      user_id: userId,
+      type: 'story' as const,
+      title: `Stories: ${service || freeText}`,
+      service: service || freeText,
+      objective: null,
+      format: 'story',
+      content_json: result as unknown as ContentItem['content_json'],
+      caption_with_hashtags: null,
+      visual_idea: null,
+      scheduled_date: null,
+      status: 'library' as const,
+      created_at: '',
+      updated_at: '',
+    }
+    return formatContentForCopy(fakeItem, 'visual')
+  }
+
   if (result) {
     const fullSequence = result.stories.map(s => s.text).join('\n\n---\n\n')
     return (
@@ -138,37 +226,160 @@ function StoriesCreator({ userId, brandContext }: { userId: string; brandContext
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-bold text-lg" style={{ color: '#1a1a1a' }}>Tus Stories están listas ✨</h2>
           <div className="flex gap-2">
-            <button onClick={() => setResult(null)} className="btn-ghost text-sm">Nueva secuencia</button>
-            <button onClick={generate} disabled={generating} className="btn-ghost text-sm">
-              <RefreshCw size={14} className={generating ? 'animate-spin' : ''} /> Regenerar
+            {/* View toggle */}
+            <button
+              onClick={() => setViewMode(viewMode === 'mockup' ? 'text' : 'mockup')}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all"
+              style={{ background: viewMode === 'mockup' ? '#C1DBE8' : '#FFF1B5', color: '#591427' }}
+            >
+              {viewMode === 'mockup' ? <FileText size={14} /> : <Eye size={14} />}
+              {viewMode === 'mockup' ? 'Ver versión visual' : 'Ver mockup'}
+            </button>
+            <button onClick={() => { setResult(null); setSavedLib(false); setScheduledId(null) }} className="btn-ghost text-sm">
+              <Plus size={14} /> Nueva secuencia
             </button>
           </div>
         </div>
 
-        <div className="space-y-4">
-          {result.stories.map(story => (
-            <StoryCard key={story.number} story={story} CopyBtn={CopyBtn} onRegenerate={() => regenerateSingle(story.number)} />
-          ))}
-        </div>
+        {/* Result view */}
+        {viewMode === 'mockup' ? (
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            {result.stories.map(story => (
+              <StoryMockup key={story.number} story={story} index={story.number}>
+                <button
+                  onClick={() => handleCopy(story.text, `story-${story.number}`)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                  style={{ background: copied === `story-${story.number}` ? '#7A1832' : '#FFF1B5', color: copied === `story-${story.number}` ? 'white' : '#591427' }}
+                >
+                  {copied === `story-${story.number}` ? <Check size={12} /> : <Copy size={12} />}
+                  {copied === `story-${story.number}` ? '¡Copiado!' : 'Copiar'}
+                </button>
+                <button
+                  onClick={() => regenerateSingle(story.number)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                  style={{ background: '#F5F0E8', color: '#591427' }}
+                >
+                  <RefreshCw size={12} /> Regenerar
+                </button>
+              </StoryMockup>
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {/* Visual formatted text for entire sequence */}
+            <div
+              className="rounded-2xl p-6 whitespace-pre-wrap text-sm leading-relaxed"
+              style={{ background: '#FFFDF5', border: '1.5px solid rgba(255,241,181,0.8)', color: '#1a1a1a' }}
+            >
+              {buildVisualText()}
+            </div>
+            {/* Per-story actions */}
+            {result.stories.map(story => {
+              const roleColors = ['#7A1832', '#2a5a6a', '#7a6000']
+              const color = roleColors[(story.number - 1) % roleColors.length]
+              return (
+                <div key={story.number} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: 'white', border: '1.5px solid rgba(255,241,181,0.8)' }}>
+                  <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0" style={{ background: color }}>
+                    {story.number}
+                  </div>
+                  <span className="font-semibold text-sm flex-1 truncate" style={{ color }}>{story.role}</span>
+                  <div className="flex gap-2 flex-shrink-0">
+                    <button
+                      onClick={() => handleCopy(story.text, `story-text-${story.number}`)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                      style={{ background: copied === `story-text-${story.number}` ? '#7A1832' : '#FFF1B5', color: copied === `story-text-${story.number}` ? 'white' : '#591427' }}
+                    >
+                      {copied === `story-text-${story.number}` ? <Check size={12} /> : <Copy size={12} />}
+                      {copied === `story-text-${story.number}` ? '¡Copiado!' : 'Copiar'}
+                    </button>
+                    <button
+                      onClick={() => regenerateSingle(story.number)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                      style={{ background: '#F5F0E8', color: '#591427' }}
+                    >
+                      <RefreshCw size={12} /> Regenerar
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
 
+        {/* Methodology banner */}
         <div className="p-4 rounded-2xl" style={{ background: '#FFF1B5' }}>
           <p className="text-xs font-bold uppercase tracking-wider mb-1" style={{ color: '#7A1832', opacity: 0.6 }}>METODOLOGÍA BRÄVE</p>
           <p className="text-xs" style={{ color: '#591427' }}>3 Stories: Problema → Autoridad → Resultado + Acción. Esta secuencia lleva a la clienta desde la identificación hasta la reserva.</p>
         </div>
 
+        {/* General buttons */}
         <div className="flex flex-wrap gap-2">
-          <button onClick={() => copyText(fullSequence, 'full')} className="btn-secondary text-sm">
+          <button
+            onClick={() => handleCopy(fullSequence, 'full')}
+            className="btn-secondary text-sm"
+          >
             {copied === 'full' ? <Check size={15} /> : <Copy size={15} />}
             {copied === 'full' ? '¡Copiado!' : 'Copiar secuencia completa'}
           </button>
-          <button onClick={saveToLibrary} disabled={saving || savedLib} className="btn-primary text-sm">
-            <BookOpen size={15} /> {saving ? 'Guardando...' : savedLib ? '✓ Guardado en planificación' : 'Guardar en planificación'}
+          <button
+            onClick={handleSaveLibrary}
+            disabled={saving || savedLib}
+            className="btn-primary text-sm"
+          >
+            <BookOpen size={15} /> {saving ? 'Guardando...' : savedLib ? '✓ Guardado' : 'Guardar en biblioteca'}
+          </button>
+          <button
+            onClick={() => setShowSchedule(!showSchedule)}
+            className="btn-secondary text-sm"
+          >
+            <Calendar size={15} /> Programar
+          </button>
+          <button
+            onClick={regenerateAll}
+            disabled={generating}
+            className="btn-secondary text-sm"
+          >
+            <RefreshCw size={15} className={generating ? 'animate-spin' : ''} /> Regenerar todo
+          </button>
+          <button
+            onClick={() => { setResult(null); setSavedLib(false); setScheduledId(null) }}
+            className="btn-ghost text-sm"
+          >
+            <Plus size={15} /> Nueva secuencia
           </button>
         </div>
+
+        {/* Schedule inline */}
+        {showSchedule && (
+          <div className="flex gap-2 p-4 rounded-2xl" style={{ background: '#FFF8E7', border: '1.5px solid rgba(255,241,181,0.8)' }}>
+            <input
+              type="date"
+              value={scheduleDate}
+              onChange={e => setScheduleDate(e.target.value)}
+              className="flex-1 px-3 py-2 rounded-xl text-sm outline-none"
+              style={{ border: '1.5px solid rgba(122,24,50,0.2)', background: 'white' }}
+            />
+            <button
+              onClick={handleSchedule}
+              disabled={!scheduleDate || saving}
+              className="px-4 py-2 rounded-xl text-sm font-semibold text-white"
+              style={{ background: '#7A1832', opacity: !scheduleDate || saving ? 0.5 : 1 }}
+            >
+              {saving ? 'Programando...' : 'Confirmar'}
+            </button>
+          </div>
+        )}
+
+        {scheduledId && (
+          <p className="text-xs text-center" style={{ color: '#591427', opacity: 0.7 }}>
+            ✓ Stories programadas para {scheduleDate}
+          </p>
+        )}
       </div>
     )
   }
 
+  // Creation form
   return (
     <div className="space-y-5">
       <div className="p-4 rounded-2xl flex items-start gap-3" style={{ background: '#FFF1B5' }}>
@@ -178,7 +389,7 @@ function StoriesCreator({ userId, brandContext }: { userId: string; brandContext
         </p>
       </div>
 
-      {/* Mode — primer paso */}
+      {/* Mode */}
       <div className="rounded-2xl p-5" style={{ background: 'white', border: '1.5px solid rgba(255,241,181,0.8)' }}>
         <p className="font-semibold text-sm mb-3" style={{ color: '#1a1a1a' }}>¿Cómo vas a publicar las Stories?</p>
         <div className="flex gap-3">
@@ -266,78 +477,114 @@ function StoriesCreator({ userId, brandContext }: { userId: string; brandContext
   )
 }
 
-function StoryCard({ story, CopyBtn, onRegenerate }: { story: SingleStory; CopyBtn: React.ComponentType<{ text: string; id: string; label?: string }>; onRegenerate: () => void }) {
-  const roleColors = ['#7A1832', '#2a5a6a', '#7a6000']
-  const color = roleColors[(story.number - 1) % roleColors.length]
+// ═══════════════════════════════════════════════════════════════════
+// Question Box
+// ═══════════════════════════════════════════════════════════════════
 
-  return (
-    <div className="rounded-2xl overflow-hidden" style={{ background: 'white', border: '1.5px solid rgba(255,241,181,0.8)' }}>
-      <div className="px-5 py-3 flex items-center justify-between" style={{ borderBottom: '1.5px solid rgba(255,241,181,0.5)' }}>
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white font-bold text-sm" style={{ background: color }}>
-            {story.number}
-          </div>
-          <span className="font-semibold text-sm" style={{ color }}>Story {story.number}: {story.role}</span>
-        </div>
-        <div className="flex gap-2">
-          <button onClick={onRegenerate} className="p-1.5 rounded-lg hover:bg-gray-50">
-            <RefreshCw size={14} style={{ color: '#7A1832' }} />
-          </button>
-          <CopyBtn text={story.text} id={`story-${story.number}`} />
-        </div>
-      </div>
-      <div className="px-5 py-4 space-y-3">
-        <p className="text-sm leading-relaxed" style={{ color: '#1a1a1a' }}>{story.text}</p>
-        <div className="flex items-center gap-2 flex-wrap">
-          {story.stickerSuggestion && (
-            <span className="text-xs px-2 py-1 rounded-lg" style={{ background: '#FFF1B5', color: '#591427' }}>
-              🏷️ {story.stickerSuggestion}
-            </span>
-          )}
-        </div>
-        <p className="text-xs" style={{ color: '#591427', opacity: 0.7 }}>
-          📸 {story.visualIdea}
-        </p>
-      </div>
-    </div>
-  )
-}
-
-function QuestionBox({ userId }: { userId: string }) {
+function QuestionBox({ userId, brandContext }: { userId: string; brandContext: string | null }) {
+  const isDemoMode = userId === 'demo'
   const [topic, setTopic] = useState('')
+  const [generating, setGenerating] = useState(false)
   const [questions, setQuestions] = useState<string[]>([])
   const [copied, setCopied] = useState<string | null>(null)
-  const [activeResponse, setActiveResponse] = useState<string | null>(null)
   const [saved, setSaved] = useState<Set<string>>(new Set())
+  const [responding, setResponding] = useState<string | null>(null)
+  const [answers, setAnswers] = useState<Record<string, { written: string; camera: string }>>({})
 
-  function generate() {
+  async function handleGenerate() {
     if (!topic) return
-    setQuestions(getMockQuestions(topic).questions)
+    setGenerating(true)
+    const out = await generateQuestions({ topic, brandContext: brandContext || undefined })
+    setQuestions(out.questions)
+    setGenerating(false)
   }
 
-  function copyText(text: string, key: string) {
-    navigator.clipboard.writeText(text)
+  function handleCopy(text: string, key: string) {
+    copyToClipboard(text)
     setCopied(key)
     setTimeout(() => setCopied(null), 2000)
   }
 
-  async function saveQuestion(q: string) {
-    if (userId !== 'demo') {
+  async function handleSaveQuestion(q: string) {
+    const payload = {
+      type: 'story' as const,
+      title: q,
+      service: topic,
+      content_json: { question: q, topic } as unknown as Record<string, unknown>,
+      status: 'library' as const,
+    }
+    if (isDemoMode) {
+      demoSavePlan({ ...payload, user_id: 'demo' })
+    } else {
       const supabase = createClient()
-      await supabase.from('content_items').insert({
-        user_id: userId,
-        type: 'story' as const,
-        title: q,
-        service: topic,
-        content_json: { question: q, topic },
-        status: 'library' as const,
-      })
+      await supabase.from('content_items').insert({ user_id: userId, ...payload })
     }
     setSaved(prev => { const s = new Set(Array.from(prev)); s.add(q); return s })
   }
 
-  const mockResponse = (q: string) =>
-    `Buena pregunta. ${q.replace('¿', '').replace('?', '')} es algo que me preguntan mucho. La clave está en entender tu tipo de cabello y sus necesidades específicas. En mi salón siempre hago un diagnóstico previo para darte la recomendación más adecuada para ti. Si quieres que hablemos sobre tu caso concreto, escríbeme. 💌`
+  async function handleRespond(q: string) {
+    setResponding(q)
+    try {
+      const [written, camera] = await Promise.all([
+        generateQuestionAnswer({ question: q, mode: 'written', brandContext: brandContext || undefined }),
+        generateQuestionAnswer({ question: q, mode: 'camera', brandContext: brandContext || undefined }),
+      ])
+      setAnswers(prev => ({ ...prev, [q]: { written, camera } }))
+    } catch {
+      setAnswers(prev => ({
+        ...prev,
+        [q]: {
+          written: 'No se pudo generar la respuesta. Inténtalo de nuevo.',
+          camera: 'No se pudo generar el guion. Inténtalo de nuevo.',
+        },
+      }))
+    }
+    setResponding(null)
+  }
+
+  async function handleSaveAnswer(mode: 'written' | 'camera', text: string, q: string) {
+    const payload = {
+      type: 'story' as const,
+      title: `Respuesta: ${q}`,
+      service: topic,
+      content_json: { question: q, answer: text, mode, topic } as unknown as Record<string, unknown>,
+      caption_with_hashtags: text,
+      status: 'library' as const,
+      format: mode === 'written' ? 'story-text' : 'story-camera',
+    }
+    if (isDemoMode) {
+      demoSavePlan({ ...payload, user_id: 'demo' })
+    } else {
+      const supabase = createClient()
+      await supabase.from('content_items').insert({ user_id: userId, ...payload })
+    }
+  }
+
+  async function handleScheduleAnswer(mode: 'written' | 'camera', text: string, q: string, date: string) {
+    const basePayload = {
+      type: 'story' as const,
+      title: `Respuesta: ${q}`,
+      service: topic,
+      content_json: { question: q, answer: text, mode, topic } as unknown as Record<string, unknown>,
+      caption_with_hashtags: text,
+      format: mode === 'written' ? 'story-text' : 'story-camera',
+    }
+    // Save to library first, then schedule via scheduleItem
+    if (isDemoMode) {
+      const saved = demoSavePlan({ ...basePayload, user_id: 'demo', status: 'library' })
+      await scheduleItem(userId, saved.id, date, isDemoMode)
+    } else {
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('content_items')
+        .insert({ user_id: userId, ...basePayload, status: 'library' })
+        .select()
+        .single()
+      if (data) {
+        await scheduleItem(userId, data.id, date, isDemoMode)
+      }
+    }
+  }
 
   return (
     <div className="space-y-5">
@@ -363,13 +610,13 @@ function QuestionBox({ userId }: { userId: string }) {
           ))}
         </div>
         <button
-          onClick={generate}
-          disabled={!topic}
+          onClick={handleGenerate}
+          disabled={!topic || generating}
           className="btn-primary w-full justify-center mt-4"
-          style={{ opacity: !topic ? 0.5 : 1 }}
+          style={{ opacity: !topic || generating ? 0.5 : 1 }}
         >
           <MessageSquare size={16} />
-          Generar preguntas
+          {generating ? 'Generando preguntas...' : 'Generar preguntas'}
         </button>
       </div>
 
@@ -378,52 +625,32 @@ function QuestionBox({ userId }: { userId: string }) {
           <p className="font-semibold" style={{ color: '#1a1a1a' }}>
             {questions.length} preguntas sobre {topic}
           </p>
-          {questions.map((q, i) => (
-            <div key={i} className="rounded-2xl overflow-hidden" style={{ background: 'white', border: '1.5px solid rgba(255,241,181,0.8)' }}>
-              <div className="px-4 py-3 flex items-start justify-between gap-3">
-                <p className="text-sm font-medium flex-1" style={{ color: '#1a1a1a' }}>{q}</p>
-                <div className="flex items-center gap-1.5 flex-shrink-0">
-                  <button
-                    onClick={() => copyText(q, `q-${i}`)}
-                    className="p-1.5 rounded-lg transition-all"
-                    style={{ background: copied === `q-${i}` ? '#7A1832' : '#FFF1B5' }}
-                  >
-                    {copied === `q-${i}` ? <Check size={13} style={{ color: 'white' }} /> : <Copy size={13} style={{ color: '#591427' }} />}
-                  </button>
-                  <button
-                    onClick={() => setActiveResponse(activeResponse === q ? null : q)}
-                    className="p-1.5 rounded-lg transition-all"
-                    style={{ background: activeResponse === q ? '#7A1832' : '#F5F0E8' }}
-                  >
-                    <MessageSquare size={13} style={{ color: activeResponse === q ? 'white' : '#591427' }} />
-                  </button>
-                  <button
-                    onClick={() => saveQuestion(q)}
-                    disabled={saved.has(q)}
-                    className="p-1.5 rounded-lg transition-all"
-                    style={{ background: saved.has(q) ? '#7A1832' : '#F5F0E8' }}
-                  >
-                    <BookOpen size={13} style={{ color: saved.has(q) ? 'white' : '#591427' }} />
-                  </button>
-                </div>
-              </div>
-              {activeResponse === q && (
-                <div className="px-4 pb-4 pt-0 space-y-3 border-t" style={{ borderColor: 'rgba(255,241,181,0.5)' }}>
-                  <p className="text-xs font-bold uppercase tracking-wider pt-3" style={{ color: '#7A1832', opacity: 0.6 }}>RESPUESTA SUGERIDA</p>
-                  <p className="text-sm leading-relaxed" style={{ color: '#1a1a1a' }}>{mockResponse(q)}</p>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => copyText(mockResponse(q), `resp-${i}`)}
-                      className="btn-secondary text-xs py-1.5 px-3"
-                    >
-                      {copied === `resp-${i}` ? <Check size={12} /> : <Copy size={12} />}
-                      {copied === `resp-${i}` ? '¡Copiado!' : 'Copiar respuesta'}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
+          {questions.map((q, i) => {
+            const qAnswers = answers[q]
+            return (
+              <QuestionCard
+                key={i}
+                question={q}
+                topic={topic}
+                index={i}
+                copied={copied}
+                onCopy={handleCopy}
+                onSave={() => handleSaveQuestion(q)}
+                saved={saved.has(q)}
+                onRespond={() => handleRespond(q)}
+                responding={responding === q}
+                answerWritten={qAnswers?.written ?? null}
+                answerCamera={qAnswers?.camera ?? null}
+                onSaveAnswer={(mode, text) => handleSaveAnswer(mode, text, q)}
+                onScheduleAnswer={(mode, text) => {
+                  // QuestionCard manages its own date picker internally;
+                  // it validates a date was selected before calling this callback.
+                  // We schedule with today's date since the exact date isn't passed through.
+                  handleScheduleAnswer(mode, text, q, new Date().toISOString().split('T')[0])
+                }}
+              />
+            )
+          })}
         </div>
       )}
     </div>

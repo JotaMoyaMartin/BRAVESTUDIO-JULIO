@@ -1,11 +1,10 @@
 'use client'
 import { useState } from 'react'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/client'
-import { demoSavePlan } from '@/lib/demo-store'
+import { saveToLibrary } from '@/lib/content-utils'
 import { generateReel, ReelOutput, ContentObjective } from '@/lib/ai/prompts/reels'
 import { generateCarousel, CarouselOutput } from '@/lib/ai/prompts/carousels'
-import { Film, LayoutGrid, Copy, BookOpen, RefreshCw, Trash2, Check, ArrowRight } from 'lucide-react'
+import { Film, LayoutGrid, Copy, BookOpen, Calendar, RefreshCw, Trash2, Check, ArrowRight } from 'lucide-react'
 
 const SERVICES = ['Balayage', 'Rubios', 'Canas', 'Alisados', 'Tratamientos', 'Corte', 'Color', 'General']
 
@@ -39,6 +38,9 @@ export default function CrearContenidoClient({
   const [copied, setCopied] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [savedPlan, setSavedPlan] = useState(false)
+  const [scheduling, setScheduling] = useState(false)
+  const [scheduledDate, setScheduledDate] = useState('')
+  const [savedScheduled, setSavedScheduled] = useState(false)
 
   async function generate() {
     setGenerating(true)
@@ -61,9 +63,8 @@ export default function CrearContenidoClient({
     setTimeout(() => setCopied(null), 2000)
   }
 
-  async function saveToPlan() {
-    setSaving(true)
-    const payload = {
+  function buildPayload(overrides?: Partial<Record<string, unknown>>) {
+    return {
       type: contentType,
       title: reelResult?.title || carouselResult?.title || '',
       service: service || freeText,
@@ -74,15 +75,27 @@ export default function CrearContenidoClient({
       status: 'library' as const,
       format: contentType,
       scheduled_date: null,
+      ...overrides,
     }
-    if (isDemoMode) {
-      demoSavePlan(payload)
-    } else {
-      const supabase = createClient()
-      await supabase.from('content_items').insert({ user_id: userId, ...payload })
-    }
+  }
+
+  async function saveToLibraryHandler() {
+    setSaving(true)
+    const payload = buildPayload()
+    await saveToLibrary(userId, payload, isDemoMode)
     setSaving(false)
     setSavedPlan(true)
+  }
+
+  async function scheduleHandler() {
+    if (!scheduledDate) return
+    setSaving(true)
+    const payload = buildPayload({ status: 'scheduled', scheduled_date: scheduledDate })
+    await saveToLibrary(userId, payload, isDemoMode)
+    setSaving(false)
+    setSavedScheduled(true)
+    setSavedPlan(true)
+    setScheduling(false)
   }
 
   function reset() {
@@ -92,6 +105,9 @@ export default function CrearContenidoClient({
     setService(initialService || '')
     setFreeText('')
     setSavedPlan(false)
+    setSavedScheduled(false)
+    setScheduling(false)
+    setScheduledDate('')
   }
 
   function CopyBtn({ text, id, label = 'Copiar' }: { text: string; id: string; label?: string }) {
@@ -285,10 +301,16 @@ export default function CrearContenidoClient({
         <ReelResult
           result={reelResult}
           onRegenerate={generate}
-          onSave={saveToPlan}
+          onSave={saveToLibraryHandler}
+          onSchedule={scheduleHandler}
           onNew={reset}
           saving={saving}
           savedPlan={savedPlan}
+          scheduling={scheduling}
+          setScheduling={setScheduling}
+          scheduledDate={scheduledDate}
+          setScheduledDate={setScheduledDate}
+          savedScheduled={savedScheduled}
           CopyBtn={CopyBtn}
           generating={generating}
         />
@@ -298,10 +320,16 @@ export default function CrearContenidoClient({
         <CarouselResult
           result={carouselResult}
           onRegenerate={generate}
-          onSave={saveToPlan}
+          onSave={saveToLibraryHandler}
+          onSchedule={scheduleHandler}
           onNew={reset}
           saving={saving}
           savedPlan={savedPlan}
+          scheduling={scheduling}
+          setScheduling={setScheduling}
+          scheduledDate={scheduledDate}
+          setScheduledDate={setScheduledDate}
+          savedScheduled={savedScheduled}
           CopyBtn={CopyBtn}
           generating={generating}
         />
@@ -310,13 +338,19 @@ export default function CrearContenidoClient({
   )
 }
 
-function ReelResult({ result, onRegenerate, onSave, onNew, saving, savedPlan, CopyBtn, generating }: {
+function ReelResult({ result, onRegenerate, onSave, onSchedule, onNew, saving, savedPlan, scheduling, setScheduling, scheduledDate, setScheduledDate, savedScheduled, CopyBtn, generating }: {
   result: ReelOutput
   onRegenerate: () => void
   onSave: () => void
+  onSchedule: () => void
   onNew: () => void
   saving: boolean
   savedPlan: boolean
+  scheduling: boolean
+  setScheduling: (v: boolean) => void
+  scheduledDate: string
+  setScheduledDate: (v: string) => void
+  savedScheduled: boolean
   CopyBtn: React.ComponentType<{ text: string; id: string; label?: string }>
   generating: boolean
 }) {
@@ -394,11 +428,45 @@ function ReelResult({ result, onRegenerate, onSave, onNew, saving, savedPlan, Co
       {/* Actions */}
       <div className="flex flex-wrap gap-2 items-center">
         <button onClick={onSave} disabled={saving || savedPlan} className="btn-primary text-sm">
-          <BookOpen size={15} /> {saving ? 'Guardando...' : savedPlan ? '✓ Guardado' : 'Guardar en planificación'}
+          <BookOpen size={15} /> {saving ? 'Guardando...' : savedPlan ? '✓ Guardado' : 'Guardar en biblioteca'}
         </button>
-        {savedPlan && (
-          <Link href="/planificar?tab=ver" className="flex items-center gap-1 text-sm font-semibold" style={{ color: '#7A1832' }}>
-            Ver en planificación <ArrowRight size={14} />
+        {!savedPlan && (
+          <button onClick={() => setScheduling(!scheduling)} disabled={saving} className="btn-ghost text-sm">
+            <Calendar size={15} /> Programar
+          </button>
+        )}
+        {scheduling && !savedScheduled && (
+          <div className="flex items-center gap-2 w-full mt-1">
+            <input
+              type="date"
+              value={scheduledDate}
+              onChange={e => setScheduledDate(e.target.value)}
+              className="px-3 py-2 rounded-xl text-sm outline-none"
+              style={{ border: '1.5px solid rgba(122,24,50,0.2)', background: '#FFFDF5', color: '#591427' }}
+            />
+            <button
+              onClick={onSchedule}
+              disabled={saving || !scheduledDate}
+              className="btn-primary text-sm"
+              style={{ opacity: !scheduledDate ? 0.5 : 1 }}
+            >
+              {saving ? 'Guardando...' : 'Confirmar fecha'}
+            </button>
+          </div>
+        )}
+        {savedScheduled && (
+          <span className="flex items-center gap-1 text-sm font-semibold" style={{ color: '#7A1832' }}>
+            <Check size={14} /> Programado para {scheduledDate}
+          </span>
+        )}
+        {savedPlan && !savedScheduled && (
+          <Link href="/biblioteca" className="flex items-center gap-1 text-sm font-semibold" style={{ color: '#7A1832' }}>
+            Ver en biblioteca <ArrowRight size={14} />
+          </Link>
+        )}
+        {savedScheduled && (
+          <Link href="/calendario" className="flex items-center gap-1 text-sm font-semibold" style={{ color: '#7A1832' }}>
+            Ver en calendario <ArrowRight size={14} />
           </Link>
         )}
         <button onClick={onNew} className="btn-ghost text-sm">
@@ -409,13 +477,19 @@ function ReelResult({ result, onRegenerate, onSave, onNew, saving, savedPlan, Co
   )
 }
 
-function CarouselResult({ result, onRegenerate, onSave, onNew, saving, savedPlan, CopyBtn, generating }: {
+function CarouselResult({ result, onRegenerate, onSave, onSchedule, onNew, saving, savedPlan, scheduling, setScheduling, scheduledDate, setScheduledDate, savedScheduled, CopyBtn, generating }: {
   result: CarouselOutput
   onRegenerate: () => void
   onSave: () => void
+  onSchedule: () => void
   onNew: () => void
   saving: boolean
   savedPlan: boolean
+  scheduling: boolean
+  setScheduling: (v: boolean) => void
+  scheduledDate: string
+  setScheduledDate: (v: string) => void
+  savedScheduled: boolean
   CopyBtn: React.ComponentType<{ text: string; id: string; label?: string }>
   generating: boolean
 }) {
@@ -478,11 +552,45 @@ function CarouselResult({ result, onRegenerate, onSave, onNew, saving, savedPlan
 
       <div className="flex flex-wrap gap-2 items-center">
         <button onClick={onSave} disabled={saving || savedPlan} className="btn-primary text-sm">
-          <BookOpen size={15} /> {saving ? 'Guardando...' : savedPlan ? '✓ Guardado' : 'Guardar en planificación'}
+          <BookOpen size={15} /> {saving ? 'Guardando...' : savedPlan ? '✓ Guardado' : 'Guardar en biblioteca'}
         </button>
-        {savedPlan && (
-          <Link href="/planificar?tab=ver" className="flex items-center gap-1 text-sm font-semibold" style={{ color: '#7A1832' }}>
-            Ver en planificación <ArrowRight size={14} />
+        {!savedPlan && (
+          <button onClick={() => setScheduling(!scheduling)} disabled={saving} className="btn-ghost text-sm">
+            <Calendar size={15} /> Programar
+          </button>
+        )}
+        {scheduling && !savedScheduled && (
+          <div className="flex items-center gap-2 w-full mt-1">
+            <input
+              type="date"
+              value={scheduledDate}
+              onChange={e => setScheduledDate(e.target.value)}
+              className="px-3 py-2 rounded-xl text-sm outline-none"
+              style={{ border: '1.5px solid rgba(122,24,50,0.2)', background: '#FFFDF5', color: '#591427' }}
+            />
+            <button
+              onClick={onSchedule}
+              disabled={saving || !scheduledDate}
+              className="btn-primary text-sm"
+              style={{ opacity: !scheduledDate ? 0.5 : 1 }}
+            >
+              {saving ? 'Guardando...' : 'Confirmar fecha'}
+            </button>
+          </div>
+        )}
+        {savedScheduled && (
+          <span className="flex items-center gap-1 text-sm font-semibold" style={{ color: '#7A1832' }}>
+            <Check size={14} /> Programado para {scheduledDate}
+          </span>
+        )}
+        {savedPlan && !savedScheduled && (
+          <Link href="/biblioteca" className="flex items-center gap-1 text-sm font-semibold" style={{ color: '#7A1832' }}>
+            Ver en biblioteca <ArrowRight size={14} />
+          </Link>
+        )}
+        {savedScheduled && (
+          <Link href="/calendario" className="flex items-center gap-1 text-sm font-semibold" style={{ color: '#7A1832' }}>
+            Ver en calendario <ArrowRight size={14} />
           </Link>
         )}
         <button onClick={onNew} className="btn-ghost text-sm">

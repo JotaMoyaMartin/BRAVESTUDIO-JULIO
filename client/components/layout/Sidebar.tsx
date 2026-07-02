@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Profile } from '@/types/database'
 import {
   Home, Sparkles, Star,
-  Film, LayoutGrid, LogOut, Menu, X
+  Film, LayoutGrid, BookOpen, Calendar, LogOut, Menu, X
 } from 'lucide-react'
 import { useState } from 'react'
 import BraviMascot from '@/components/bravi/BraviMascot'
@@ -16,6 +16,8 @@ const navItems = [
   { href: '/planificar', label: 'Planificación', icon: Sparkles },
   { href: '/crear-contenido', label: 'Crear Contenido', icon: Film },
   { href: '/stories', label: 'Stories BRÄVE', icon: LayoutGrid },
+  { href: '/biblioteca', label: 'Biblioteca', icon: BookOpen },
+  { href: '/calendario', label: 'Calendario', icon: Calendar },
 ]
 
 export default function Sidebar({ profile }: { profile: Profile }) {

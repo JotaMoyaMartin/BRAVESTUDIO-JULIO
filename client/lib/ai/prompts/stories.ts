@@ -167,3 +167,90 @@ export async function generateStories(input: StoryInput): Promise<StoriesOutput>
   }
   return getMockStories(input)
 }
+
+// ── Question Box ───────────────────────────────────────────────────
+
+export function buildQuestionsPrompt(input: { topic: string; brandContext?: string }): string {
+  return `Eres un experto en contenido para salones de belleza en Instagram. Genera preguntas naturales que las clientas hacen frecuentemente sobre el tema indicado.
+
+TEMA: ${input.topic}
+${input.brandContext ? `CONTEXTO DEL SALÓN: ${input.brandContext}` : ''}
+
+Devuelve 8-10 preguntas reales que las clientas se hacen sobre este tema. Las preguntas deben sonar naturales, como algo que una clienta escribiría en un DM o preguntaría en persona. Evita preguntas demasiado técnicas.
+
+Devuelve EXACTAMENTE este JSON:
+{
+  "questions": [
+    "¿Pregunta 1?",
+    "¿Pregunta 2?",
+    ...
+  ]
+}`
+}
+
+export function buildAnswerPrompt(input: {
+  question: string
+  mode: 'written' | 'camera'
+  brandContext?: string
+}): string {
+  const modeInstruction =
+    input.mode === 'written'
+      ? `FORMATO: Texto para copiar y pegar en Instagram (Story o caption). Usa emojis con naturalidad, tono conversacional cercano, máximo 3-4 líneas. Incluye un CTA suave al final como "escríbeme y te asesoro" o "cuéntame en DM".`
+      : `FORMATO: Guion para grabar hablando a cámara. Puntos clave en lenguaje hablado, natural, cercano. Máximo 4-5 puntos breves que la estilista pueda decir mirando a la cámara. Incluye apertura gancho + desarrollo + cierre con CTA.`
+
+  return `Eres una estilista experta respondiendo una pregunta de clienta para una Story de Instagram.
+
+PREGUNTA DE LA CLIENTA: ${input.question}
+${input.brandContext ? `CONTEXTO DEL SALÓN: ${input.brandContext}` : ''}
+
+${modeInstruction}
+
+Responde directamente, como si le estuvieras hablando a la clienta. No digas "como estilista" ni introduzcas la respuesta. Ve al grano.`
+}
+
+/** LLM-backed question generation with mock fallback. */
+export async function generateQuestions(input: {
+  topic: string
+  brandContext?: string
+}): Promise<QuestionBoxOutput> {
+  try {
+    const raw = await generateAIContent(buildQuestionsPrompt(input))
+    const parsed = extractJSON<QuestionBoxOutput>(raw)
+    if (
+      parsed &&
+      Array.isArray(parsed.questions) &&
+      parsed.questions.length > 0 &&
+      parsed.questions.every(q => typeof q === 'string' && q.trim().length > 0)
+    ) {
+      return parsed
+    }
+  } catch {
+    // fall through to mock
+  }
+  return getMockQuestions(input.topic)
+}
+
+/** LLM-backed answer generation with mock fallback. */
+export async function generateQuestionAnswer(input: {
+  question: string
+  mode: 'written' | 'camera'
+  brandContext?: string
+}): Promise<string> {
+  try {
+    const raw = await generateAIContent(buildAnswerPrompt(input))
+    if (raw && raw.trim().length > 0) {
+      return raw.trim()
+    }
+  } catch {
+    // fall through to mock
+  }
+  return getMockAnswer(input.question, input.mode)
+}
+
+function getMockAnswer(question: string, mode: 'written' | 'camera'): string {
+  const cleanQ = question.replace(/^¿/, '').replace(/\?$/, '')
+  if (mode === 'written') {
+    return `Buena pregunta. ${cleanQ} es algo que me preguntan mucho en el salón. 💕 La clave está en entender tu tipo de cabello y sus necesidades específicas. En mi salón siempre hago un diagnóstico previo para darte la recomendación más adecuada para ti. Si quieres que hablemos sobre tu caso concreto, escríbeme. 💌`
+  }
+  return `Punto 1: "Me preguntan mucho esto y quiero contarte algo importante."\nPunto 2: "Cada cabello es diferente. Lo que funciona para una clienta puede no funcionar para otra."\nPunto 3: "Por eso siempre hago un diagnóstico antes de recomendar cualquier tratamiento."\nPunto 4: "Si tienes esta duda, escríbeme por DM y vemos tu caso concreto. 💕"`
+}

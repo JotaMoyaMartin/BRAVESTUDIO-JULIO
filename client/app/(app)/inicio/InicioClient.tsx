@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
-import { Sparkles, Film, LayoutGrid, Star, Shuffle, ArrowRight, Trophy, Flame, TrendingUp, Target } from 'lucide-react'
+import { Sparkles, Film, LayoutGrid, Star, Shuffle, ArrowRight, Trophy, Flame, TrendingUp, Target, BookOpen, Calendar } from 'lucide-react'
 import { Profile, BrandProfile, ContentItem } from '@/types/database'
 import { demoGetPlan } from '@/lib/demo-store'
 import BraviMascot from '@/components/bravi/BraviMascot'
@@ -208,12 +208,14 @@ export default function InicioClient({
       )}
 
       {/* Quick actions */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {[
           { href: '/planificar', icon: Sparkles, label: 'Planificación', desc: 'Genera ideas para el mes', dark: true, color: '#7A1832' },
           { href: '/crear-contenido', icon: Film, label: 'Crear Contenido', desc: 'Reel o carrusel ahora', dark: true, color: '#591427' },
           { href: '/stories', icon: LayoutGrid, label: 'Stories', desc: 'Stories y preguntas', dark: false, color: '#2a5a6a', bg: '#C1DBE8' },
           { href: '/mi-marca', icon: Star, label: 'Mi Marca', desc: 'Perfil de tu salón', dark: false, color: '#7a6000', bg: '#FFF1B5' },
+          { href: '/biblioteca', icon: BookOpen, label: 'Biblioteca', desc: 'Tu contenido guardado', dark: false, color: '#591427', bg: '#fce8ee' },
+          { href: '/calendario', icon: Calendar, label: 'Calendario', desc: 'Contenido programado', dark: false, color: '#2a5a6a', bg: '#d8e8f0' },
         ].map(({ href, icon: Icon, label, desc, dark, color, bg }) => (
           <Link
             key={href}

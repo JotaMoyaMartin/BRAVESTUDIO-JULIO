@@ -43,6 +43,7 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/update-password') ||
     pathname.startsWith('/access') ||
     pathname.startsWith('/access-blocked') ||
+    pathname.startsWith('/acceso-bloqueado') ||
     pathname.startsWith('/pricing') ||
     pathname.startsWith('/skool-access') ||
     pathname.startsWith('/api/auth') ||
@@ -59,6 +60,7 @@ export async function middleware(request: NextRequest) {
       pathname.startsWith('/skool-access') ||
       pathname === '/access' ||
       pathname === '/access-blocked' ||
+      pathname === '/acceso-bloqueado' ||
       pathname.startsWith('/pricing')
     if (user && isMarketingOrAuthPage) {
       const { data: profile } = await supabase

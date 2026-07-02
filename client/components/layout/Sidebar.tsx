@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Profile } from '@/types/database'
 import {
   Home, Sparkles, Star,
-  Film, LayoutGrid, BookOpen, Calendar, User, LogOut, Menu, X
+  Film, LayoutGrid, BookOpen, Calendar, LogOut, Menu, X
 } from 'lucide-react'
 import { useState } from 'react'
 import BraviMascot from '@/components/bravi/BraviMascot'
@@ -18,7 +18,6 @@ const navItems = [
   { href: '/stories', label: 'Stories BRÄVE', icon: LayoutGrid },
   { href: '/biblioteca', label: 'Biblioteca', icon: BookOpen },
   { href: '/calendario', label: 'Calendario', icon: Calendar },
-  { href: '/account', label: 'Mi Cuenta', icon: User },
 ]
 
 export default function Sidebar({ profile }: { profile: Profile }) {
@@ -83,13 +82,18 @@ export default function Sidebar({ profile }: { profile: Profile }) {
       {/* User + logout */}
       <div className="px-3 pb-4 border-t pt-4" style={{ borderColor: 'rgba(255,241,181,0.4)' }}>
         <div className="flex items-center justify-between px-4 py-2">
-          <div>
-            <p className="text-sm font-medium" style={{ color: '#1a1a1a' }}>{profile.full_name || profile.email}</p>
-            <p className="text-xs" style={{ color: '#7A1832', opacity: 0.7 }}>{profile.email}</p>
-          </div>
+          <Link
+            href="/account"
+            onClick={() => setOpen(false)}
+            className="flex-1 min-w-0 transition-all hover:opacity-70"
+            title="Mi cuenta"
+          >
+            <p className="text-sm font-medium truncate" style={{ color: '#1a1a1a' }}>{profile.full_name || profile.email}</p>
+            <p className="text-xs truncate" style={{ color: '#7A1832', opacity: 0.7 }}>{profile.email}</p>
+          </Link>
           <button
             onClick={handleLogout}
-            className="p-2 rounded-lg transition-all hover:bg-red-50"
+            className="p-2 rounded-lg transition-all hover:bg-red-50 flex-shrink-0"
             title="Cerrar sesión"
           >
             <LogOut size={16} style={{ color: '#7A1832' }} />

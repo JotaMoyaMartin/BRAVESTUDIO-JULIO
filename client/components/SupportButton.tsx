@@ -1,7 +1,7 @@
 'use client'
 import { Mail } from 'lucide-react'
 
-const SUPPORT_EMAIL = 'bravefourquarters@gmail.com'
+const SUPPORT_EMAIL = 'braveheadquarters@gmail.com'
 
 interface SupportButtonProps {
   subject?: string
@@ -12,7 +12,7 @@ interface SupportButtonProps {
 
 /**
  * Reusable "Escribir a soporte" button. Opens a mailto to
- * bravefourquarters@gmail.com with an optional subject.
+ * braveheadquarters@gmail.com with an optional subject.
  *
  * variants:
  *  - full    -> card-style with helper text (landing/error pages)

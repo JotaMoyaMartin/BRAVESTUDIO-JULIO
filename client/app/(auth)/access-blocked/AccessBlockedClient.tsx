@@ -199,7 +199,7 @@ export default function AccessBlockedClient({ profile }: Props) {
           {/* Action D: Escribir a soporte (mailto) */}
           <div className="mb-4">
             <a
-              href="mailto:bravefourquarters@gmail.com?subject=Ayuda%20con%20mi%20acceso%20en%20BRÄVE%20Studio"
+              href="mailto:braveheadquarters@gmail.com?subject=Ayuda%20con%20mi%20acceso%20en%20BRÄVE%20Studio"
               className="block w-full py-3 rounded-xl text-sm font-semibold text-center transition-all"
               style={{
                 background: 'transparent',

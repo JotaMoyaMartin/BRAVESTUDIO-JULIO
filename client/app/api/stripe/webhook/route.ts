@@ -66,13 +66,40 @@ export async function POST(req: NextRequest) {
 
       case 'customer.subscription.updated': {
         const sub = event.data.object as Stripe.Subscription
-        const status = sub.status as 'active' | 'trialing' | 'past_due' | 'canceled'
+        const status = sub.status as 'active' | 'trialing' | 'past_due' | 'canceled' | 'unpaid'
         const isActive = status === 'active' || status === 'trialing'
+
+        // Antes de revocar acceso, comprobamos si el usuario tiene otra
+        // fuente de acceso activa (manual, skool, promo no caducado).
+        // Solo ponemos access_status=inactive cuando no haya otra fuente.
+        let finalAccessStatus: 'active' | 'inactive' = isActive ? 'active' : 'inactive'
+        let finalIsActive = isActive
+
+        if (!isActive) {
+          const { data: current } = await supabase
+            .from('profiles')
+            .select('access_source, access_expires_at')
+            .eq('stripe_subscription_id', sub.id)
+            .single()
+
+          if (current) {
+            const source = current.access_source
+            const promoNotExpired =
+              source === 'promo' &&
+              (!current.access_expires_at ||
+                new Date(current.access_expires_at as string).getTime() > Date.now())
+            const hasOtherAccess = source === 'manual' || source === 'skool' || promoNotExpired
+            if (hasOtherAccess) {
+              finalAccessStatus = 'active'
+              finalIsActive = true
+            }
+          }
+        }
 
         await supabase.from('profiles').update({
           subscription_status: status,
-          access_status: isActive ? 'active' : 'inactive',
-          is_active: isActive,
+          access_status: finalAccessStatus,
+          is_active: finalIsActive,
         }).eq('stripe_subscription_id', sub.id)
         break
       }
@@ -80,11 +107,49 @@ export async function POST(req: NextRequest) {
       case 'customer.subscription.deleted': {
         const sub = event.data.object as Stripe.Subscription
 
+        // Igual que en updated: respetamos accesos no-Stripe activos.
+        let finalAccessStatus: 'active' | 'inactive' = 'inactive'
+        let finalIsActive = false
+
+        const { data: current } = await supabase
+          .from('profiles')
+          .select('access_source, access_expires_at')
+          .eq('stripe_subscription_id', sub.id)
+          .single()
+
+        if (current) {
+          const source = current.access_source
+          const promoNotExpired =
+            source === 'promo' &&
+            (!current.access_expires_at ||
+              new Date(current.access_expires_at as string).getTime() > Date.now())
+          const hasOtherAccess = source === 'manual' || source === 'skool' || promoNotExpired
+          if (hasOtherAccess) {
+            finalAccessStatus = 'active'
+            finalIsActive = true
+          }
+        }
+
         await supabase.from('profiles').update({
           subscription_status: 'canceled',
-          access_status: 'inactive',
-          is_active: false,
+          access_status: finalAccessStatus,
+          is_active: finalIsActive,
         }).eq('stripe_subscription_id', sub.id)
+        break
+      }
+
+      case 'invoice.payment_failed': {
+        // Marcamos la suscripción como past_due. NO revocamos acceso todavía:
+        // Stripe hace varios reintentos automáticos antes de cancelar, y
+        // el usuario debe mantener acceso durante los reintentos.
+        // Cuando Stripe se rinde, dispara subscription.updated/deleted.
+        const invoice = event.data.object as Stripe.Invoice
+        const subscriptionId = (invoice as { subscription?: string | null }).subscription as string | null
+        if (subscriptionId) {
+          await supabase.from('profiles').update({
+            subscription_status: 'past_due',
+          }).eq('stripe_subscription_id', subscriptionId)
+        }
         break
       }
     }

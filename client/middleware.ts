@@ -11,6 +11,14 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next({ request })
   }
 
+  // Redirect-only routes: skip Supabase auth/cookie refresh so the page's
+  // redirect() produces a clean 307 with Location header instead of being
+  // swallowed by the middleware's NextResponse.next() body.
+  const { pathname } = request.nextUrl
+  if (pathname === '/access' || pathname === '/acceso-bloqueado') {
+    return NextResponse.redirect(new URL('/access-blocked', request.url))
+  }
+
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
@@ -31,7 +39,6 @@ export async function middleware(request: NextRequest) {
   )
 
   const { data: { user } } = await supabase.auth.getUser()
-  const { pathname } = request.nextUrl
 
   // Public auth routes (incluye landing page /)
   const isPublicAuthRoute =
@@ -41,9 +48,7 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/reset-password') ||
     pathname.startsWith('/forgot-password') ||
     pathname.startsWith('/update-password') ||
-    pathname.startsWith('/access') ||
     pathname.startsWith('/access-blocked') ||
-    pathname.startsWith('/acceso-bloqueado') ||
     pathname.startsWith('/pricing') ||
     pathname.startsWith('/skool-access') ||
     pathname.startsWith('/api/auth') ||
@@ -58,9 +63,7 @@ export async function middleware(request: NextRequest) {
       pathname.startsWith('/forgot-password') ||
       pathname.startsWith('/reset-password') ||
       pathname.startsWith('/skool-access') ||
-      pathname === '/access' ||
       pathname === '/access-blocked' ||
-      pathname === '/acceso-bloqueado' ||
       pathname.startsWith('/pricing')
     if (user && isMarketingOrAuthPage) {
       const { data: profile } = await supabase

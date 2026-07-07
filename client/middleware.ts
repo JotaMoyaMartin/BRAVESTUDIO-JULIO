@@ -119,7 +119,7 @@ export async function middleware(request: NextRequest) {
       .eq('id', user.id)
       .single()
     if (!profile || (profile.role !== 'admin' && profile.role !== 'superadmin')) {
-      return NextResponse.redirect(new URL('/inicio', request.url))
+      return NextResponse.redirect(new URL('/no-permissions', request.url))
     }
     return supabaseResponse
   }
@@ -127,21 +127,24 @@ export async function middleware(request: NextRequest) {
   // Check active access for app routes
   const { data: profile } = await supabase
     .from('profiles')
-    .select('access_status, subscription_status, is_active, access_source, access_expires_at, full_name, salon_name')
+    .select('role, access_status, subscription_status, is_active, access_source, access_expires_at, full_name, salon_name')
     .eq('id', user.id)
     .single()
 
   // Onboarding gate: si el usuario no ha completado sus datos básicos,
   // redirigir a /onboarding antes de dejarle entrar a la app o al access
-  if (profile && (!profile.full_name || !profile.salon_name)) {
+  // (los admins saltan este gate — no necesitan perfil de salón)
+  const isAdminProfile = profile?.role === 'admin' || profile?.role === 'superadmin'
+  if (profile && !isAdminProfile && (!profile.full_name || !profile.salon_name)) {
     return NextResponse.redirect(new URL('/onboarding', request.url))
   }
 
-  if (!profile || !hasActiveAccess(profile)) {
+  if (!profile || (!hasActiveAccess(profile) && !isAdminProfile)) {
     // Lazy deactivation: si el acceso por promo ha expirado pero la DB sigue marcándolo activo,
     // sincronizamos el estado a 'inactive' (una sola vez) para que el admin lo vea correcto.
     if (
       profile &&
+      !isAdminProfile &&
       profile.access_status === 'active' &&
       profile.access_source === 'promo' &&
       profile.access_expires_at &&
@@ -152,7 +155,9 @@ export async function middleware(request: NextRequest) {
         .update({ access_status: 'inactive', is_active: false })
         .eq('id', user.id)
     }
-    return NextResponse.redirect(new URL(ACCESS_REDIRECT, request.url))
+    if (!profile || !hasActiveAccess(profile)) {
+      return NextResponse.redirect(new URL(ACCESS_REDIRECT, request.url))
+    }
   }
 
   return supabaseResponse

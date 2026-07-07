@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
 import { createClient } from '@/lib/supabase/server'
-import { getPriceId, Currency, Plan } from '@/lib/stripe-prices'
+import { getPlanForCheckout, Currency, PlanKey } from '@/lib/plans'
 
 export async function POST(req: NextRequest) {
   if (!stripe) {
@@ -16,14 +16,19 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json()
   let priceId: string | null = null
+  let trialDays = 3
 
-  // Legacy: direct priceId
+  // Legacy: direct priceId (still accepted for backwards compatibility)
   if (body.priceId) {
     priceId = body.priceId
   }
-  // New: plan + currency
+  // New: plan + currency → resolve from Supabase plans table
   else if (body.plan && body.currency) {
-    priceId = getPriceId(body.plan as Plan, body.currency as Currency)
+    const resolved = await getPlanForCheckout(body.plan as PlanKey, body.currency as Currency)
+    if (resolved) {
+      priceId = resolved.stripe_price_id
+      trialDays = resolved.trial_days
+    }
   }
 
   if (!priceId) {
@@ -44,7 +49,7 @@ export async function POST(req: NextRequest) {
       ? { customer: profile.stripe_customer_id }
       : { customer_email: profile?.email || user.email }),
     line_items: [{ price: priceId, quantity: 1 }],
-    subscription_data: { trial_period_days: 3 },
+    subscription_data: { trial_period_days: trialDays },
     phone_number_collection: { enabled: false },
     success_url: `${appUrl}/onboarding?checkout=success`,
     cancel_url: `${appUrl}/pricing`,

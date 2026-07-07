@@ -308,12 +308,14 @@ export function buildPlanPrompt(input: PlannerInput): string {
   const total = weeks * input.postsPerWeek
   const days = DEFAULT_DAYS[input.postsPerWeek]
   const services = input.freeText?.trim() ? input.freeText.trim() : input.services.join(', ')
+  const formatLabel = input.format === 'reels' ? 'SOLO REELS (todos los items deben ser type="reel")' : input.format === 'carrusels' ? 'SOLO CARRUSELES (todos los items deben ser type="carrusel")' : 'MIXTO (alterna entre reel y carrusel)'
+  const formatType = input.format === 'reels' ? '"reel"' : input.format === 'carrusels' ? '"carrusel"' : '"reel" o "carrusel"'
   return `Eres un experto en planificación de contenido para salones de belleza en Instagram. Crea un plan de contenido siguiendo la metodología BRÄVE.
 
 DURACIÓN: ${input.duration === '1week' ? '1 semana' : '1 mes'} (${weeks} semana(s))
 PUBLICACIONES POR SEMANA: ${input.postsPerWeek}
 TOTAL: ${total} publicaciones
-FORMATO: ${input.format} (reels, carruseles o mixto)
+FORMATO: ${formatLabel}
 OBJETIVO: ${input.objective}
 SERVICIOS/TEMAS: ${services}
 ${input.brandContext ? `CONTEXTO DEL SALÓN: ${input.brandContext}` : ''}
@@ -322,7 +324,7 @@ DÍAS SUGERIDOS POR SEMANA: ${days.join(', ')}
 
 METODOLOGÍA OBLIGATORIA:
 - Cada item debe tener un título atractivo, específico y no repetido.
-- Variar entre formato reel y carrusel según el formato solicitado.
+- ⚠️ REGLA CRÍTICA DE FORMATO: El campo "type" de CADA item debe ser ${formatType}. No mezcles formatos. Si el formato es "reels", TODOS los items deben ser type="reel". Si es "carrusels", TODOS deben ser type="carrusel".
 - Si el objetivo es "autoridad", enfocar en criterio profesional y educación.
 - Si es "reservas", enfocar en transformaciones, resultados y CTA a reserva.
 - Si es "visibilidad", enfocar en tendencias, dudas frecuentes y contenido guardable.
@@ -332,12 +334,12 @@ Devuelve EXACTAMENTE este JSON, sin texto adicional:
 {
   "items": [
     {
-      "type": "reel" | "carrusel",
+      "type": ${formatType},
       "title": "Título atractivo de la publicación",
       "service": "Servicio o tema al que pertenece",
       "suggestedDay": "Uno de: ${days.join(', ')}",
       "hookIdea": "Idea de gancho breve para esta publicación",
-      "format": "Reel 40-50 segundos" | "Carrusel 5 slides"
+      "format": ${input.format === 'reels' ? '"Reel 40-50 segundos"' : input.format === 'carrusels' ? '"Carrusel 5 slides"' : '"Reel 40-50 segundos" o "Carrusel 5 slides"'}
     }
   ],
   "summary": "Resumen breve del plan"
@@ -369,16 +371,22 @@ export async function generatePlan(input: PlannerInput): Promise<PlannerOutput> 
         const weekNum = Math.floor(i / input.postsPerWeek)
         const itemDate = new Date(startDate)
         itemDate.setDate(itemDate.getDate() + weekNum * 7 + getDayOffset(it.suggestedDay))
+        // Force the type to respect the selected format — AI may ignore instructions
+        const forcedType: 'reel' | 'carrusel' =
+          input.format === 'reels' ? 'reel'
+          : input.format === 'carrusels' ? 'carrusel'
+          : it.type
+        const forcedFormat = forcedType === 'reel' ? 'Reel 40-50 segundos' : 'Carrusel 5 slides'
         return {
           id: `plan-${i}`,
-          type: it.type,
+          type: forcedType,
           title: it.title,
           service: it.service,
           objective: input.objective,
           suggestedDay: it.suggestedDay,
           suggestedDate: itemDate.toISOString().split('T')[0],
           hookIdea: it.hookIdea,
-          format: it.format,
+          format: forcedFormat,
         }
       })
       return {

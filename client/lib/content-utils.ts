@@ -125,3 +125,28 @@ export async function deleteItem(
   const supabase = createClient()
   await supabase.from('content_items').delete().eq('id', itemId)
 }
+
+// ── Duplicate to Library ────────────────────────────────────────────
+// Duplicates a scheduled item into the library (status='library',
+// scheduled_date=null) so the user keeps the original in calendar AND
+// has a copy in the library. Per spec: "mejor duplicar, no mover".
+
+export async function duplicateToLibrary(
+  userId: string,
+  item: ContentItem,
+  isDemoMode: boolean
+): Promise<void> {
+  const { id, created_at, updated_at, scheduled_date, status, ...rest } = item
+  const payload = {
+    ...rest,
+    user_id: userId,
+    scheduled_date: null,
+    status: 'library' as const,
+  }
+  if (isDemoMode) {
+    demoSavePlan(payload as Record<string, unknown>)
+    return
+  }
+  const supabase = createClient()
+  await supabase.from('content_items').insert(payload)
+}

@@ -3,10 +3,11 @@ import { redirect } from 'next/navigation'
 import { IS_DEMO } from '@/lib/demo'
 import { ContentItem } from '@/types/database'
 import CalendarioClient from './CalendarioClient'
+import PageTransition from '@/components/ui/PageTransition'
 
 export default async function CalendarioPage() {
   if (IS_DEMO) {
-    return <CalendarioClient userId="demo" items={[]} />
+    return <PageTransition><CalendarioClient userId="demo" items={[]} /></PageTransition>
   }
 
   const supabase = await createClient()
@@ -23,9 +24,11 @@ export default async function CalendarioPage() {
     .order('scheduled_date', { ascending: true })
 
   return (
-    <CalendarioClient
-      userId={user.id}
-      items={(items as ContentItem[]) || []}
-    />
+    <PageTransition>
+      <CalendarioClient
+        userId={user.id}
+        items={(items as ContentItem[]) || []}
+      />
+    </PageTransition>
   )
 }

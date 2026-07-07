@@ -4,6 +4,22 @@ import { Film, LayoutGrid, MessageSquare, ChevronDown, ChevronUp, Copy, Check, C
 import { ContentItem } from '@/types/database'
 import { copyToClipboard, formatContentForCopy, scheduleItem, unscheduleItem, deleteItem } from '@/lib/content-utils'
 
+// ── Copy button for individual blocks ──────────────────────────────
+
+function CopyChip({ text, label }: { text: string; label?: string }) {
+  const [copied, setCopied] = useState(false)
+  return (
+    <button
+      onClick={() => { copyToClipboard(text); setCopied(true); setTimeout(() => setCopied(false), 2000) }}
+      className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all flex-shrink-0"
+      style={{ background: copied ? '#7A1832' : '#FFF1B5', color: copied ? 'white' : '#591427' }}
+    >
+      {copied ? <Check size={12} /> : <Copy size={12} />}
+      {label && (copied ? '¡Copiado!' : label)}
+    </button>
+  )
+}
+
 const TYPE_CONFIG: Record<string, { icon: typeof Film; color: string; label: string }> = {
   reel: { icon: Film, color: '#7A1832', label: 'Reel' },
   carrusel: { icon: LayoutGrid, color: '#2a5a6a', label: 'Carrusel' },
@@ -180,18 +196,38 @@ function DefaultExpandedContent({ item }: { item: ContentItem }) {
 
   if (item.type === 'reel' && json.script) {
     const s = json.script as Record<string, string>
+    const fullScript = `GANCHO:\n${s.hook}\n\nCONTEXTO:\n${s.context}\n\nSOLUCIÓN:\n${s.solution}\n\nCTA:\n${s.cta}`
     return (
       <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#7A1832', opacity: 0.6 }}>GUION COMPLETO</span>
+          <CopyChip text={fullScript} label="Copiar guion" />
+        </div>
         {([['GANCHO', s.hook], ['CONTEXTO', s.context], ['SOLUCIÓN', s.solution], ['CTA', s.cta]] as const).map(([label, text]) => (
           <div key={label} className="p-3 rounded-xl" style={{ background: '#FFFDF5', border: '1px solid rgba(255,241,181,0.8)' }}>
-            <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#7A1832' }}>{label}</span>
-            <p className="text-sm mt-1 leading-relaxed" style={{ color: '#1a1a1a' }}>{text}</p>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#7A1832' }}>{label}</span>
+              <CopyChip text={text} />
+            </div>
+            <p className="text-sm leading-relaxed" style={{ color: '#1a1a1a' }}>{text}</p>
           </div>
         ))}
         {item.caption_with_hashtags && (
           <div className="p-3 rounded-xl" style={{ background: '#FFFDF5', border: '1px solid rgba(255,241,181,0.8)' }}>
-            <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#7A1832', opacity: 0.6 }}>PUBLICACIÓN</span>
-            <p className="text-xs mt-1 leading-relaxed whitespace-pre-line" style={{ color: '#1a1a1a' }}>{item.caption_with_hashtags}</p>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#7A1832', opacity: 0.6 }}>PUBLICACIÓN (COPY + HASHTAGS)</span>
+              <CopyChip text={item.caption_with_hashtags} label="Copiar copy" />
+            </div>
+            <p className="text-xs leading-relaxed whitespace-pre-line" style={{ color: '#1a1a1a' }}>{item.caption_with_hashtags}</p>
+          </div>
+        )}
+        {item.visual_idea && (
+          <div className="p-3 rounded-xl" style={{ background: '#C1DBE8' }}>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#2a5a6a', opacity: 0.7 }}>IDEA VISUAL</span>
+              <CopyChip text={item.visual_idea} />
+            </div>
+            <p className="text-xs" style={{ color: '#1a3a4a' }}>{item.visual_idea}</p>
           </div>
         )}
       </div>
@@ -200,21 +236,43 @@ function DefaultExpandedContent({ item }: { item: ContentItem }) {
 
   if (item.type === 'carrusel' && json.slides) {
     const slides = json.slides as Array<{ number: number; role: string; text: string }>
+    const fullSlides = slides.map(s => `Slide ${s.number} — ${s.role}:\n${s.text}`).join('\n\n')
     return (
       <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#7A1832', opacity: 0.6 }}>SLIDES COMPLETOS</span>
+          <CopyChip text={fullSlides} label="Copiar slides" />
+        </div>
         {slides.map(sl => (
-          <div key={sl.number} className="flex gap-3 p-3 rounded-xl" style={{ background: '#FFFDF5', border: '1px solid rgba(255,241,181,0.8)' }}>
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0" style={{ background: '#7A1832', color: 'white' }}>{sl.number}</div>
-            <div>
-              <span className="text-xs font-semibold" style={{ color: '#7A1832' }}>{sl.role}</span>
-              <p className="text-sm mt-0.5 leading-relaxed" style={{ color: '#1a1a1a' }}>{sl.text}</p>
+          <div key={sl.number} className="p-3 rounded-xl" style={{ background: '#FFFDF5', border: '1px solid rgba(255,241,181,0.8)' }}>
+            <div className="flex items-start gap-3">
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0" style={{ background: '#7A1832', color: 'white' }}>{sl.number}</div>
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold" style={{ color: '#7A1832' }}>{sl.role}</span>
+                  <CopyChip text={sl.text} />
+                </div>
+                <p className="text-sm mt-0.5 leading-relaxed" style={{ color: '#1a1a1a' }}>{sl.text}</p>
+              </div>
             </div>
           </div>
         ))}
         {item.caption_with_hashtags && (
           <div className="p-3 rounded-xl" style={{ background: '#FFFDF5', border: '1px solid rgba(255,241,181,0.8)' }}>
-            <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#7A1832', opacity: 0.6 }}>PUBLICACIÓN</span>
-            <p className="text-xs mt-1 leading-relaxed whitespace-pre-line" style={{ color: '#1a1a1a' }}>{item.caption_with_hashtags}</p>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#7A1832', opacity: 0.6 }}>PUBLICACIÓN (COPY + HASHTAGS)</span>
+              <CopyChip text={item.caption_with_hashtags} label="Copiar copy" />
+            </div>
+            <p className="text-xs leading-relaxed whitespace-pre-line" style={{ color: '#1a1a1a' }}>{item.caption_with_hashtags}</p>
+          </div>
+        )}
+        {item.visual_idea && (
+          <div className="p-3 rounded-xl" style={{ background: '#C1DBE8' }}>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#2a5a6a', opacity: 0.7 }}>IDEA VISUAL</span>
+              <CopyChip text={item.visual_idea} />
+            </div>
+            <p className="text-xs" style={{ color: '#1a3a4a' }}>{item.visual_idea}</p>
           </div>
         )}
       </div>
@@ -225,11 +283,19 @@ function DefaultExpandedContent({ item }: { item: ContentItem }) {
   if (item.type === 'story') {
     if (json.stories) {
       const stories = json.stories as Array<{ number: number; role: string; text: string }>
+      const fullStories = stories.map(s => `Story ${s.number} — ${s.role}:\n${s.text}`).join('\n\n---\n\n')
       return (
         <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#7A1832', opacity: 0.6 }}>STORIES COMPLETAS</span>
+            <CopyChip text={fullStories} label="Copiar todo" />
+          </div>
           {stories.map(s => (
             <div key={s.number} className="p-3 rounded-xl" style={{ background: '#FFFDF5', border: '1px solid rgba(255,241,181,0.8)' }}>
-              <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#7A1832' }}>Story {s.number} — {s.role}</span>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#7A1832' }}>Story {s.number} — {s.role}</span>
+                <CopyChip text={s.text} />
+              </div>
               <p className="text-sm mt-1 leading-relaxed" style={{ color: '#1a1a1a' }}>{s.text}</p>
             </div>
           ))}
@@ -240,12 +306,18 @@ function DefaultExpandedContent({ item }: { item: ContentItem }) {
       return (
         <div className="space-y-2">
           <div className="p-3 rounded-xl" style={{ background: '#FFFDF5', border: '1px solid rgba(255,241,181,0.8)' }}>
-            <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#7A1832', opacity: 0.6 }}>PREGUNTA</span>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#7A1832', opacity: 0.6 }}>PREGUNTA</span>
+              <CopyChip text={json.question as string} />
+            </div>
             <p className="text-sm mt-1 leading-relaxed" style={{ color: '#1a1a1a' }}>{json.question as string}</p>
           </div>
           {(json.answer as string) && (
             <div className="p-3 rounded-xl" style={{ background: '#C1DBE8' }}>
-              <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#2a5a6a', opacity: 0.7 }}>RESPUESTA</span>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#2a5a6a', opacity: 0.7 }}>RESPUESTA</span>
+                <CopyChip text={json.answer as string} />
+              </div>
               <p className="text-sm mt-1 leading-relaxed" style={{ color: '#1a3a4a' }}>{json.answer as string}</p>
             </div>
           )}
@@ -254,5 +326,18 @@ function DefaultExpandedContent({ item }: { item: ContentItem }) {
     }
   }
 
-  return <p className="text-sm whitespace-pre-line" style={{ color: '#1a1a1a' }}>{item.caption_with_hashtags || 'Contenido guardado'}</p>
+  return (
+    <div className="space-y-2">
+      {item.caption_with_hashtags && (
+        <div className="p-3 rounded-xl" style={{ background: '#FFFDF5', border: '1px solid rgba(255,241,181,0.8)' }}>
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#7A1832', opacity: 0.6 }}>CONTENIDO</span>
+            <CopyChip text={item.caption_with_hashtags} label="Copiar" />
+          </div>
+          <p className="text-sm whitespace-pre-line" style={{ color: '#1a1a1a' }}>{item.caption_with_hashtags}</p>
+        </div>
+      )}
+      {!item.caption_with_hashtags && <p className="text-sm" style={{ color: '#1a1a1a' }}>Contenido guardado</p>}
+    </div>
+  )
 }

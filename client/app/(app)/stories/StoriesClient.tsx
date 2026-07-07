@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { demoSavePlan } from '@/lib/demo-store'
 import {
@@ -16,12 +16,17 @@ import {
 } from '@/lib/content-utils'
 import StoryMockup from '@/components/content/StoryMockup'
 import QuestionCard from '@/components/content/QuestionCard'
+import Link from 'next/link'
+import { useSessionState, clearSectionState } from '@/lib/session-store'
+import { BrandFullContextInput, hasBrandContext, buildBrandFullContext } from '@/lib/ai/brand-context'
+import UsarMiMarcaToggle from '@/components/ui/UsarMiMarcaToggle'
 import {
   LayoutGrid,
   MessageSquare,
   Copy,
   BookOpen,
   Calendar,
+  ArrowRight,
   RefreshCw,
   Check,
   Eye,
@@ -39,8 +44,8 @@ const SERVICES = [
 
 const QUESTION_TOPICS = ['Rubios', 'Balayage', 'Canas', 'Alisados', 'Tratamientos', 'Anticaída', 'Cuidado en casa', 'Color', 'General']
 
-export default function StoriesClient({ userId, brandContext }: { userId: string; brandContext: string | null }) {
-  const [tab, setTab] = useState<'stories' | 'questions'>('stories')
+export default function StoriesClient({ userId, brandFull }: { userId: string; brandFull: BrandFullContextInput | null }) {
+  const [tab, setTab] = useSessionState<'stories' | 'questions'>(`u:${userId}:stories:tab`, 'stories')
 
   return (
     <div className="space-y-6">
@@ -69,9 +74,9 @@ export default function StoriesClient({ userId, brandContext }: { userId: string
       </div>
 
       {tab === 'stories' ? (
-        <StoriesCreator userId={userId} brandContext={brandContext} />
+        <StoriesCreator userId={userId} brandFull={brandFull} />
       ) : (
-        <QuestionBox userId={userId} brandContext={brandContext} />
+        <QuestionBox userId={userId} brandFull={brandFull} />
       )}
     </div>
   )
@@ -81,22 +86,28 @@ export default function StoriesClient({ userId, brandContext }: { userId: string
 // Stories Creator
 // ═══════════════════════════════════════════════════════════════════
 
-function StoriesCreator({ userId, brandContext }: { userId: string; brandContext: string | null }) {
+function StoriesCreator({ userId, brandFull }: { userId: string; brandFull: BrandFullContextInput | null }) {
   const isDemoMode = userId === 'demo'
-  const [service, setService] = useState('')
-  const [freeText, setFreeText] = useState('')
-  const [detail, setDetail] = useState('')
-  const [count, setCount] = useState<1 | 2 | 3>(3)
-  const [mode, setMode] = useState<'text' | 'camera'>('text')
+  const hasBrand = hasBrandContext(brandFull)
+  const [useMiMarca, setUseMiMarca] = useSessionState<boolean>(`u:${userId}:stories:useMiMarca`, hasBrand)
+  const brandContext = useMemo(() => {
+    if (!useMiMarca || !brandFull) return undefined
+    return buildBrandFullContext(brandFull) || undefined
+  }, [useMiMarca, brandFull])
+  const [service, setService] = useSessionState<string>(`u:${userId}:stories:service`, '')
+  const [freeText, setFreeText] = useSessionState<string>(`u:${userId}:stories:freeText`, '')
+  const [detail, setDetail] = useSessionState<string>(`u:${userId}:stories:detail`, '')
+  const [count, setCount] = useSessionState<1 | 2 | 3>(`u:${userId}:stories:count`, 3)
+  const [mode, setMode] = useSessionState<'text' | 'camera'>(`u:${userId}:stories:mode`, 'text')
   const [generating, setGenerating] = useState(false)
-  const [result, setResult] = useState<StoriesOutput | null>(null)
+  const [result, setResult] = useSessionState<StoriesOutput | null>(`u:${userId}:stories:result`, null)
   const [copied, setCopied] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
-  const [savedLib, setSavedLib] = useState(false)
-  const [viewMode, setViewMode] = useState<'mockup' | 'text'>('mockup')
-  const [scheduleDate, setScheduleDate] = useState('')
+  const [savedLib, setSavedLib] = useSessionState<boolean>(`u:${userId}:stories:savedLib`, false)
+  const [viewMode, setViewMode] = useSessionState<'mockup' | 'text'>(`u:${userId}:stories:viewMode`, 'mockup')
+  const [scheduleDate, setScheduleDate] = useSessionState<string>(`u:${userId}:stories:scheduleDate`, '')
   const [showSchedule, setShowSchedule] = useState(false)
-  const [scheduledId, setScheduledId] = useState<string | null>(null)
+  const [scheduledId, setScheduledId] = useSessionState<string | null>(`u:${userId}:stories:scheduledId`, null)
 
   async function generate() {
     if (!service && !freeText) return
@@ -192,7 +203,7 @@ function StoriesCreator({ userId, brandContext }: { userId: string; brandContext
 
   async function regenerateSingle(number: number) {
     if (!result) return
-    const fresh = await generateStories({ service: service || freeText, count, mode, detail: detail || undefined })
+    const fresh = await generateStories({ service: service || freeText, count, mode, detail: detail || undefined, brandContext: brandContext || undefined })
     const newStory = fresh.stories[number - 1]
     if (!newStory) return
     setResult(prev => prev ? { stories: prev.stories.map(s => s.number === number ? newStory : s) } : prev)
@@ -342,10 +353,10 @@ function StoriesCreator({ userId, brandContext }: { userId: string; brandContext
             <RefreshCw size={15} className={generating ? 'animate-spin' : ''} /> Regenerar todo
           </button>
           <button
-            onClick={() => { setResult(null); setSavedLib(false); setScheduledId(null) }}
+            onClick={() => { clearSectionState(`u:${userId}:stories`); setResult(null); setSavedLib(false); setScheduledId(null); setService(''); setFreeText(''); setDetail('') }}
             className="btn-ghost text-sm"
           >
-            <Plus size={15} /> Nueva secuencia
+            <Plus size={15} /> Empezar de nuevo
           </button>
         </div>
 
@@ -371,9 +382,14 @@ function StoriesCreator({ userId, brandContext }: { userId: string; brandContext
         )}
 
         {scheduledId && (
-          <p className="text-xs text-center" style={{ color: '#591427', opacity: 0.7 }}>
-            ✓ Stories programadas para {scheduleDate}
-          </p>
+          <div className="flex items-center justify-center gap-4">
+            <p className="text-xs" style={{ color: '#591427', opacity: 0.7 }}>
+              ✓ Stories programadas para {scheduleDate}
+            </p>
+            <Link href="/calendario" className="text-xs font-semibold inline-flex items-center gap-1" style={{ color: '#7A1832' }}>
+              Ver en calendario <ArrowRight size={12} />
+            </Link>
+          </div>
         )}
       </div>
     )
@@ -464,6 +480,12 @@ function StoriesCreator({ userId, brandContext }: { userId: string; brandContext
         </p>
       </div>
 
+      <UsarMiMarcaToggle
+        enabled={useMiMarca}
+        onChange={setUseMiMarca}
+        disabled={generating}
+        hasBrand={hasBrand}
+      />
       <button
         onClick={generate}
         disabled={generating || (!service && !freeText)}
@@ -481,8 +503,14 @@ function StoriesCreator({ userId, brandContext }: { userId: string; brandContext
 // Question Box
 // ═══════════════════════════════════════════════════════════════════
 
-function QuestionBox({ userId, brandContext }: { userId: string; brandContext: string | null }) {
+function QuestionBox({ userId, brandFull }: { userId: string; brandFull: BrandFullContextInput | null }) {
   const isDemoMode = userId === 'demo'
+  const hasBrand = hasBrandContext(brandFull)
+  const [useMiMarca, setUseMiMarca] = useSessionState<boolean>(`u:${userId}:stories:quseMiMarca`, hasBrand)
+  const brandContext = useMemo(() => {
+    if (!useMiMarca || !brandFull) return undefined
+    return buildBrandFullContext(brandFull) || undefined
+  }, [useMiMarca, brandFull])
   const [topic, setTopic] = useState('')
   const [generating, setGenerating] = useState(false)
   const [questions, setQuestions] = useState<string[]>([])
@@ -609,6 +637,12 @@ function QuestionBox({ userId, brandContext }: { userId: string; brandContext: s
             </button>
           ))}
         </div>
+        <UsarMiMarcaToggle
+          enabled={useMiMarca}
+          onChange={setUseMiMarca}
+          disabled={generating}
+          hasBrand={hasBrand}
+        />
         <button
           onClick={handleGenerate}
           disabled={!topic || generating}

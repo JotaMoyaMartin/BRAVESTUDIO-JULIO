@@ -1,30 +1,35 @@
 'use client'
 import { useState, useMemo } from 'react'
-import { Search, Filter, Check, Copy, BookOpen, X, Film, LayoutGrid, MessageSquare } from 'lucide-react'
+import { Search, Filter, Check, Copy, BookOpen, X, Film, LayoutGrid, MessageSquare, Clapperboard, Trash2, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
-import { ContentItem, BrandProfile } from '@/types/database'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
+import { ContentItem, BrandProfile, ReelInspiration } from '@/types/database'
 import ContentCard from '@/components/content/ContentCard'
 import BraviMascot from '@/components/bravi/BraviMascot'
 import { formatMultipleForCopy, copyToClipboard } from '@/lib/content-utils'
 
 type PartialBrand = Pick<BrandProfile, 'optimized_summary' | 'salon_name' | 'main_services' | 'service_to_promote'> | null
 
-type FilterType = 'all' | 'reel' | 'carrusel' | 'story'
+type FilterType = 'all' | 'reel' | 'carrusel' | 'story' | 'inspiraciones'
 
 const FILTER_OPTIONS: { id: FilterType; label: string; icon: typeof Film | null }[] = [
   { id: 'all', label: 'Todos', icon: null },
   { id: 'reel', label: 'Reels', icon: Film },
   { id: 'carrusel', label: 'Carruseles', icon: LayoutGrid },
   { id: 'story', label: 'Stories', icon: MessageSquare },
+  { id: 'inspiraciones', label: 'Inspiraciones', icon: Clapperboard },
 ]
 
-export default function BibliotecaClient({ userId, items, brandContext }: { userId: string; items: ContentItem[]; brandContext: PartialBrand }) {
+export default function BibliotecaClient({ userId, items, brandContext, savedInspirations }: { userId: string; items: ContentItem[]; brandContext: PartialBrand; savedInspirations: ReelInspiration[] }) {
   const isDemoMode = userId === 'demo'
+  const router = useRouter()
   const [filter, setFilter] = useState<FilterType>('all')
   const [search, setSearch] = useState('')
   const [multiSelect, setMultiSelect] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [refreshKey, setRefreshKey] = useState(0)
+  const [inspirations, setInspirations] = useState<ReelInspiration[]>(savedInspirations)
 
   const filtered = useMemo(() => {
     let result = items
@@ -66,7 +71,15 @@ export default function BibliotecaClient({ userId, items, brandContext }: { user
     copyToClipboard(formatMultipleForCopy(selectedItems))
   }
 
-  if (items.length === 0) {
+  async function removeSavedInspiration(id: string) {
+    const supabase = createClient()
+    const { error } = await supabase.from('saved_inspirations').delete().eq('user_id', userId).eq('inspiration_id', id)
+    if (!error) {
+      setInspirations(prev => prev.filter(i => i.id !== id))
+    }
+  }
+
+  if (items.length === 0 && inspirations.length === 0) {
     return (
       <div className="space-y-6">
         <div>
@@ -143,7 +156,11 @@ export default function BibliotecaClient({ userId, items, brandContext }: { user
         <div className="flex gap-2 p-1 rounded-2xl" style={{ background: '#F5F0E8' }}>
           {FILTER_OPTIONS.map(opt => {
             const Icon = opt.icon
-            const count = opt.id === 'all' ? items.length : items.filter(i => i.type === opt.id).length
+            const count = opt.id === 'all'
+              ? items.length
+              : opt.id === 'inspiraciones'
+                ? inspirations.length
+                : items.filter(i => i.type === opt.id).length
             return (
               <button
                 key={opt.id}
@@ -184,7 +201,54 @@ export default function BibliotecaClient({ userId, items, brandContext }: { user
       </p>
 
       {/* List view */}
-      {filtered.length === 0 ? (
+      {filter === 'inspiraciones' ? (
+        inspirations.length === 0 ? (
+          <div className="rounded-3xl p-12 text-center" style={{ background: 'white', border: '1.5px solid rgba(255,241,181,0.8)' }}>
+            <Clapperboard size={40} style={{ color: '#591427', opacity: 0.3, margin: '0 auto' }} />
+            <p className="font-semibold mt-4" style={{ color: '#1a1a1a' }}>Aún no tienes inspiraciones guardadas</p>
+            <p className="text-sm mt-1" style={{ color: '#591427', opacity: 0.7 }}>
+              Explora la galería y guarda las ideas que quieras adaptar.
+            </p>
+            <Link href="/inspiracion-reels" className="btn-primary text-sm py-2.5 px-5 inline-flex mt-5">
+              <Clapperboard size={16} /> Explorar inspiración
+            </Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+            {inspirations.map(insp => (
+              <div
+                key={insp.id}
+                className="rounded-[var(--radius-md)] overflow-hidden bg-white flex flex-col"
+                style={{ border: '1.5px solid var(--color-buttermilk)', boxShadow: 'var(--shadow-soft)' }}
+              >
+                <div className="relative aspect-[9/16] overflow-hidden bg-cream">
+                  <img src={insp.cover_image} alt={insp.title} className="w-full h-full object-cover" />
+                </div>
+                <div className="p-3 md:p-4 flex flex-col gap-2 flex-1">
+                  <p className="font-semibold text-sm text-cherry-dark" style={{ lineHeight: 1.35 }}>{insp.title}</p>
+                  <p className="text-xs text-ink opacity-70" style={{ lineHeight: 1.4 }}>{insp.short_description}</p>
+                  <div className="flex flex-wrap gap-1.5 mt-auto pt-2">
+                    <button
+                      onClick={() => router.push('/inspiracion-reels')}
+                      className="flex-1 min-w-0 px-2.5 py-2 rounded-[var(--radius-sm)] text-xs font-semibold btn-secondary flex items-center justify-center gap-1"
+                    >
+                      Ver <ArrowRight size={12} />
+                    </button>
+                    <button
+                      onClick={() => removeSavedInspiration(insp.id)}
+                      className="px-2.5 py-2 rounded-[var(--radius-sm)] text-xs font-semibold transition-all"
+                      style={{ background: 'var(--color-warm-gray)', color: 'var(--color-cherry)' }}
+                      title="Quitar"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      ) : filtered.length === 0 ? (
         <div className="rounded-3xl p-12 text-center" style={{ background: 'white', border: '1.5px solid rgba(255,241,181,0.8)' }}>
           <Filter size={40} style={{ color: '#591427', opacity: 0.3, margin: '0 auto' }} />
           <p className="font-semibold mt-4" style={{ color: '#1a1a1a' }}>No hay contenido que coincida</p>

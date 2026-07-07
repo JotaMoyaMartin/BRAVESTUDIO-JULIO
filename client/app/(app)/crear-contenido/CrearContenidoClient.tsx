@@ -1,9 +1,12 @@
 'use client'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { saveToLibrary } from '@/lib/content-utils'
 import { generateReel, ReelOutput, ContentObjective } from '@/lib/ai/prompts/reels'
 import { generateCarousel, CarouselOutput } from '@/lib/ai/prompts/carousels'
+import { useSessionState, clearSectionState } from '@/lib/session-store'
+import { buildBrandFullContext, hasBrandContext, BrandFullContextInput } from '@/lib/ai/brand-context'
+import UsarMiMarcaToggle from '@/components/ui/UsarMiMarcaToggle'
 import { Film, LayoutGrid, Copy, BookOpen, Calendar, RefreshCw, Trash2, Check, ArrowRight } from 'lucide-react'
 
 const SERVICES = ['Balayage', 'Rubios', 'Canas', 'Alisados', 'Tratamientos', 'Corte', 'Color', 'General']
@@ -13,44 +16,58 @@ type Objective = ContentObjective
 
 export default function CrearContenidoClient({
   userId,
-  brandContext,
+  brandFull,
   initialService,
   initialType,
+  initialTema,
+  initialContexto,
 }: {
   userId: string
-  brandContext: string | null
+  brandFull: BrandFullContextInput | null
   initialService?: string | null
   initialType?: 'reel' | 'carrusel' | null
+  initialTema?: string | null
+  initialContexto?: string | null
 }) {
   const isDemoMode = userId === 'demo'
-  // If a service was passed via URL, jump directly to objective step
-  const [step, setStep] = useState<'type' | 'topic' | 'objective' | 'result'>(
-    initialService ? 'objective' : 'type'
+  const hasBrand = hasBrandContext(brandFull)
+  const [useMiMarca, setUseMiMarca] = useSessionState<boolean>(`u:${userId}:crear:useMiMarca`, hasBrand)
+
+  // Contexto efectivo que se pasa a los prompts
+  const brandContext = useMemo(() => {
+    if (!useMiMarca || !brandFull) return undefined
+    return buildBrandFullContext(brandFull) || undefined
+  }, [useMiMarca, brandFull])
+
+  // If a service or tema was passed via URL, jump directly to objective step
+  const skipToObjective = !!(initialService || initialTema)
+  const [step, setStep] = useSessionState<'type' | 'topic' | 'objective' | 'result'>(`u:${userId}:crear:step`,
+    skipToObjective ? 'objective' : 'type'
   )
-  const [contentType, setContentType] = useState<ContentType>(initialType || 'reel')
-  const [service, setService] = useState(initialService || '')
-  const [freeText, setFreeText] = useState('')
-  const [objective, setObjective] = useState<Objective>('autoridad')
-  const [slideCount, setSlideCount] = useState(5)
+  const [contentType, setContentType] = useSessionState<ContentType>(`u:${userId}:crear:contentType`, initialType || 'reel')
+  const [service, setService] = useSessionState<string>(`u:${userId}:crear:service`, initialService || '')
+  const [freeText, setFreeText] = useSessionState<string>(`u:${userId}:crear:freeText`, initialTema || '')
+  const [objective, setObjective] = useSessionState<Objective>(`u:${userId}:crear:objective`, 'autoridad')
+  const [slideCount, setSlideCount] = useSessionState<number>(`u:${userId}:crear:slideCount`, 5)
   const [generating, setGenerating] = useState(false)
-  const [reelResult, setReelResult] = useState<ReelOutput | null>(null)
-  const [carouselResult, setCarouselResult] = useState<CarouselOutput | null>(null)
+  const [reelResult, setReelResult] = useSessionState<ReelOutput | null>(`u:${userId}:crear:reelResult`, null)
+  const [carouselResult, setCarouselResult] = useSessionState<CarouselOutput | null>(`u:${userId}:crear:carouselResult`, null)
   const [copied, setCopied] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
-  const [savedPlan, setSavedPlan] = useState(false)
+  const [savedPlan, setSavedPlan] = useSessionState<boolean>(`u:${userId}:crear:savedPlan`, false)
   const [scheduling, setScheduling] = useState(false)
-  const [scheduledDate, setScheduledDate] = useState('')
-  const [savedScheduled, setSavedScheduled] = useState(false)
+  const [scheduledDate, setScheduledDate] = useSessionState<string>(`u:${userId}:crear:scheduledDate`, '')
+  const [savedScheduled, setSavedScheduled] = useSessionState<boolean>(`u:${userId}:crear:savedScheduled`, false)
 
   async function generate() {
     setGenerating(true)
     const topicService = service || freeText || 'General'
 
     if (contentType === 'reel') {
-      const result = await generateReel({ service: topicService, objective, brandContext: brandContext || undefined, freeText })
+      const result = await generateReel({ service: topicService, objective, brandContext, freeText })
       setReelResult(result)
     } else {
-      const result = await generateCarousel({ service: topicService, objective, slideCount, brandContext: brandContext || undefined, freeText })
+      const result = await generateCarousel({ service: topicService, objective, slideCount, brandContext, freeText })
       setCarouselResult(result)
     }
     setGenerating(false)
@@ -99,11 +116,12 @@ export default function CrearContenidoClient({
   }
 
   function reset() {
-    setStep(initialService ? 'objective' : 'type')
+    clearSectionState(`u:${userId}:crear`)
+    setStep(skipToObjective ? 'objective' : 'type')
     setReelResult(null)
     setCarouselResult(null)
     setService(initialService || '')
-    setFreeText('')
+    setFreeText(initialTema || '')
     setSavedPlan(false)
     setSavedScheduled(false)
     setScheduling(false)
@@ -132,11 +150,11 @@ export default function CrearContenidoClient({
 
       {step !== 'result' && (
         <div className="flex items-center gap-2">
-          {(initialService
+          {(skipToObjective
             ? [['objective', 'Objetivo']]
             : [['type', 'Tipo'], ['topic', 'Tema'], ['objective', 'Objetivo']]
           ).map(([id, label], i) => {
-            const allSteps = initialService ? ['objective'] : ['type', 'topic', 'objective']
+            const allSteps = skipToObjective ? ['objective'] : ['type', 'topic', 'objective']
             const current = allSteps.indexOf(step)
             return (
               <div key={id} className="flex items-center gap-2">
@@ -237,9 +255,22 @@ export default function CrearContenidoClient({
               <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#7A1832', opacity: 0.6 }}>Sobre:</span>
               <span className="px-3 py-1 rounded-xl text-sm font-semibold" style={{ background: '#7A1832', color: 'white' }}>{service}</span>
               <span className="px-3 py-1 rounded-xl text-sm font-semibold" style={{ background: '#F5F0E8', color: '#591427' }}>{contentType === 'reel' ? 'Reel' : 'Carrusel'}</span>
-              {!initialService && (
+              {!skipToObjective && (
                 <button onClick={() => setStep('topic')} className="text-xs underline" style={{ color: '#7A1832', opacity: 0.7 }}>Cambiar</button>
               )}
+            </div>
+          )}
+          {freeText && !service && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#7A1832', opacity: 0.6 }}>Idea:</span>
+              <span className="px-3 py-1 rounded-xl text-sm font-semibold" style={{ background: '#7A1832', color: 'white' }}>{freeText}</span>
+              <span className="px-3 py-1 rounded-xl text-sm font-semibold" style={{ background: '#F5F0E8', color: '#591427' }}>Reel</span>
+            </div>
+          )}
+          {initialContexto && (
+            <div className="rounded-2xl p-3" style={{ background: 'var(--color-pastel-blue)' }}>
+              <p className="text-xs font-bold uppercase tracking-wider mb-0.5" style={{ color: '#2a5a6a', opacity: 0.7 }}>CONTEXTO SUGERIDO</p>
+              <p className="text-sm" style={{ color: '#1a3a4a' }}>{initialContexto}</p>
             </div>
           )}
           <p className="font-semibold" style={{ color: '#1a1a1a' }}>¿Qué objetivo quieres conseguir?</p>
@@ -285,8 +316,15 @@ export default function CrearContenidoClient({
             </div>
           )}
 
+          <UsarMiMarcaToggle
+            enabled={useMiMarca}
+            onChange={setUseMiMarca}
+            disabled={generating}
+            hasBrand={hasBrand}
+          />
+
           <div className="flex gap-3">
-            {!initialService && (
+            {!skipToObjective && (
               <button onClick={() => setStep('topic')} className="btn-ghost">Atrás</button>
             )}
             <button onClick={generate} disabled={generating} className="btn-primary flex-1 justify-center">

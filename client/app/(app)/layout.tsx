@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import Sidebar from '@/components/layout/Sidebar'
 import { Profile } from '@/types/database'
 import { hasActiveAccess, ACCESS_REDIRECT } from '@/lib/access'
+import { ToastProvider } from '@/components/ui/Toast'
 
 const IS_CONFIGURED = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').startsWith('http')
 
@@ -22,6 +23,9 @@ const DEMO_PROFILE: Profile = {
   access_expires_at: null,
   city: null,
   professional_role: null,
+  last_visited_section: null,
+  level: 1,
+  xp_total: 0,
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
 }
@@ -35,22 +39,40 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) redirect('/login')
 
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', user!.id)
       .single()
 
-    typedProfile = (profile as Profile | null) || DEMO_PROFILE
-    if (!hasActiveAccess(typedProfile)) redirect(ACCESS_REDIRECT)
+    if (profile) {
+      typedProfile = profile as Profile
+    } else {
+      // Fallback: el select('*') puede fallar por RLS/columnas; recuperar role por separado
+      console.warn('[AppLayout] select(*) failed:', profileError?.message, '— fallback a select(role)')
+      const { data: roleOnly } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user!.id)
+        .single()
+      const role = (roleOnly as { role?: string } | null)?.role
+      typedProfile = {
+        ...DEMO_PROFILE,
+        id: user!.id,
+        email: user!.email || DEMO_PROFILE.email,
+        role: (role === 'admin' || role === 'superadmin') ? role : 'user',
+      }
+    }
+    const isAdmin = typedProfile.role === 'admin' || typedProfile.role === 'superadmin'
+    if (!hasActiveAccess(typedProfile) && !isAdmin) redirect(ACCESS_REDIRECT)
   }
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: '#FFFDF5' }}>
+    <div className="flex h-screen overflow-hidden bg-cream">
       <Sidebar profile={typedProfile} />
       <main className="flex-1 overflow-y-auto">
-        <div className="max-w-4xl mx-auto px-6 py-8">
-          {children}
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+          <ToastProvider>{children}</ToastProvider>
         </div>
       </main>
     </div>

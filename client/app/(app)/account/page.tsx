@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { stripe } from '@/lib/stripe'
 import { Profile } from '@/types/database'
 import AccountClient from './AccountClient'
+import PageTransition from '@/components/ui/PageTransition'
 
 export default async function AccountPage() {
   const supabase = await createClient()
@@ -43,5 +44,5 @@ export default async function AccountPage() {
     }
   }
 
-  return <AccountClient profile={typedProfile} subscription={subscription} />
+  return <PageTransition><AccountClient profile={typedProfile} subscription={subscription} /></PageTransition>
 }

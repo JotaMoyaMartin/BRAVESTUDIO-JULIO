@@ -11,6 +11,7 @@ const DEMO_PROFILE: Profile = {
   stripe_customer_id: null, stripe_subscription_id: null,
   subscription_status: 'none', subscription_plan: null, promo_code_used: null,
   access_expires_at: null, city: null, professional_role: null,
+  last_visited_section: null, level: 1, xp_total: 0,
   created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
 }
 
@@ -24,9 +25,9 @@ export default async function InicioPage() {
   const { data: brand } = await supabase.from('brand_profiles').select('completion_status, salon_name').eq('user_id', user!.id).single()
   const { data: items } = await supabase
     .from('content_items')
-    .select('id, type, created_at, scheduled_date')
+    .select('id, type, title, status, scheduled_date, created_at, updated_at')
     .eq('user_id', user!.id)
-    .order('created_at', { ascending: true })
+    .order('updated_at', { ascending: false })
 
   return (
     <InicioClient

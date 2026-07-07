@@ -21,6 +21,9 @@ export interface Database {
           access_expires_at: string | null
           city: string | null
           professional_role: string | null
+          last_visited_section: string | null
+          level: number
+          xp_total: number
           created_at: string
           updated_at: string
         }
@@ -41,6 +44,9 @@ export interface Database {
           access_expires_at?: string | null
           city?: string | null
           professional_role?: string | null
+          last_visited_section?: string | null
+          level?: number
+          xp_total?: number
           created_at?: string
           updated_at?: string
         }
@@ -60,6 +66,9 @@ export interface Database {
           access_expires_at?: string | null
           city?: string | null
           professional_role?: string | null
+          last_visited_section?: string | null
+          level?: number
+          xp_total?: number
           updated_at?: string
         }
       }
@@ -87,6 +96,8 @@ export interface Database {
           specialty: string | null
           content_topics: string[] | null
           optimized_summary: string | null
+          strategy_json: Record<string, unknown> | null
+          roadmap_json: Record<string, unknown> | null
           completion_status: 'empty' | 'partial' | 'complete'
           created_at: string
           updated_at: string
@@ -114,6 +125,8 @@ export interface Database {
           specialty?: string | null
           content_topics?: string[] | null
           optimized_summary?: string | null
+          strategy_json?: Record<string, unknown> | null
+          roadmap_json?: Record<string, unknown> | null
           completion_status?: 'empty' | 'partial' | 'complete'
           created_at?: string
           updated_at?: string
@@ -138,6 +151,8 @@ export interface Database {
           specialty?: string | null
           content_topics?: string[] | null
           optimized_summary?: string | null
+          strategy_json?: Record<string, unknown> | null
+          roadmap_json?: Record<string, unknown> | null
           completion_status?: 'empty' | 'partial' | 'complete'
           raw_input?: string | null
           updated_at?: string
@@ -226,6 +241,142 @@ export interface Database {
           expires_at?: string | null
         }
       }
+      plans: {
+        Row: {
+          id: number
+          name: 'monthly' | 'yearly'
+          display_name: string
+          interval: 'month' | 'year'
+          currency: 'eur' | 'usd'
+          current_price: number
+          original_price: number | null
+          stripe_product_id: string | null
+          stripe_price_id: string | null
+          is_active: boolean
+          is_visible: boolean
+          trial_days: number
+          badge_text: string | null
+          description: string | null
+          features: string[]
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          name: 'monthly' | 'yearly'
+          display_name: string
+          interval?: 'month' | 'year'
+          currency: 'eur' | 'usd'
+          current_price: number
+          original_price?: number | null
+          stripe_product_id?: string | null
+          stripe_price_id?: string | null
+          is_active?: boolean
+          is_visible?: boolean
+          trial_days?: number
+          badge_text?: string | null
+          description?: string | null
+          features?: string[]
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          display_name?: string
+          current_price?: number
+          original_price?: number | null
+          stripe_product_id?: string | null
+          stripe_price_id?: string | null
+          is_active?: boolean
+          is_visible?: boolean
+          trial_days?: number
+          badge_text?: string | null
+          description?: string | null
+          features?: string[]
+        }
+      }
+      plan_price_history: {
+        Row: {
+          id: number
+          plan_id: number
+          old_price: number | null
+          new_price: number | null
+          old_stripe_price_id: string | null
+          new_stripe_price_id: string | null
+          changed_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          plan_id: number
+          old_price?: number | null
+          new_price?: number | null
+          old_stripe_price_id?: string | null
+          new_stripe_price_id?: string | null
+          changed_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          old_price?: number | null
+          new_price?: number | null
+          old_stripe_price_id?: string | null
+          new_stripe_price_id?: string | null
+          changed_by?: string | null
+        }
+      }
+      reel_inspirations: {
+        Row: {
+          id: string
+          title: string
+          short_description: string
+          description: string
+          idea_text: string | null
+          why_text: string | null
+          how_text: string | null
+          cover_image: string
+          instagram_url: string | null
+          status: 'active' | 'hidden'
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          title: string
+          short_description: string
+          description: string
+          idea_text?: string | null
+          why_text?: string | null
+          how_text?: string | null
+          cover_image: string
+          instagram_url?: string | null
+          status?: 'active' | 'hidden'
+          created_at?: string
+        }
+        Update: {
+          title?: string
+          short_description?: string
+          description?: string
+          idea_text?: string | null
+          why_text?: string | null
+          how_text?: string | null
+          cover_image?: string
+          instagram_url?: string | null
+          status?: 'active' | 'hidden'
+        }
+      }
+      saved_inspirations: {
+        Row: {
+          user_id: string
+          inspiration_id: string
+          saved_at: string
+        }
+        Insert: {
+          user_id: string
+          inspiration_id: string
+          saved_at?: string
+        }
+        Update: {
+          saved_at?: string
+        }
+      }
     }
   }
 }
@@ -234,3 +385,7 @@ export type Profile = Database['public']['Tables']['profiles']['Row']
 export type BrandProfile = Database['public']['Tables']['brand_profiles']['Row']
 export type ContentItem = Database['public']['Tables']['content_items']['Row']
 export type PromoCode = Database['public']['Tables']['promo_codes']['Row']
+export type Plan = Database['public']['Tables']['plans']['Row']
+export type PlanPriceHistory = Database['public']['Tables']['plan_price_history']['Row']
+export type ReelInspiration = Database['public']['Tables']['reel_inspirations']['Row']
+export type SavedInspiration = Database['public']['Tables']['saved_inspirations']['Row']

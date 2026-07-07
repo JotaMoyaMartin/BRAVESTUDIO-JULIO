@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { detectPlan } from '@/lib/stripe-prices'
+import { getPlanKeyByPriceId } from '@/lib/plans'
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
           })
           const priceId = sub.items.data[0]?.price?.id
           if (priceId) {
-            subscriptionPlan = detectPlan(priceId)
+            subscriptionPlan = await getPlanKeyByPriceId(priceId)
           }
         }
 

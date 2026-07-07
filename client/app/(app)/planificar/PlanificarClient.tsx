@@ -1,11 +1,14 @@
 'use client'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { demoSavePlan } from '@/lib/demo-store'
 import { generatePlan, PlannerItem } from '@/lib/ai/prompts/planner'
 import { generateReel, ReelOutput } from '@/lib/ai/prompts/reels'
 import { generateCarousel, CarouselOutput } from '@/lib/ai/prompts/carousels'
-import { BrandProfile, ContentItem } from '@/types/database'
+import { buildBrandFullContext, hasBrandContext, BrandFullContextInput } from '@/lib/ai/brand-context'
+import UsarMiMarcaToggle from '@/components/ui/UsarMiMarcaToggle'
+import { ContentItem } from '@/types/database'
+import { useSessionState, clearSectionState } from '@/lib/session-store'
 import {
   Sparkles, RefreshCw, Trash2, Calendar, ChevronDown, ChevronUp,
   Film, LayoutGrid, Copy, Check, BookOpen,
@@ -14,17 +17,16 @@ import Link from 'next/link'
 
 const SERVICES_OPTIONS = ['Balayage', 'Rubios', 'Canas', 'Alisados', 'Tratamientos', 'Corte', 'Color', 'General']
 
-type PartialBrand = Pick<BrandProfile, 'optimized_summary' | 'salon_name' | 'main_services' | 'service_to_promote'> | null
 type Objective = 'autoridad' | 'reservas' | 'visibilidad'
 type Guion = ReelOutput | CarouselOutput
 
-async function genGuion(type: 'reel' | 'carrusel', service: string, objective: Objective): Promise<Guion> {
+async function genGuion(type: 'reel' | 'carrusel', service: string, objective: Objective, brandContext?: string): Promise<Guion> {
   return type === 'reel'
-    ? await generateReel({ service, objective })
-    : await generateCarousel({ service, objective, slideCount: 5 })
+    ? await generateReel({ service, objective, brandContext })
+    : await generateCarousel({ service, objective, slideCount: 5, brandContext })
 }
 
-export default function PlanificarClient({ userId, brand, initialItems, initialTab = 'crear' }: { userId: string; brand: PartialBrand; initialItems: ContentItem[]; initialTab?: 'crear' | 'ver' }) {
+export default function PlanificarClient({ userId, brand, initialItems, initialTab = 'crear' }: { userId: string; brand: BrandFullContextInput | null; initialItems: ContentItem[]; initialTab?: 'crear' | 'ver' }) {
   const isDemoMode = userId === 'demo'
 
   return (
@@ -48,17 +50,24 @@ export default function PlanificarClient({ userId, brand, initialItems, initialT
 
 /* ---------------- CREAR TAB ---------------- */
 
-function CrearTab({ userId, brand, isDemoMode, onSaved }: { userId: string; brand: PartialBrand; isDemoMode: boolean; onSaved: () => void }) {
-  const [duration, setDuration] = useState<'1week' | '1month'>('1month')
-  const [postsPerWeek, setPostsPerWeek] = useState<2 | 3 | 4 | 5>(3)
-  const [format, setFormat] = useState<'reels' | 'carrusels' | 'mixed'>('mixed')
-  const [objective, setObjective] = useState<Objective>('autoridad')
-  const [services, setServices] = useState<string[]>([])
-  const [freeText, setFreeText] = useState('')
+function CrearTab({ userId, brand, isDemoMode, onSaved }: { userId: string; brand: BrandFullContextInput | null; isDemoMode: boolean; onSaved: () => void }) {
+  const hasBrand = hasBrandContext(brand)
+  const [useMiMarca, setUseMiMarca] = useSessionState<boolean>(`u:${userId}:planificar:useMiMarca`, hasBrand)
+  const brandContext = useMemo(() => {
+    if (!useMiMarca || !brand) return undefined
+    return buildBrandFullContext(brand) || undefined
+  }, [useMiMarca, brand])
+
+  const [duration, setDuration] = useSessionState<'1week' | '1month'>(`u:${userId}:planificar:duration`, '1month')
+  const [postsPerWeek, setPostsPerWeek] = useSessionState<2 | 3 | 4 | 5>(`u:${userId}:planificar:postsPerWeek`, 3)
+  const [format, setFormat] = useSessionState<'reels' | 'carrusels' | 'mixed'>(`u:${userId}:planificar:format`, 'mixed')
+  const [objective, setObjective] = useSessionState<Objective>(`u:${userId}:planificar:objective`, 'autoridad')
+  const [services, setServices] = useSessionState<string[]>(`u:${userId}:planificar:services`, [])
+  const [freeText, setFreeText] = useSessionState<string>(`u:${userId}:planificar:freeText`, '')
   const [generating, setGenerating] = useState(false)
-  const [plan, setPlan] = useState<PlannerItem[] | null>(null)
-  const [savedIds, setSavedIds] = useState<Set<string>>(new Set())
-  const [refreshCounters, setRefreshCounters] = useState<Record<string, number>>({})
+  const [plan, setPlan] = useSessionState<PlannerItem[] | null>(`u:${userId}:planificar:plan`, null)
+  const [savedIds, setSavedIds] = useSessionState<string[]>(`u:${userId}:planificar:savedIds`, [])
+  const [refreshCounters, setRefreshCounters] = useSessionState<Record<string, number>>(`u:${userId}:planificar:refreshCounters`, {})
 
   const canGenerate = services.length > 0 || freeText.trim().length > 0
 
@@ -73,10 +82,10 @@ function CrearTab({ userId, brand, isDemoMode, onSaved }: { userId: string; bran
       duration, postsPerWeek, format, objective,
       services: services.length ? services : ['General'],
       freeText,
-      brandContext: brand?.optimized_summary || undefined,
+      brandContext,
     })
     setPlan(result.items)
-    setSavedIds(new Set())
+    setSavedIds([])
     setGenerating(false)
   }
 
@@ -84,7 +93,7 @@ function CrearTab({ userId, brand, isDemoMode, onSaved }: { userId: string; bran
     if (!plan) return
     const item = plan.find(p => p.id === id)
     if (!item) return
-    const g = await genGuion(item.type, item.service, objective)
+    const g = await genGuion(item.type, item.service, objective, brandContext)
     const hookIdea = item.type === 'reel'
       ? (g as ReelOutput).script.hook
       : (g as CarouselOutput).slides[0]?.text || ''
@@ -115,7 +124,7 @@ function CrearTab({ userId, brand, isDemoMode, onSaved }: { userId: string; bran
       const supabase = createClient()
       supabase.from('content_items').insert({ user_id: userId, ...payload }).then(() => {})
     }
-    setSavedIds(prev => { const s = new Set(Array.from(prev)); s.add(item.id); return s })
+    setSavedIds(prev => [...prev, item.id])
     onSaved()
   }
 
@@ -124,9 +133,9 @@ function CrearTab({ userId, brand, isDemoMode, onSaved }: { userId: string; bran
   async function saveAll() {
     if (!plan) return
     setSavingAll(true)
-    const unsaved = plan.filter(item => !savedIds.has(item.id))
+    const unsaved = plan.filter(item => !savedIds.includes(item.id))
     for (const item of unsaved) {
-      const guion = await genGuion(item.type, item.service, objective)
+      const guion = await genGuion(item.type, item.service, objective, brandContext)
       const payload = {
         type: item.type,
         title: item.title,
@@ -146,7 +155,7 @@ function CrearTab({ userId, brand, isDemoMode, onSaved }: { userId: string; bran
         await supabase.from('content_items').insert({ user_id: userId, ...payload })
       }
     }
-    setSavedIds(new Set(plan.map(i => i.id)))
+    setSavedIds(plan.map(i => i.id))
     onSaved()
     setSavingAll(false)
   }
@@ -157,8 +166,8 @@ function CrearTab({ userId, brand, isDemoMode, onSaved }: { userId: string; bran
     visibilidad: 'Listas, tendencias, contenido guardable. Más alcance y seguidores.',
   }
 
-  const allSaved = plan !== null && plan.length > 0 && plan.every(i => savedIds.has(i.id))
-  const savedCount = plan ? plan.filter(i => savedIds.has(i.id)).length : 0
+  const allSaved = plan !== null && plan.length > 0 && plan.every(i => savedIds.includes(i.id))
+  const savedCount = plan ? plan.filter(i => savedIds.includes(i.id)).length : 0
 
   if (plan) {
     return (
@@ -170,7 +179,9 @@ function CrearTab({ userId, brand, isDemoMode, onSaved }: { userId: string; bran
               {plan.length} ideas — {savedCount > 0 ? `${savedCount} guardadas` : 'guarda las que quieras o todas de golpe'}
             </p>
           </div>
-          <button onClick={() => setPlan(null)} className="btn-ghost text-sm">Nueva planificación</button>
+          <button onClick={() => { clearSectionState(`u:${userId}:planificar`); setPlan(null); setSavedIds([]); setServices([]); setFreeText(''); setRefreshCounters({}) }} className="btn-ghost text-sm">
+            <RefreshCw size={14} /> Empezar de nuevo
+          </button>
         </div>
 
         {/* Save all banner */}
@@ -178,16 +189,23 @@ function CrearTab({ userId, brand, isDemoMode, onSaved }: { userId: string; bran
           <p className="text-sm font-medium" style={{ color: allSaved ? '#2a5a6a' : '#591427' }}>
             {allSaved ? `✓ Toda la planificación guardada (${plan.length} ideas)` : `Guarda toda la planificación de una vez — ${plan.length - savedCount} pendientes`}
           </p>
-          {!allSaved && (
-            <button
-              onClick={saveAll}
-              disabled={savingAll}
-              className="btn-primary text-sm py-2 px-4"
-            >
-              <BookOpen size={15} />
-              {savingAll ? 'Guardando...' : 'Guardar toda la planificación'}
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {!allSaved && (
+              <button
+                onClick={saveAll}
+                disabled={savingAll}
+                className="btn-primary text-sm py-2 px-4"
+              >
+                <BookOpen size={15} />
+                {savingAll ? 'Guardando...' : 'Guardar toda la planificación'}
+              </button>
+            )}
+            {allSaved && (
+              <Link href="/calendario" className="btn-secondary text-sm py-2 px-4">
+                <Calendar size={15} /> Ver en calendario →
+              </Link>
+            )}
+          </div>
         </div>
 
         <div className="space-y-3">
@@ -196,7 +214,7 @@ function CrearTab({ userId, brand, isDemoMode, onSaved }: { userId: string; bran
               key={`${item.id}-${refreshCounters[item.id] || 0}`}
               item={item}
               objective={objective}
-              isSaved={savedIds.has(item.id)}
+              isSaved={savedIds.includes(item.id)}
               onRegenerate={() => regenerateItem(item.id)}
               onRemove={() => removeItem(item.id)}
               onSave={(guion, date) => saveItem(item, guion, date)}
@@ -269,6 +287,13 @@ function CrearTab({ userId, brand, isDemoMode, onSaved }: { userId: string; bran
           Si escribes un tema aquí, toda la planificación girará en torno a él (aunque no esté en los servicios).
         </p>
       </OptionGroup>
+
+      <UsarMiMarcaToggle
+        enabled={useMiMarca}
+        onChange={setUseMiMarca}
+        disabled={generating}
+        hasBrand={hasBrand}
+      />
 
       <button onClick={generate} disabled={generating || !canGenerate} className="btn-primary w-full justify-center text-base py-4"
         style={{ opacity: !canGenerate ? 0.5 : 1 }}>

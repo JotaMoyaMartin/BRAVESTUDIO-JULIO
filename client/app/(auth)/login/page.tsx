@@ -46,6 +46,13 @@ function LoginForm() {
         .eq('id', user.id)
         .single()
 
+      // Admins van directo al panel — no necesitan onboarding ni acceso activo
+      if (profile && (profile.role === 'superadmin' || profile.role === 'admin')) {
+        router.push('/admin')
+        router.refresh()
+        return
+      }
+
       // Si no ha completado onboarding → ir directo a onboarding (evita doble redirect)
       if (profile && (!profile.full_name || !profile.salon_name)) {
         router.push('/onboarding')
@@ -54,12 +61,6 @@ function LoginForm() {
 
       if (!profile || !hasActiveAccess(profile)) {
         router.push('/access-blocked')
-        return
-      }
-
-      if (profile.role === 'superadmin' || profile.role === 'admin') {
-        router.push('/admin')
-        router.refresh()
         return
       }
     }

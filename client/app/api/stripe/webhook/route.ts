@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
           await supabase.rpc('log_user_activity', {
             p_user_id: userId,
             p_event: 'stripe_subscription_created',
-            p_data: JSON.stringify({ sub_id: session.subscription as string, plan: subscriptionPlan }),
+            p_data: { sub_id: session.subscription as string, plan: subscriptionPlan },
             p_actor: null,
           })
         } catch (logErr) {
@@ -172,7 +172,7 @@ export async function POST(req: NextRequest) {
             await supabase.rpc('log_user_activity', {
               p_user_id: deletedUserId,
               p_event: 'stripe_subscription_canceled',
-              p_data: JSON.stringify({ sub_id: sub.id }),
+              p_data: { sub_id: sub.id },
               p_actor: null,
             })
           } catch (logErr) {
@@ -205,7 +205,7 @@ export async function POST(req: NextRequest) {
               await supabase.rpc('log_user_activity', {
                 p_user_id: prof.id,
                 p_event: 'stripe_payment_failed',
-                p_data: JSON.stringify({ invoice_id: invoice.id }),
+                p_data: { invoice_id: invoice.id },
                 p_actor: null,
               })
             } catch (logErr) {

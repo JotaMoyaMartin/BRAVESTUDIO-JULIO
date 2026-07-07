@@ -100,14 +100,14 @@ export async function POST(request: NextRequest) {
     await adminClient.rpc('log_user_activity', {
       p_user_id: newUserId,
       p_event: 'account_created',
-      p_data: JSON.stringify({ signup_method: 'admin_create' }),
+      p_data: { signup_method: 'admin_create' },
       p_actor: user.id,
     })
     if (grantAccess) {
       await adminClient.rpc('log_user_activity', {
         p_user_id: newUserId,
         p_event: 'access_activated',
-        p_data: JSON.stringify({ reason: 'admin_create' }),
+        p_data: { reason: 'admin_create' },
         p_actor: user.id,
       })
     }

@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
     await supabase.rpc('log_user_activity', {
       p_user_id: user.id,
       p_event: 'promo_redeemed',
-      p_data: JSON.stringify({ code }),
+      p_data: { code },
       p_actor: null,
     })
   } catch (logErr) {

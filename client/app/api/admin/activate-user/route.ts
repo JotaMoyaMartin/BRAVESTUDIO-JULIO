@@ -42,13 +42,17 @@ export async function POST(request: NextRequest) {
     .single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  // Log actividad
-  await auth.admin.rpc('log_user_activity', {
-    p_user_id: userId,
-    p_event: activate ? 'access_activated' : 'access_deactivated',
-    p_data: JSON.stringify({ reason: 'admin_panel' }),
-    p_actor: auth.actorId,
-  })
+  // Log actividad (fire-and-forget — no romper la activación si el log falla)
+  try {
+    await auth.admin.rpc('log_user_activity', {
+      p_user_id: userId,
+      p_event: activate ? 'access_activated' : 'access_deactivated',
+      p_data: { reason: 'admin_panel' },
+      p_actor: auth.actorId,
+    })
+  } catch {
+    // El log falló pero la activación ya se hizo — no bloqueamos
+  }
 
   return NextResponse.json({ user: data as Profile })
 }

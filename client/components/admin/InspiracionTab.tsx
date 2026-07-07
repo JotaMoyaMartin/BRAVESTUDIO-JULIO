@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Clapperboard, Plus, Pencil, Trash2, Copy, AlertTriangle, X, Upload } from 'lucide-react'
 import { ReelInspiration } from '@/types/database'
-import { createAdminClient } from '@/lib/supabase/admin'
 import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
@@ -34,6 +33,13 @@ const EMPTY_FORM: FormState = {
   status: 'active',
 }
 
+async function api(path: string, init?: RequestInit) {
+  const res = await fetch(path, init)
+  const data = await res.json()
+  if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`)
+  return data
+}
+
 export default function InspiracionTab() {
   const [items, setItems] = useState<ReelInspiration[]>([])
   const [loading, setLoading] = useState(true)
@@ -52,9 +58,10 @@ export default function InspiracionTab() {
   async function load() {
     setLoading(true)
     try {
-      const admin = createAdminClient()
-      const { data } = await admin.from('reel_inspirations').select('*').order('created_at', { ascending: false })
-      setItems((data as ReelInspiration[]) || [])
+      const data = await api('/api/admin/inspiraciones')
+      setItems((data.items as ReelInspiration[]) || [])
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error cargando')
     } finally {
       setLoading(false)
     }
@@ -64,6 +71,7 @@ export default function InspiracionTab() {
     setForm(EMPTY_FORM)
     setEditing(null)
     setShowCreate(true)
+    setError('')
   }
 
   function openEdit(insp: ReelInspiration) {
@@ -80,24 +88,19 @@ export default function InspiracionTab() {
       status: insp.status,
     })
     setShowCreate(true)
+    setError('')
   }
 
   async function uploadCover(file: File) {
     setUploading(true)
     setError('')
     try {
-      const admin = createAdminClient()
-      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
-      const path = `${crypto.randomUUID()}.${ext}`
-      const { error: upErr } = await admin
-        .storage
-        .from('reel-inspirations')
-        .upload(path, file, { cacheControl: '3600', upsert: false, contentType: file.type })
-      if (upErr) throw upErr
-      const publicUrl = admin.storage.from('reel-inspirations').getPublicUrl(path).data.publicUrl
-      setForm(f => ({ ...f, cover_image: publicUrl }))
-    } catch (e: unknown) {
-      setError('No se pudo subir la imagen: ' + (e instanceof Error ? e.message : 'error desconocido'))
+      const formData = new FormData()
+      formData.append('file', file)
+      const data = await api('/api/admin/inspiraciones/upload', { method: 'POST', body: formData })
+      setForm(f => ({ ...f, cover_image: data.url }))
+    } catch (e) {
+      setError('No se pudo subir la imagen: ' + (e instanceof Error ? e.message : 'error'))
     } finally {
       setUploading(false)
     }
@@ -112,64 +115,64 @@ export default function InspiracionTab() {
     setSaving(true)
     setError('')
     try {
-      const admin = createAdminClient()
-      const payload = {
-        title: form.title.trim(),
-        short_description: form.short_description.trim(),
-        description: form.description.trim(),
-        idea_text: form.idea_text.trim() || null,
-        why_text: form.why_text.trim() || null,
-        how_text: form.how_text.trim() || null,
-        cover_image: form.cover_image,
-        instagram_url: form.instagram_url.trim() || null,
-        status: form.status,
-      }
+      const payload = { ...form }
       if (editing) {
-        await admin.from('reel_inspirations').update(payload).eq('id', editing.id)
-        setItems(prev => prev.map(i => i.id === editing.id ? { ...i, ...payload } as ReelInspiration : i))
+        const data = await api(`/api/admin/inspiraciones/${editing.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        setItems(prev => prev.map(i => i.id === editing.id ? data.item as ReelInspiration : i))
       } else {
-        const { data } = await admin.from('reel_inspirations').insert(payload).select().single()
-        if (data) setItems(prev => [data as ReelInspiration, ...prev])
+        const data = await api('/api/admin/inspiraciones', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        setItems(prev => [data.item as ReelInspiration, ...prev])
       }
       setShowCreate(false)
       setEditing(null)
       setForm(EMPTY_FORM)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error guardando')
     } finally {
       setSaving(false)
     }
   }
 
   async function toggleStatus(insp: ReelInspiration) {
-    const admin = createAdminClient()
     const next = insp.status === 'active' ? 'hidden' : 'active'
-    await admin.from('reel_inspirations').update({ status: next }).eq('id', insp.id)
-    setItems(prev => prev.map(i => i.id === insp.id ? { ...i, status: next } : i))
+    try {
+      await api(`/api/admin/inspiraciones/${insp.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: next }),
+      })
+      setItems(prev => prev.map(i => i.id === insp.id ? { ...i, status: next } : i))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error')
+    }
   }
 
   async function duplicate(insp: ReelInspiration) {
-    const admin = createAdminClient()
-    const { data } = await admin.from('reel_inspirations').insert({
-      title: insp.title + ' (copia)',
-      short_description: insp.short_description,
-      description: insp.description,
-      idea_text: insp.idea_text,
-      why_text: insp.why_text,
-      how_text: insp.how_text,
-      cover_image: insp.cover_image,
-      instagram_url: insp.instagram_url,
-      status: 'hidden',
-    }).select().single()
-    if (data) setItems(prev => [data as ReelInspiration, ...prev])
+    try {
+      const data = await api(`/api/admin/inspiraciones/${insp.id}`, { method: 'POST' })
+      setItems(prev => [data.item as ReelInspiration, ...prev])
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error')
+    }
   }
 
   async function confirmDelete() {
     if (!deleting) return
     setSaving(true)
     try {
-      const admin = createAdminClient()
-      await admin.from('reel_inspirations').delete().eq('id', deleting.id)
+      await api(`/api/admin/inspiraciones/${deleting.id}`, { method: 'DELETE' })
       setItems(prev => prev.filter(i => i.id !== deleting.id))
       setDeleting(null)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error')
     } finally {
       setSaving(false)
     }
@@ -179,6 +182,10 @@ export default function InspiracionTab() {
 
   return (
     <div className="space-y-4">
+      {error && !showCreate && (
+        <div className="rounded-[var(--radius-sm)] p-3 text-xs bg-[#fde8e8] text-danger">{error}</div>
+      )}
+
       <SectionTitle
         title="Inspiración Reels"
         subtitle="Galería de ideas para estilistas"
@@ -271,7 +278,6 @@ export default function InspiracionTab() {
         )}
       </Card>
 
-      {/* Create / Edit modal */}
       {showCreate && (
         <Modal onClose={() => { setShowCreate(false); setEditing(null) }} title={editing ? 'Editar inspiración' : 'Nueva inspiración'}>
           <form onSubmit={save} className="space-y-3">
@@ -279,7 +285,6 @@ export default function InspiracionTab() {
               <div className="rounded-[var(--radius-sm)] p-3 text-xs bg-[#fde8e8] text-danger">{error}</div>
             )}
 
-            {/* Cover upload */}
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wide text-cherry-dark opacity-70 mb-1">Imagen portada (vertical 9:16) *</label>
               <div className="flex items-center gap-3">
@@ -360,7 +365,6 @@ export default function InspiracionTab() {
         </Modal>
       )}
 
-      {/* Delete modal */}
       {deleting && (
         <Modal onClose={() => setDeleting(null)} title="Eliminar inspiración" subtitle={deleting.title} danger>
           <div className="space-y-4">

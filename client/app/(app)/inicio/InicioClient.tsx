@@ -185,7 +185,7 @@ export default function InicioClient({
       )}
 
       {/* 3. 4 tarjetas principales */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <QuickActionCard href="/planificar" icon={Sparkles} label="Planificación" desc="Genera ideas para el mes" tone="cherry" />
         <QuickActionCard href="/crear-contenido" icon={Film} label="Crear Contenido" desc="Reel o carrusel ahora" tone="pink" />
         <QuickActionCard href="/stories" icon={LayoutGrid} label="Stories BRÄVE" desc="Stories y preguntas" tone="blue" />

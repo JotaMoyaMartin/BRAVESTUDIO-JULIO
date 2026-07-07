@@ -26,6 +26,9 @@ const DEMO_PROFILE: Profile = {
   last_visited_section: null,
   level: 1,
   xp_total: 0,
+  activated_by: null,
+  activated_at: null,
+  signup_method: 'signup',
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
 }
@@ -71,7 +74,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <div className="flex h-screen overflow-hidden bg-cream">
       <Sidebar profile={typedProfile} />
       <main className="flex-1 overflow-y-auto">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        <div className="max-w-4xl mx-auto px-5 sm:px-6 pt-20 pb-8 md:pt-8 md:py-8">
           <ToastProvider>{children}</ToastProvider>
         </div>
       </main>

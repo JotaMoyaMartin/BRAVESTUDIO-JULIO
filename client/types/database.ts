@@ -24,6 +24,9 @@ export interface Database {
           last_visited_section: string | null
           level: number
           xp_total: number
+          activated_by: string | null
+          activated_at: string | null
+          signup_method: 'signup' | 'admin_create' | 'skool' | 'stripe_checkout' | 'promo'
           created_at: string
           updated_at: string
         }
@@ -47,6 +50,9 @@ export interface Database {
           last_visited_section?: string | null
           level?: number
           xp_total?: number
+          activated_by?: string | null
+          activated_at?: string | null
+          signup_method?: 'signup' | 'admin_create' | 'skool' | 'stripe_checkout' | 'promo'
           created_at?: string
           updated_at?: string
         }
@@ -69,6 +75,9 @@ export interface Database {
           last_visited_section?: string | null
           level?: number
           xp_total?: number
+          activated_by?: string | null
+          activated_at?: string | null
+          signup_method?: 'signup' | 'admin_create' | 'skool' | 'stripe_checkout' | 'promo'
           updated_at?: string
         }
       }
@@ -377,6 +386,47 @@ export interface Database {
           saved_at?: string
         }
       }
+      user_activity_log: {
+        Row: {
+          id: string
+          user_id: string
+          event_type: string
+          event_data: Record<string, unknown>
+          actor_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          event_type: string
+          event_data?: Record<string, unknown>
+          actor_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          event_type?: string
+          event_data?: Record<string, unknown>
+          actor_id?: string | null
+        }
+      }
+      promo_redemptions: {
+        Row: {
+          id: string
+          user_id: string
+          code: string
+          redeemed_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          code: string
+          redeemed_at?: string
+        }
+        Update: {
+          code?: string
+          redeemed_at?: string
+        }
+      }
     }
   }
 }
@@ -389,3 +439,5 @@ export type Plan = Database['public']['Tables']['plans']['Row']
 export type PlanPriceHistory = Database['public']['Tables']['plan_price_history']['Row']
 export type ReelInspiration = Database['public']['Tables']['reel_inspirations']['Row']
 export type SavedInspiration = Database['public']['Tables']['saved_inspirations']['Row']
+export type UserActivityLog = Database['public']['Tables']['user_activity_log']['Row']
+export type PromoRedemption = Database['public']['Tables']['promo_redemptions']['Row']

@@ -68,5 +68,28 @@ export async function POST(req: NextRequest) {
     redemptions_count: promo.redemptions_count + 1,
   }).eq('id', promo.id)
 
+  try {
+    await supabase.from('promo_redemptions').insert({ user_id: user.id, code })
+  } catch (redErr) {
+    console.error('promo_redemptions insert failed:', redErr)
+  }
+
+  try {
+    await supabase.from('profiles').update({ signup_method: 'promo' }).eq('id', user.id)
+  } catch (updErr) {
+    console.error('signup_method update failed:', updErr)
+  }
+
+  try {
+    await supabase.rpc('log_user_activity', {
+      p_user_id: user.id,
+      p_event: 'promo_redeemed',
+      p_data: JSON.stringify({ code }),
+      p_actor: null,
+    })
+  } catch (logErr) {
+    console.error('log_user_activity failed:', logErr)
+  }
+
   return NextResponse.json({ ok: true })
 }

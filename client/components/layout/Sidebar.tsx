@@ -143,42 +143,57 @@ export default function Sidebar({ profile }: { profile: Profile }) {
 
   return (
     <>
-      {/* Mobile toggle */}
-      <button
-        className="fixed top-4 left-4 z-50 p-2 rounded-[var(--radius-sm)] md:hidden bg-cherry text-white shadow-medium"
-        onClick={() => setOpen(!open)}
-        aria-label="Abrir menú"
+      {/* Mobile top band */}
+      <div
+        className="fixed top-0 left-0 right-0 z-40 md:hidden flex items-center justify-between px-4 bg-white"
+        style={{ height: 56, borderBottom: '1.5px solid var(--color-buttermilk)' }}
       >
-        {open ? <X size={20} /> : <Menu size={20} />}
-      </button>
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-8 h-8 rounded-[var(--radius-sm)] flex items-center justify-center bg-cherry flex-shrink-0">
+            <span className="text-white text-xs font-bold">B</span>
+          </div>
+          <p className="font-bold text-sm text-cherry-dark truncate" style={{ letterSpacing: '-0.3px' }}>
+            {profile.salon_name || profile.full_name || 'BRÄVE Studio'}
+          </p>
+        </div>
+        <button
+          onClick={() => setOpen(!open)}
+          className="flex items-center gap-2 px-4 rounded-[var(--radius-sm)] bg-cherry text-white font-semibold text-sm transition-all hover:opacity-90 flex-shrink-0"
+          style={{ minHeight: 40 }}
+          aria-label="Abrir menú"
+        >
+          {open ? <X size={16} /> : <Menu size={16} />}
+          <span>{open ? 'Cerrar' : 'Menú'}</span>
+        </button>
+      </div>
 
+      {/* Mobile dropdown backdrop */}
       <AnimatePresence>
-        {/* Mobile backdrop */}
         {open && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-40 bg-black/30 md:hidden"
+            className="fixed inset-0 z-30 bg-black/30 md:hidden"
             onClick={() => setOpen(false)}
           />
         )}
       </AnimatePresence>
 
-      {/* Mobile drawer */}
+      {/* Mobile dropdown panel */}
       <AnimatePresence>
         {open && (
-          <motion.aside
-            initial={{ x: '-100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '-100%' }}
-            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className="fixed inset-y-0 left-0 z-40 w-64 md:hidden bg-white"
-            style={{ borderRight: '1.5px solid var(--color-buttermilk)' }}
+          <motion.div
+            initial={{ y: '-100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '-100%' }}
+            transition={{ type: 'tween', duration: 0.25 }}
+            className="fixed left-0 right-0 z-40 md:hidden bg-cream overflow-y-auto"
+            style={{ top: 56, maxHeight: 'calc(100vh - 56px)', borderBottom: '1.5px solid var(--color-buttermilk)' }}
           >
-            <SidebarContent />
-          </motion.aside>
+            <MobileMenuContent />
+          </motion.div>
         )}
       </AnimatePresence>
 
@@ -191,4 +206,82 @@ export default function Sidebar({ profile }: { profile: Profile }) {
       </aside>
     </>
   )
+
+  function MobileMenuContent() {
+    return (
+      <div className="flex flex-col">
+        {/* Admin badge */}
+        {isAdmin && (
+          <div className="mx-4 mt-4 px-3 py-2 rounded-[var(--radius-sm)] flex items-center gap-2" style={{ background: 'rgba(122,24,50,0.08)' }}>
+            <Shield size={14} className="text-cherry" />
+            <span className="text-xs font-semibold text-cherry-dark">Modo Admin activo</span>
+          </div>
+        )}
+
+        {/* Nav */}
+        <nav className="px-4 py-3 space-y-1">
+          {navItems.map(({ href, label, icon: Icon }) => {
+            const active = pathname === href || pathname.startsWith(href + '/')
+            return (
+              <Link
+                key={href}
+                href={href}
+                className="flex items-center gap-3 px-4 py-3 rounded-[var(--radius-sm)] text-sm font-medium transition-all"
+                style={{
+                  background: active ? 'var(--color-cherry)' : 'transparent',
+                  color: active ? 'white' : 'var(--color-cherry-dark)',
+                }}
+              >
+                <Icon size={18} />
+                {label}
+              </Link>
+            )
+          })}
+          {adminItems.length > 0 && (
+            <>
+              <div className="my-2 border-t border-soft" />
+              {adminItems.map(({ href, label, icon: Icon }) => {
+                const active = pathname === href || pathname.startsWith(href + '/')
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    className="flex items-center gap-3 px-4 py-3 rounded-[var(--radius-sm)] text-sm font-medium transition-all"
+                    style={{
+                      background: active ? 'var(--color-cherry)' : 'transparent',
+                      color: active ? 'white' : 'var(--color-ink)',
+                    }}
+                  >
+                    <Icon size={18} />
+                    {label}
+                  </Link>
+                )
+              })}
+            </>
+          )}
+        </nav>
+
+        {/* User + logout */}
+        <div className="px-4 py-4 border-t border-soft">
+          <div className="flex items-center justify-between px-4 py-2">
+            <Link
+              href="/account"
+              className="flex-1 min-w-0 transition-all hover:opacity-70"
+              title="Mi cuenta"
+            >
+              <p className="text-sm font-medium truncate text-ink">{profile.full_name || profile.email}</p>
+              <p className="text-xs truncate text-cherry opacity-70">{profile.email}</p>
+            </Link>
+            <button
+              onClick={handleLogout}
+              className="p-2 rounded-[var(--radius-sm)] transition-all hover:bg-[rgba(192,57,78,0.08)] flex-shrink-0"
+              title="Cerrar sesión"
+            >
+              <LogOut size={16} className="text-cherry" />
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 }

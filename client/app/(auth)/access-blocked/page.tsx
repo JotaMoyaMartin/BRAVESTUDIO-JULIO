@@ -16,6 +16,7 @@ export default async function AccessBlockedPage() {
       subscription_status: 'none', subscription_plan: null, promo_code_used: null,
       access_expires_at: null, city: null, professional_role: null,
       last_visited_section: null, level: 1, xp_total: 0,
+      activated_by: null, activated_at: null, signup_method: 'signup',
       created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
     }
     return <AccessBlockedClient profile={demoProfile} />
@@ -52,6 +53,9 @@ export default async function AccessBlockedPage() {
     last_visited_section: null,
     level: 1,
     xp_total: 0,
+    activated_by: null,
+    activated_at: null,
+    signup_method: 'signup',
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   }

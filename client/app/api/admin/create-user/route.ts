@@ -70,10 +70,13 @@ export async function POST(request: NextRequest) {
   if (salon_name !== undefined) update.salon_name = salon_name
   if (professional_role !== undefined) update.professional_role = professional_role
   if (role) update.role = role
+  update.signup_method = 'admin_create'
   if (grantAccess) {
     update.access_status = 'active'
     update.access_source = 'manual'
     update.is_active = true
+    update.activated_by = user.id
+    update.activated_at = new Date().toISOString()
   }
 
   if (Object.keys(update).length > 0) {
@@ -91,6 +94,25 @@ export async function POST(request: NextRequest) {
         userId: newUserId,
       })
     }
+  }
+
+  try {
+    await adminClient.rpc('log_user_activity', {
+      p_user_id: newUserId,
+      p_event: 'account_created',
+      p_data: JSON.stringify({ signup_method: 'admin_create' }),
+      p_actor: user.id,
+    })
+    if (grantAccess) {
+      await adminClient.rpc('log_user_activity', {
+        p_user_id: newUserId,
+        p_event: 'access_activated',
+        p_data: JSON.stringify({ reason: 'admin_create' }),
+        p_actor: user.id,
+      })
+    }
+  } catch (logErr) {
+    console.error('log_user_activity failed:', logErr)
   }
 
   // 3. Devolver el profile final

@@ -153,7 +153,7 @@ export default function BibliotecaClient({ userId, items, brandContext, savedIns
 
       {/* Filters bar */}
       <div className="flex flex-wrap items-center gap-3 justify-between">
-        <div className="flex gap-2 p-1 rounded-2xl" style={{ background: '#F5F0E8' }}>
+        <div className="flex gap-2 p-1 rounded-2xl overflow-x-auto no-scrollbar" style={{ background: '#F5F0E8' }}>
           {FILTER_OPTIONS.map(opt => {
             const Icon = opt.icon
             const count = opt.id === 'all'
@@ -214,7 +214,7 @@ export default function BibliotecaClient({ userId, items, brandContext, savedIns
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-5 md:gap-6">
             {inspirations.map(insp => (
               <div
                 key={insp.id}

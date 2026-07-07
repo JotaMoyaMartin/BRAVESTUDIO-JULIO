@@ -61,6 +61,23 @@ export async function POST(req: NextRequest) {
           subscription_plan: subscriptionPlan,
           is_active: true,
         }).eq('id', userId)
+
+        try {
+          await supabase.from('profiles').update({ signup_method: 'stripe_checkout' }).eq('id', userId)
+        } catch (updErr) {
+          console.error('signup_method update failed:', updErr)
+        }
+
+        try {
+          await supabase.rpc('log_user_activity', {
+            p_user_id: userId,
+            p_event: 'stripe_subscription_created',
+            p_data: JSON.stringify({ sub_id: session.subscription as string, plan: subscriptionPlan }),
+            p_actor: null,
+          })
+        } catch (logErr) {
+          console.error('log_user_activity failed:', logErr)
+        }
         break
       }
 
@@ -125,11 +142,13 @@ export async function POST(req: NextRequest) {
 
         const { data: current } = await supabase
           .from('profiles')
-          .select('access_source, access_expires_at')
+          .select('id, access_source, access_expires_at')
           .eq('stripe_subscription_id', sub.id)
           .single()
 
+        let deletedUserId: string | null = null
         if (current) {
+          deletedUserId = current.id
           const source = current.access_source
           const promoNotExpired =
             source === 'promo' &&
@@ -147,6 +166,19 @@ export async function POST(req: NextRequest) {
           access_status: finalAccessStatus,
           is_active: finalIsActive,
         }).eq('stripe_subscription_id', sub.id)
+
+        if (deletedUserId) {
+          try {
+            await supabase.rpc('log_user_activity', {
+              p_user_id: deletedUserId,
+              p_event: 'stripe_subscription_canceled',
+              p_data: JSON.stringify({ sub_id: sub.id }),
+              p_actor: null,
+            })
+          } catch (logErr) {
+            console.error('log_user_activity failed:', logErr)
+          }
+        }
         break
       }
 
@@ -158,9 +190,28 @@ export async function POST(req: NextRequest) {
         const invoice = event.data.object as Stripe.Invoice
         const subscriptionId = (invoice as { subscription?: string | null }).subscription as string | null
         if (subscriptionId) {
+          const { data: prof } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('stripe_subscription_id', subscriptionId)
+            .single()
+
           await supabase.from('profiles').update({
             subscription_status: 'past_due',
           }).eq('stripe_subscription_id', subscriptionId)
+
+          if (prof?.id) {
+            try {
+              await supabase.rpc('log_user_activity', {
+                p_user_id: prof.id,
+                p_event: 'stripe_payment_failed',
+                p_data: JSON.stringify({ invoice_id: invoice.id }),
+                p_actor: null,
+              })
+            } catch (logErr) {
+              console.error('log_user_activity failed:', logErr)
+            }
+          }
         }
         break
       }

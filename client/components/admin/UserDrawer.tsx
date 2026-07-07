@@ -1,11 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, CheckCircle, XCircle, Clock, ShieldAlert } from 'lucide-react'
-import { Profile } from '@/types/database'
+import { X, CheckCircle, XCircle, Clock, ShieldAlert, History } from 'lucide-react'
+import { Profile, UserActivityLog, PromoRedemption } from '@/types/database'
 import { hasActiveAccess } from '@/lib/access'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { SOURCE_LABELS, SIGNUP_LABELS, EVENT_LABELS } from '@/lib/admin-labels'
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
 
@@ -18,21 +18,59 @@ interface UserDrawerProps {
 
 export default function UserDrawer({ user, onClose, onUpdate, stats }: UserDrawerProps) {
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [logs, setLogs] = useState<UserActivityLog[]>([])
+  const [promos, setPromos] = useState<PromoRedemption[]>([])
+  const [loadingHistory, setLoadingHistory] = useState(false)
+
+  const userId = user?.id
+
+  useEffect(() => {
+    if (!userId) {
+      setLogs([])
+      setPromos([])
+      return
+    }
+    let cancelled = false
+    setLoadingHistory(true)
+    fetch(`/api/admin/users/${userId}/activity`)
+      .then(r => r.json())
+      .then(d => {
+        if (cancelled) return
+        setLogs(d.logs || [])
+        setPromos(d.promos || [])
+      })
+      .catch(() => {
+        if (cancelled) return
+        setLogs([])
+        setPromos([])
+      })
+      .finally(() => { if (!cancelled) setLoadingHistory(false) })
+    return () => { cancelled = true }
+  }, [userId])
 
   if (!user) return null
   const isActive = hasActiveAccess(user)
 
   async function updateAccess(profile: Profile, activate: boolean) {
     setLoading(true)
+    setError('')
     try {
-      const admin = createAdminClient()
-      const update = {
-        access_status: activate ? 'active' : 'inactive',
-        is_active: activate,
-        access_source: activate && profile.access_source === 'none' ? ('manual' as const) : profile.access_source,
-      } as Partial<Profile>
-      await admin.from('profiles').update(update).eq('id', profile.id)
-      onUpdate({ ...profile, ...update })
+      const res = await fetch('/api/admin/activate-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: profile.id, activate }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Error al actualizar acceso')
+      onUpdate(data.user as Profile)
+      // Refrescar historial
+      const hRes = await fetch(`/api/admin/users/${profile.id}/activity`)
+      const hData = await hRes.json()
+      setLogs(hData.logs || [])
+      setPromos(hData.promos || [])
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error')
     } finally {
       setLoading(false)
     }
@@ -41,6 +79,10 @@ export default function UserDrawer({ user, onClose, onUpdate, stats }: UserDrawe
   function fmtDate(d: string | null) {
     if (!d) return '—'
     return new Date(d).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })
+  }
+
+  function fmtDateTime(d: string) {
+    return new Date(d).toLocaleString('es-ES', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
   }
 
   return (
@@ -80,6 +122,10 @@ export default function UserDrawer({ user, onClose, onUpdate, stats }: UserDrawe
 
             {/* Body */}
             <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+              {error && (
+                <div className="rounded-[var(--radius-sm)] p-3 text-xs bg-[#fde8e8] text-danger">{error}</div>
+              )}
+
               {/* Perfil */}
               <section>
                 <h4 className="text-xs uppercase tracking-wide text-cherry-dark opacity-60 mb-2">Perfil</h4>
@@ -105,9 +151,22 @@ export default function UserDrawer({ user, onClose, onUpdate, stats }: UserDrawe
                       <Badge tone="danger"><XCircle size={12} className="mr-1" /> Inactivo</Badge>
                     )}
                   </div>
-                  <Row label="Fuente" value={user.access_source} />
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-cherry-dark opacity-70">Fuente</span>
+                    <Badge tone={SOURCE_LABELS[user.access_source].tone}>{SOURCE_LABELS[user.access_source].label}</Badge>
+                  </div>
                   <Row label="Expira" value={fmtDate(user.access_expires_at)} />
                   {user.promo_code_used && <Row label="Promo usado" value={user.promo_code_used} />}
+                </div>
+              </section>
+
+              {/* Trazabilidad */}
+              <section>
+                <h4 className="text-xs uppercase tracking-wide text-cherry-dark opacity-60 mb-2">Trazabilidad</h4>
+                <div className="rounded-[var(--radius-md)] bg-white p-4 border border-soft space-y-2">
+                  <Row label="Origen alta" value={SIGNUP_LABELS[user.signup_method]} />
+                  <Row label="Activado por" value={user.activated_by ? 'Admin' : '—'} />
+                  <Row label="Activado el" value={fmtDate(user.activated_at)} />
                 </div>
               </section>
 
@@ -143,6 +202,48 @@ export default function UserDrawer({ user, onClose, onUpdate, stats }: UserDrawe
                   </div>
                 </section>
               )}
+
+              {/* Historial */}
+              <section>
+                <h4 className="text-xs uppercase tracking-wide text-cherry-dark opacity-60 mb-2 flex items-center gap-1.5">
+                  <History size={12} /> Historial de actividad
+                </h4>
+                <div className="rounded-[var(--radius-md)] bg-white p-4 border border-soft">
+                  {loadingHistory ? (
+                    <p className="text-xs text-cherry-dark opacity-50">Cargando…</p>
+                  ) : logs.length === 0 && promos.length === 0 ? (
+                    <p className="text-xs text-cherry-dark opacity-50">Sin actividad registrada.</p>
+                  ) : (
+                    <ol className="space-y-2.5">
+                      {logs.map(l => (
+                        <li key={l.id} className="flex gap-2.5 text-xs">
+                          <span className="w-1.5 h-1.5 rounded-full bg-cherry mt-1.5 flex-shrink-0" />
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium text-cherry-dark">{EVENT_LABELS[l.event_type] || l.event_type}</span>
+                              <span className="text-cherry-dark opacity-50 whitespace-nowrap">{fmtDateTime(l.created_at)}</span>
+                            </div>
+                            {l.actor_id && (
+                              <span className="text-cherry-dark opacity-50">por Admin</span>
+                            )}
+                          </div>
+                        </li>
+                      ))}
+                      {promos.map(p => (
+                        <li key={p.id} className="flex gap-2.5 text-xs">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#c9a227] mt-1.5 flex-shrink-0" />
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium text-cherry-dark">Canjeó promo <code className="text-cherry">{p.code}</code></span>
+                              <span className="text-cherry-dark opacity-50 whitespace-nowrap">{fmtDateTime(p.redeemed_at)}</span>
+                            </div>
+                          </div>
+                        </li>
+                      ))}
+                    </ol>
+                  )}
+                </div>
+              </section>
             </div>
 
             {/* Actions */}

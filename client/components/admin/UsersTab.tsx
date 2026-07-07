@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import { Search, ChevronLeft, ChevronRight, Users as UsersIcon, UserPlus } from 'lucide-react'
 import { Profile } from '@/types/database'
 import { hasActiveAccess } from '@/lib/access'
+import { SOURCE_LABELS, SIGNUP_LABELS } from '@/lib/admin-labels'
 import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
 import SectionTitle from '@/components/ui/SectionTitle'
@@ -23,14 +24,6 @@ interface UsersTabProps {
 
 const PAGE_SIZE = 25
 
-const SOURCE_TONE: Record<Profile['access_source'], 'blue' | 'green' | 'buttermilk' | 'neutral' | 'cherry'> = {
-  manual: 'blue',
-  stripe: 'cherry',
-  skool: 'green',
-  promo: 'buttermilk',
-  none: 'neutral',
-}
-
 const SUB_TONE: Record<string, 'green' | 'buttermilk' | 'danger' | 'neutral'> = {
   active: 'green',
   trialing: 'buttermilk',
@@ -44,6 +37,7 @@ export default function UsersTab({ users, userStats, currentUserId, currentRole,
   const [search, setSearch] = useState('')
   const [filterSource, setFilterSource] = useState<'all' | Profile['access_source']>('all')
   const [filterSub, setFilterSub] = useState<'all' | Profile['subscription_status']>('all')
+  const [filterSignup, setFilterSignup] = useState<'all' | Profile['signup_method']>('all')
   const [page, setPage] = useState(0)
   const [selected, setSelected] = useState<Profile | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
@@ -53,13 +47,14 @@ export default function UsersTab({ users, userStats, currentUserId, currentRole,
     return users.filter(u => {
       if (filterSource !== 'all' && u.access_source !== filterSource) return false
       if (filterSub !== 'all' && u.subscription_status !== filterSub) return false
+      if (filterSignup !== 'all' && u.signup_method !== filterSignup) return false
       if (q) {
         const hay = `${u.full_name ?? ''} ${u.email ?? ''} ${u.salon_name ?? ''}`.toLowerCase()
         if (!hay.includes(q)) return false
       }
       return true
     })
-  }, [users, search, filterSource, filterSub])
+  }, [users, search, filterSource, filterSub, filterSignup])
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const safePage = Math.min(page, totalPages - 1)
@@ -122,9 +117,17 @@ export default function UsersTab({ users, userStats, currentUserId, currentRole,
             <option value="unpaid">Unpaid</option>
             <option value="none">Sin suscripción</option>
           </select>
-          {(search || filterSource !== 'all' || filterSub !== 'all') && (
+          <select value={filterSignup} onChange={e => { setFilterSignup(e.target.value as typeof filterSignup); setPage(0) }} style={selectStyle()}>
+            <option value="all">Origen alta</option>
+            <option value="signup">{SIGNUP_LABELS.signup}</option>
+            <option value="admin_create">{SIGNUP_LABELS.admin_create}</option>
+            <option value="skool">{SIGNUP_LABELS.skool}</option>
+            <option value="stripe_checkout">{SIGNUP_LABELS.stripe_checkout}</option>
+            <option value="promo">{SIGNUP_LABELS.promo}</option>
+          </select>
+          {(search || filterSource !== 'all' || filterSub !== 'all' || filterSignup !== 'all') && (
             <button
-              onClick={() => { setSearch(''); setFilterSource('all'); setFilterSub('all'); setPage(0) }}
+              onClick={() => { setSearch(''); setFilterSource('all'); setFilterSub('all'); setFilterSignup('all'); setPage(0) }}
               className="px-3 py-2 rounded-[var(--radius-sm)] text-xs font-semibold bg-buttermilk text-cherry-dark hover:bg-[#ffe98a]"
             >
               Limpiar
@@ -182,8 +185,8 @@ export default function UsersTab({ users, userStats, currentUserId, currentRole,
                       <Badge tone={isActive ? 'green' : 'danger'}>
                         {isActive ? 'Activo' : 'Inactivo'}
                       </Badge>
-                      <Badge tone={SOURCE_TONE[u.access_source]} className="ml-1">
-                        {u.access_source}
+                      <Badge tone={SOURCE_LABELS[u.access_source].tone} className="ml-1">
+                        {SOURCE_LABELS[u.access_source].label}
                       </Badge>
                     </td>
                     <td className="px-4 py-3">

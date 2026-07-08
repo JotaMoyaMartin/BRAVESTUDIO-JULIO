@@ -142,7 +142,9 @@ function SignupForm() {
           style={{ background: 'white', border: '1.5px solid rgba(122,24,50,0.1)', boxShadow: '0 4px 24px rgba(89,20,39,0.07)' }}
         >
           <div className="flex flex-col items-center gap-3 mb-8 text-center">
-            <img src="/bravi.png" alt="Bravi" className="bravi-float" style={{ width: 56, height: 56, objectFit: 'contain' }} draggable={false} />
+            <div className="rounded-full flex items-center justify-center" style={{ width: 84, height: 84, background: 'rgba(255,241,181,0.8)' }}>
+              <img src="/bravi2.png" alt="Bravi" className="bravi-float" style={{ width: 56, height: 56, objectFit: 'contain', filter: 'drop-shadow(0 2px 4px rgba(89,20,39,0.18))' }} draggable={false} />
+            </div>
             <p className="text-sm leading-relaxed" style={{ color: '#591427', opacity: 0.8 }}>
               Crea tu cuenta y empieza a generar contenido estratégico para tu salón
             </p>

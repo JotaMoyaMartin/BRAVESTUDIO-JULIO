@@ -16,9 +16,9 @@ const POSE_ANIMATION: Record<BraviPose, string> = {
 }
 
 const POSE_BG: Record<BraviPose, string> = {
-  normal: 'rgba(255,241,181,0.5)',
-  celebrating: 'rgba(184,216,176,0.5)',
-  thinking: 'rgba(193,219,232,0.5)',
+  normal: 'rgba(255,241,181,0.6)',
+  celebrating: 'rgba(255,233,145,0.7)',
+  thinking: 'rgba(255,241,181,0.6)',
 }
 
 export default function Bravi({ size = 100, context, showMessage = false, className = '' }: BraviProps) {
@@ -49,10 +49,10 @@ export default function Bravi({ size = 100, context, showMessage = false, classN
         }}
       >
         <img
-          src="/bravi.png"
+          src="/bravi2.png"
           alt="Bravi"
           className={POSE_ANIMATION[msg.pose]}
-          style={{ width: size * 0.85, height: size * 0.85, objectFit: 'contain' }}
+          style={{ width: size * 0.85, height: size * 0.85, objectFit: 'contain', filter: 'drop-shadow(0 2px 4px rgba(89,20,39,0.18))' }}
           draggable={false}
         />
       </div>
@@ -92,10 +92,10 @@ export function BraviStatic({ size = 100, message, className = '' }: { size?: nu
         }}
       >
         <img
-          src="/bravi.png"
+          src="/bravi2.png"
           alt="Bravi"
           className="bravi-float"
-          style={{ width: size * 0.85, height: size * 0.85, objectFit: 'contain' }}
+          style={{ width: size * 0.85, height: size * 0.85, objectFit: 'contain', filter: 'drop-shadow(0 2px 4px rgba(89,20,39,0.18))' }}
           draggable={false}
         />
       </div>

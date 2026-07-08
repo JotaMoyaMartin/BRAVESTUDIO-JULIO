@@ -476,7 +476,7 @@ export default function MiMarcaClient({ userId, brand }: { userId: string; brand
       {/* Input section */}
       <div className="rounded-[var(--radius-lg)] p-5 space-y-4 bg-white shadow-soft" style={{ border: '1.5px solid var(--color-buttermilk)' }}>
         <div className="float-soft flex items-start gap-3 p-4 rounded-[var(--radius-md)]" style={{ background: 'var(--color-buttermilk)' }}>
-          <img src="/bravi.png" alt="Bravi" className="flex-shrink-0 bravi-float" style={{ width: 28, height: 28, objectFit: 'contain' }} draggable={false} />
+          <img src="/bravi2.png" alt="Bravi" className="flex-shrink-0 bravi-float" style={{ width: 28, height: 28, objectFit: 'contain', filter: 'drop-shadow(0 2px 3px rgba(89,20,39,0.15))' }} draggable={false} />
           <p className="text-sm text-cherry-dark">
             <strong>Bravi dice:</strong> {strategy ? '¿Quieres actualizar tu estrategia? Escribe cambios y regenera.' : 'Cuéntame sobre tu salón respondiendo las preguntas de abajo. No importa el orden ni el formato.'}
           </p>

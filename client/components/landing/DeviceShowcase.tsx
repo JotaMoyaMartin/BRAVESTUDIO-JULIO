@@ -123,7 +123,7 @@ export function IPadMiMarca() {
           </div>
           {/* Bravi chip */}
           <div className="mt-2 rounded-md p-1.5 flex items-center gap-1" style={{ background: 'rgba(255,241,181,0.4)' }}>
-            <img src="/bravi.png" alt="Bravi" className="flex-shrink-0" style={{ width: 12, height: 12, objectFit: 'contain' }} draggable={false} />
+            <img src="/bravi2.png" alt="Bravi" className="flex-shrink-0" style={{ width: 12, height: 12, objectFit: 'contain' }} draggable={false} />
             <span className="text-[7px] font-medium" style={{ color: '#591427' }}>Estrategia lista ✨</span>
           </div>
         </div>

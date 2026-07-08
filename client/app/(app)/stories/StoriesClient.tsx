@@ -415,7 +415,7 @@ Visual: ${s.visualIdea}`
   return (
     <div className="space-y-5">
       <div className="p-4 rounded-2xl flex items-start gap-3" style={{ background: '#FFF1B5' }}>
-        <img src="/bravi.png" alt="Bravi" className="flex-shrink-0 bravi-float" style={{ width: 28, height: 28, objectFit: 'contain' }} draggable={false} />
+        <img src="/bravi2.png" alt="Bravi" className="flex-shrink-0 bravi-float" style={{ width: 28, height: 28, objectFit: 'contain', filter: 'drop-shadow(0 2px 3px rgba(89,20,39,0.15))' }} draggable={false} />
         <p className="text-sm" style={{ color: '#591427' }}>
           <strong>Bravi dice:</strong> Las Stories BRÄVE se construyen alrededor de tu clienta, no del servicio. Así es como se generan reservas.
         </p>
@@ -633,7 +633,7 @@ function QuestionBox({ userId, brandFull }: { userId: string; brandFull: BrandFu
   return (
     <div className="space-y-5">
       <div className="p-4 rounded-2xl flex items-start gap-3" style={{ background: '#FFF1B5' }}>
-        <img src="/bravi.png" alt="Bravi" className="flex-shrink-0 bravi-float" style={{ width: 28, height: 28, objectFit: 'contain' }} draggable={false} />
+        <img src="/bravi2.png" alt="Bravi" className="flex-shrink-0 bravi-float" style={{ width: 28, height: 28, objectFit: 'contain', filter: 'drop-shadow(0 2px 3px rgba(89,20,39,0.15))' }} draggable={false} />
         <p className="text-sm" style={{ color: '#591427' }}>
           <strong>Bravi dice:</strong> Genera preguntas naturales para auto-preguntarte en Stories. Luego responde en vídeo o texto. ¡Es la forma más fácil de crear contenido de valor!
         </p>

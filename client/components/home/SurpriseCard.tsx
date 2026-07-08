@@ -136,7 +136,7 @@ Sé creativa, específica y evita clichés.`
               <p className="font-semibold text-sm leading-snug">{idea.idea}</p>
             </div>
             <Link
-              href={`/crear-contenido?service=${encodeURIComponent(idea.service)}&type=${idea.type}`}
+              href={`/crear-contenido?service=${encodeURIComponent(idea.service)}&type=${idea.type}&tema=${encodeURIComponent(idea.idea)}&contexto=${encodeURIComponent(idea.objective)}`}
               className="w-full py-2.5 rounded-[var(--radius-sm)] font-semibold text-sm text-center flex items-center justify-center gap-2 transition-all hover:bg-white/10"
               style={{ border: '1.5px solid rgba(255,255,255,0.3)' }}
             >

@@ -23,7 +23,8 @@ export function hasBrandContext(brand: BrandFullContextInput | null | undefined)
     brand.optimized_summary ||
       brand.strategy_json ||
       brand.service_to_promote ||
-      (brand.main_services && brand.main_services.length > 0)
+      (brand.main_services && brand.main_services.length > 0) ||
+      brand.raw_input
   )
 }
 
@@ -108,6 +109,11 @@ export function buildBrandFullContext(brand: BrandFullContextInput): string {
   // Resumen compacto para IA — siempre al final como contexto permanente
   if (brand.optimized_summary) {
     parts.push(`RESUMEN PARA IA (contexto permanente): ${brand.optimized_summary}`)
+  }
+
+  // Si no hay resumen optimizado ni estrategia, usar raw_input como contexto mínimo
+  if (!brand.optimized_summary && !pickStrategy(brand) && brand.raw_input) {
+    parts.push(`INFORMACIÓN DE MARCA: ${brand.raw_input}`)
   }
 
   return parts.join('\n').trim()

@@ -4,7 +4,10 @@ import { RetoInput, RetoOutput, RetoItem } from '@/types/reto10k'
 export function buildRetosPrompt(input: RetoInput): string {
   const services = input.services.length > 0 ? input.services.join(', ') : 'servicios generales de peluquería'
   const count = Math.max(3, Math.min(7, input.postsPerWeek || 4))
-  return `Eres un experto en creación de contenido para estilistas en Instagram, especializado en el Reto 10K BRÄVE.
+  const missionBlock = input.missionTitle
+    ? `\nMISIÓN DEL DÍA (OBLIGATORIA — todo el contenido debe orbitar esta misión):\n- Título: ${input.missionTitle}\n- Descripción: ${input.missionDescription || ''}\n- Pista: ${input.missionPromptHint || ''}\nCada reel debe estar claramente conectado a esta misión. Si la misión es sobre un tema concreto, NO generes reels de temas no relacionados.`
+    : `\nMISIÓN DEL DÍA: No hay misión específica — genera contenido coherente con la fase actual.`
+  return `Eres un guionista profesional para estilistas en Instagram, especializado en el Reto 10K BRÄVE. Sigues el MANUAL OFICIAL DE GUIONES BRÄVE al pie de la letra.
 
 FASE ACTUAL: ${input.currentPhase} — ${input.phaseTitle}
 DÍA DEL RETO: ${input.currentDay} de 30
@@ -12,16 +15,45 @@ OBJETIVO DE LA USUARIA: ${input.objective === 'recomendado' ? 'Sin objetivo prio
 SERVICIOS ESTRELLA: ${services}
 NIVEL: ${input.level}
 PUBLICACIONES POR SEMANA: ${count}
+${missionBlock}
 ${input.brandContext ? `CONTEXTO DEL SALÓN: ${input.brandContext}` : ''}
 
-METODOLOGÍA:
-- Genera EXACTAMENTE ${count} items de contenido para esta semana del Reto 10K.
-- TODOS los items deben ser de tipo "reel" (NO se usan carruseles en este reto).
-- Balance: 40% autoridad (educación, consejos, opiniones), 40% resultados (antes/después, transformaciones, testimonios), 20% conexión (historia personal, comunidad, conversación).
-- Cada item debe tener un título atractivo, no repetido, coherente con la fase.
-- El campo "category" debe ser "autoridad", "resultados" o "conexion" según el balance.
-- Para cada item incluye: type (siempre "reel"), title, service, objective, hookIdea, format, script (con hook, context, solution y cta), caption (texto de publicación con hashtags), visual_idea.
-- El campo "day" debe ser ${input.currentDay}.
+=== MANUAL DE GUIONES BRÄVE (OBLIGATORIO) ===
+
+Filosofía: no vendemos servicios, vendemos confianza. No vendemos color, vendemos seguridad. La meta es que la clienta pase de "No te conozco" a "Quiero que me atiendas tú".
+
+Todos los reels son de AUTORIDAD (35-45s) con esta estructura INALTERABLE:
+
+1. GANCHO (3-5s): detener el scroll. Claro, directo, basado en dolor / error / falsa creencia / deseo.
+   - VÁLIDO: "Si tu rubio dura pocas semanas, algo está fallando." / "No todas las melenas deberían hacerse mechas."
+   - PROHIBIDO: "No vas a creer esto", "El secreto mejor guardado", "Tienes que ver esto", "Esto cambiará tu vida".
+
+2. CONTEXTO (5-10s): generar identificación. El problema, el error habitual, la situación. NO expliques la solución todavía.
+
+3. SOLUCIÓN (20-30s) — LA PARTE MÁS IMPORTANTE: demostrar autoridad, educar, justificar valor. Debe explicar con detalle y profundidad:
+   - QUÉ haces ("Antes de tocar el color realizamos un diagnóstico")
+   - CÓMO lo haces ("Analizamos la base, el historial químico y la calidad de la fibra")
+   - POR QUÉ lo haces ("Porque cada cabello tiene límites distintos")
+   La clienta debe pensar "Ahora entiendo por qué esta profesional trabaja diferente". El proceso vende. El "solution" debe ser largo y rico, no una frase corta.
+
+4. CTA (3-5s): generar conversación, consultas, reservas. NUNCA palabras clave ni automatizaciones.
+   - VÁLIDO: "Si estás pensando en hacerte este servicio, escríbeme y te ayudo." / "Reserva tu diagnóstico y analizamos tu caso." / "Si tienes dudas, escríbeme y te asesoro."
+   - PROHIBIDO: "Comenta BALAYAGE", "Escribe INFO", "Pon un corazón", "Sígueme para más".
+
+DURACIÓN: Gancho 3-5s, Contexto 5-10s, Solución 20-30s, CTA 3-5s = 35-45s total.
+
+=== METODOLOGÍA DEL RETO ===
+
+- Genera EXACTAMENTE ${count} reels para esta semana. TODOS de tipo "reel" (sin carruseles).
+- Cada reel debe estar conectado a la MISIÓN DEL DÍA y a los SERVICIOS ESTRELLA.
+- Balance 40/40/20: 40% autoridad (educación/consejos/opiniones), 40% resultados (antes/después/transformaciones/testimonios), 20% conexión (historia personal/comunidad/conversación).
+- El campo "category" debe ser "autoridad", "resultados" o "conexion" según corresponda.
+- Títulos atractivos, NO repetidos, coherentes con la misión.
+- "hookIdea" es una idea breve de gancho (un ángulo, no el texto literal).
+- "caption" es el texto de publicación con hashtags reales del sector.
+- "visual_idea" describe cómo grabar (plano, luz, acción, música).
+- "day" = ${input.currentDay}.
+- Los "script.hook", "script.context", "script.solution" y "script.cta" deben ser textos reales y desarrollados (especialmente "solution", que debe ser largo y detallado), no esbozos.
 
 Devuelve EXACTAMENTE este JSON, sin texto adicional:
 {
@@ -49,142 +81,148 @@ export function generateMockRetos(input: RetoInput): RetoOutput {
   const day = input.currentDay
   const phaseTitle = input.phaseTitle || 'Tu fase actual'
   const count = Math.max(3, Math.min(7, input.postsPerWeek || 4))
+  const mTitle = input.missionTitle || ''
+  const mHint = input.missionPromptHint || ''
+  const primary = services[0]
+  const secondary = services[services.length > 1 ? 1 : 0]
+  const tertiary = services[services.length > 2 ? 2 : 0]
+  const missionAngle = mTitle || `tu próxima publicación sobre ${primary}`
 
   const all: RetoItem[] = [
     {
       type: 'reel',
-      title: `Mi consejo profesional sobre ${services[0]}`,
-      service: services[0],
+      title: mTitle ? `Lo que nadie te explica antes de ${mTitle.toLowerCase()}` : `Lo que nadie te explica sobre ${primary}`,
+      service: primary,
       objective: input.objective,
       category: 'autoridad',
-      hookIdea: `Lo que nadie te explica sobre ${services[0]} antes de hacerlo`,
+      hookIdea: mHint || `Dolor o falsa creencia sobre ${primary}`,
       format: 'Reel 35-45s',
       script: {
-        hook: `¿Sabes qué pasa realmente cuando te haces ${services[0]}?`,
-        context: `Muchas clientas llegan con dudas porque nadie les ha explicado el proceso a fondo.`,
-        solution: `Hoy te cuento lo que analizo antes de empezar y por qué importa para el resultado final.`,
-        cta: `¿Alguna duda sobre ${services[0]}? Déjala en comentarios y te respondo.`,
+        hook: `Si estás pensando en ${mTitle ? mTitle.toLowerCase() : `hacerte ${primary}`} y nadie te ha explicado esto, lee con atención.`,
+        context: `Muchas clientas llegan al salón con una idea del servicio que no se ajusta a la realidad, y eso acaba en decepción. El problema no es el servicio, es la falta de información antes de empezar.`,
+        solution: `Por eso, antes de tocar el color o las tijeras, hago un diagnóstico completo: analizo el estado de la fibra, el historial químico y las expectativas reales de cada clienta. Después explico qué se puede lograr y qué no, qué técnica uso y por qué, y cuánto mantenimiento va a necesitar en casa. Así la clienta decide con criterio, no por impulso, y el resultado se sostiene en el tiempo.`,
+        cta: `Si estás pensando en hacerte ${primary} y tienes dudas, escríbeme y te ayudo a aclararlo antes de reservar.`,
       },
-      caption: `Consejo profesional sobre ${services[0]} que toda clienta debería saber. Guarda este post para tu próxima visita. #${services[0].replace(/\s/g, '')} #estilista #peluqueria #bravestudio`,
-      visual_idea: `Graba en tu salón, muestra el proceso o producto relacionado con ${services[0]}.`,
+      caption: `Lo que me gustaría que supieras antes de ${mTitle ? mTitle.toLowerCase() : `hacerte ${primary}`}. Guarda este post para tu próxima cita. #${primary.replace(/\s/g, '')} #estilista #peluqueria #bravestudio`,
+      visual_idea: `Plano medio tuyo hablando a cámara en el salón, con el material del servicio de fondo. Tono cercano y seguro.`,
       day,
     },
     {
       type: 'reel',
-      title: `3 errores comunes con ${services[0]}`,
-      service: services[0],
+      title: `El error más común con ${primary} (y cómo lo evito)`,
+      service: primary,
       objective: input.objective,
       category: 'autoridad',
-      hookIdea: `Si haces ${services[0]}, esto te interesa`,
+      hookIdea: `Un error habitual que arruina ${primary}`,
       format: 'Reel 35-45s',
       script: {
-        hook: `Estos 3 errores arruinan un buen ${services[0]}.`,
-        context: `Los veo cada semana en el salón y casi siempre se pueden evitar.`,
-        solution: `Te cuento cuáles son y cómo evitarlos para que tu resultado dure más.`,
-        cta: `¿Cuál te suena? Cuéntamelo abajo.`,
+        hook: `El error que más veo con ${primary} no es de la clienta, es del profesional que se salta el diagnóstico.`,
+        context: `Cada semana reparo trabajos donde se aplicó la misma técnica a melenas distintas. El resultado: daño, color que no dura, clientas frustradas.`,
+        solution: `Mi forma de evitarlo es simple: nunca empiezo sin un diagnóstico previo. Miro la fibra al microscopio, valoro el historial químico de los últimos 12 meses y mido la elasticidad del cabello. Solo entonces elijo la técnica, la decoloración y el tono. Trabajo por capas finas, controlo los tiempos de exposición y uso tratamientos reconstructores entre pasos. Así protejo la fibra y consigo un resultado que dura.`,
+        cta: `¿Te has llevado un susto con ${primary}? Cuéntamelo por mensaje y te digo si tiene solución.`,
       },
-      caption: `3 errores comunes con ${services[0]} que conviene evitar. #${services[0].replace(/\s/g, '')} #consejos #estilista #bravestudio`,
-      visual_idea: `Plano corto tuyo hablando a cámara con el servicio de fondo.`,
+      caption: `El error más común con ${primary} y cómo lo evito en el salón. #${primary.replace(/\s/g, '')} #consejos #estilista #bravestudio`,
+      visual_idea: `Primer plano de tus manos trabajando, después corte a ti explicando a cámara.`,
       day,
     },
     {
       type: 'reel',
-      title: `Transformación real con ${services[services.length > 1 ? 1 : 0]}`,
-      service: services[services.length > 1 ? 1 : 0],
+      title: `Transformación real de ${secondary} en el salón`,
+      service: secondary,
       objective: input.objective,
       category: 'resultados',
-      hookIdea: `Mira lo que logramos con ${services[services.length > 1 ? 1 : 0]}`,
+      hookIdea: `Antes y después con el proceso explicado`,
       format: 'Reel 35-45s',
       script: {
-        hook: `Esta clienta quería un cambio y esto fue lo que hicimos.`,
-        context: `Llegó con el cabello en un estado y quería una transformación visible.`,
-        solution: `Aplicamos la técnica paso a paso y el resultado fue exactamente lo que buscaba.`,
-        cta: `¿Te gustaría un cambio así? Reserva tu cita en el link de mi bio.`,
+        hook: `Esta clienta llevaba años queriendo un cambio y nadie le daba una salida realista.`,
+        context: `Llegó con el pelo dañado por decoloraciones anteriores y miedo a volver a intentarlo. Lo que necesitaba no era más color, era un plan.`,
+        solution: `Empezamos por un protocolo de reconstrucción de tres semanas. Después hice un ${secondary.toLowerCase()} trabajando desde la raíz solo donde la fibra lo permitía, respetando la elasticidad natural. Apliqué un tono matizador con bajo % de oxidante y sellé con un tratamiento ácido. El proceso tardó cuatro horas, pero el resultado fue un color limpio, sano y con brillo real.`,
+        cta: `Si tienes un caso parecido y quieres una opinión honesta, escríbeme y valoro tu caso sin compromiso.`,
       },
-      caption: `Transformación real con ${services[services.length > 1 ? 1 : 0]}. El resultado habla solo. #transformacion #antesydespues #${services[services.length > 1 ? 1 : 0].replace(/\s/g, '')}`,
-      visual_idea: `Antes y después en el mismo reel, con transición suave y música emocional.`,
+      caption: `Transformación real con ${secondary} en el salón. El proceso también importa, no solo el resultado. #transformacion #antesydespues #${secondary.replace(/\s/g, '')} #bravestudio`,
+      visual_idea: `Montaje antes → proceso → después, con música emocional y cortes limpios.`,
       day,
     },
     {
       type: 'reel',
-      title: `El proceso paso a paso de ${services[0]}`,
-      service: services[0],
+      title: `El proceso de ${tertiary} paso a paso`,
+      service: tertiary,
       objective: input.objective,
       category: 'resultados',
-      hookIdea: `Así trabajo un ${services[0]} en el salón`,
+      hookIdea: `Así trabajo un ${tertiary} de verdad`,
       format: 'Reel 35-45s',
       script: {
-        hook: `¿Te has preguntado cómo hago un ${services[0]} de verdad?`,
-        context: `Hoy te enseño el proceso completo, desde el diagnóstico hasta el acabado.`,
-        solution: `Cada paso tiene un porqué. Mira el resultado final.`,
-        cta: `Guarda este reel para tu próxima cita.`,
+        hook: `Si crees que un buen ${tertiary.toLowerCase()} es solo cortar, te falta ver cómo lo hago yo.`,
+        context: `Un ${tertiary.toLowerCase()} bien hecho respeta la dirección natural del pelo, el tipo de rostro y el estilo de vida de la clienta. No es estándar, es a medida.`,
+        solution: `Empiezo observando cómo cae el pelo limpio y seco, identifico la dirección de crecimiento y las zonas con más volumen. Después dibujo la guía en la nuca y trabajo de dentro a fuera respetando la densidad de cada zona. Acabo con un texturizado ligero solo en las puntas para dar movimiento sin perder forma, y repaso el contorno para que el peinado en casa sea fácil. Cada paso tiene un por qué.`,
+        cta: `Si quieres un ${tertiary.toLowerCase()} pensado para tu pelo, reserva una consulta y lo hacemos a medida.`,
       },
-      caption: `El proceso real de ${services[0]} en el salón. #${services[0].replace(/\s/g, '')} #detrasdecamaras #estilista`,
-      visual_idea: `Montaje rápido de los pasos del servicio terminando en el resultado.`,
+      caption: `El proceso real de ${tertiary} en el salón, paso a paso. #${tertiary.replace(/\s/g, '')} #detrasdecamaras #estilista #bravestudio`,
+      visual_idea: `Cámara sobre el hombro mientras trabajas, mostrando cada paso con cortes rápidos.`,
       day,
     },
     {
       type: 'reel',
-      title: `Mi historia: por qué soy estilista`,
-      service: services[0],
+      title: mTitle ? `Por qué hago lo que hago: ${missionAngle}` : `Mi historia: por qué soy estilista`,
+      service: primary,
       objective: input.objective,
       category: 'conexion',
       hookIdea: `No siempre quise ser estilista. Esto es lo que cambió.`,
       format: 'Reel 35-45s',
       script: {
-        hook: `¿Alguna vez te has preguntado por qué haces lo que haces?`,
-        context: `Yo tampoco lo sabía al principio. Fue un momento concreto el que lo cambió todo.`,
-        solution: `Hoy comparto mi historia y por qué amo transformar a mis clientas cada día.`,
-        cta: `¿Y tú? ¿Por qué haces lo que haces? Cuéntamelo abajo.`,
+        hook: `No me hice estilista por moda. Me hice porque alguien me enseñó que cambiar un pelo puede cambiar un día.`,
+        context: `Al principio veía esto como un trabajo más. Hasta que una clienta me contó que no se había reconocido en el espejo en meses, y que salir del salón le devolvió algo que había perdido. Ahí entendí el oficio.`,
+        solution: `Desde entonces trabajo así: escucho a la clienta antes de proponer nada, le pregunto qué necesita de su pelo y para qué, y traduzco eso en una técnica y un plan realistas. No busco impresionar, busco que se reconozca al mirarse. Esa es la diferencia que me mantiene haciendo esto cada día, y la que intento transmitir en cada cita.`,
+        cta: `¿Tú también sientes que tu pelo no te representa? Cuéntamelo, me interesa leerte.`,
       },
-      caption: `Mi historia como estilista. Cada clienta me enseña algo nuevo. #mihistoria #estilista #vocacion #bravestudio`,
-      visual_idea: `Graba en tu salón, muestra tu día a día mientras cuentas tu historia.`,
+      caption: `Mi historia y por qué hago lo que hago. Cada clienta me enseña algo nuevo. #mihistoria #estilista #vocacion #bravestudio`,
+      visual_idea: `Tú en el salón preparando el puesto mientras hablas a cámara, tono íntimo.`,
       day,
     },
     {
       type: 'reel',
-      title: `Pregunta del día para mi comunidad`,
-      service: services[0],
+      title: `Una pregunta para mi comunidad sobre ${primary}`,
+      service: primary,
       objective: input.objective,
       category: 'conexion',
-      hookIdea: `Quiero leer tus opiniones`,
+      hookIdea: `Quiero leer tu respuesta`,
       format: 'Reel 35-45s',
       script: {
-        hook: `Tengo una pregunta para ti y quiero leer tu respuesta.`,
-        context: `Cada semana hablo con clientas y siempre aprendo algo nuevo.`,
-        solution: `Hoy te pregunto: ¿cuál es el cambio que más te ha gustado en tu pelo?`,
-        cta: `Responde en comentarios, los leo todos.`,
+        hook: `Tengo una pregunta para ti y de verdad quiero leer tu respuesta, no un emoji.`,
+        context: `Después de años en el salón, lo que más me ayuda a mejorar no son las tendencias, sino lo que me cuentan las clientas reales.`,
+        solution: `Hoy te pregunto: ¿cuál es la parte de tu pelo que más te cuesta manejar y qué has probado hasta ahora? Con tus respuestas preparé contenido de las próximas semanas, así que cuento contigo. Leo todos los comentarios y respondo siempre que puedo. Y si tu caso es más personal, mi privado está abierto.`,
+        cta: `Cuéntamelo en comentarios, los leo todos y te respondo.`,
       },
-      caption: `Pregunta para mi comunidad. ¡Quiero leerte! #comunidad #estilista #bravestudio`,
-      visual_idea: `Habla a cámara en tu salón, tono cercano y cálido.`,
+      caption: `Pregunta para mi comunidad. ¡Quiero leerte! #comunidad #estilista #bravestudio #${primary.replace(/\s/g, '')}`,
+      visual_idea: `Habla a cámara en tu salón, tono cercano y cálido, sin música fuerte.`,
       day,
     },
     {
       type: 'reel',
-      title: `Antes y después en 15 segundos`,
-      service: services[services.length > 2 ? 2 : 0],
+      title: `El antes y después que más me enorgullece de ${tertiary}`,
+      service: tertiary,
       objective: input.objective,
       category: 'resultados',
-      hookIdea: `Cambio en 15 segundos`,
+      hookIdea: `El cambio que más me enorgullece`,
       format: 'Reel 35-45s',
       script: {
-        hook: `Cuenta los segundos mientras ves el cambio.`,
-        context: `Un buen ${services[services.length > 2 ? 2 : 0]} puede transformar por completo un look.`,
-        solution: `Mira el resultado final y dime qué opinas.`,
-        cta: `Comenta tu parte favorita.`,
+        hook: `Este es el antes y después que más me enorgullece, y no por el color, por el proceso detrás.`,
+        context: `La clienta venía de dos servicios fallidos en otro sitio y estaba a punto de dejarlo. Necesitaba confianza, no solo técnica.`,
+        solution: `Hice un diagnóstico honesto, le expliqué qué se podía salvar y qué no, y monté un plan de tres sesiones: primero reconstrucción, después ${tertiary.toLowerCase()} respetando la fibra, y por último un tono matizador suave. Trabajé con decoloraciones de bajo volumen, tiempos controlados y tratamientos intermedios. El resultado no fue solo estético, fue una clienta que volvió a confiar en su pelo y en su estilista.`,
+        cta: `Si vienes de una experiencia parecida, escríbeme y te doy una opinión honesta de lo que se puede hacer.`,
       },
-      caption: `Antes y después en segundos. #antesydespues #${services[services.length > 2 ? 2 : 0].replace(/\s/g, '')} #bravestudio`,
-      visual_idea: `Transición rápida antes/después con ritmo de música.`,
+      caption: `El antes y después que más me enorgullece. #antesydespues #${tertiary.replace(/\s/g, '')} #bravestudio #estilista`,
+      visual_idea: `Antes y después con música emocional, cortes lentos para dejar ver el detalle.`,
       day,
     },
   ]
 
-  // Mantener balance 40/40/20 lo más fiel posible al count pedido
+  // Selección respetando el count pedido con balance 40/40/20
   const items = all.slice(0, count)
 
   return {
     items,
-    summary: `${items.length} ideas de reels para la fase "${phaseTitle}" (día ${day} del Reto 10K).`,
+    summary: `${items.length} ideas de reels para la misión "${missionAngle}" · fase "${phaseTitle}" · día ${day}.`,
   }
 }
 

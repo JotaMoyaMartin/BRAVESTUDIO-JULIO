@@ -155,6 +155,7 @@ export default function RetoDashboard({ profile, progress, config, brand, conten
           demoMode={demoMode}
           generateTrigger={generateTrigger}
           containerRef={generatorRef}
+          mission={currentMission}
         />
       </div>
 

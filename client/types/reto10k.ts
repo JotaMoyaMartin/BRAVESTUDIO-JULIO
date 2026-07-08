@@ -58,6 +58,9 @@ export interface RetoInput {
   phaseTitle: string
   currentDay: number
   postsPerWeek: number
+  missionTitle?: string
+  missionDescription?: string
+  missionPromptHint?: string
   brandContext?: string
 }
 

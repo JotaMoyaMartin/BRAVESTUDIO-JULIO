@@ -5,7 +5,7 @@ import { motion } from 'framer-motion'
 import { Sparkles, Save, Calendar as CalendarIcon, Film, Copy, Check } from 'lucide-react'
 import Link from 'next/link'
 import { Profile, BrandProfile, ContentItem } from '@/types/database'
-import { Reto10kConfig, Reto10kProgress, RetoItem } from '@/types/reto10k'
+import { Reto10kConfig, Reto10kProgress, RetoItem, RetoMission } from '@/types/reto10k'
 import { generateRetos } from '@/lib/ai/prompts/reto10k'
 import { buildBrandFullContext, hasBrandContext } from '@/lib/ai/brand-context'
 import { saveToLibrary, copyToClipboard } from '@/lib/content-utils'
@@ -23,10 +23,11 @@ interface Props {
   demoMode: boolean
   generateTrigger?: number
   containerRef?: React.RefObject<HTMLDivElement | null>
+  mission?: RetoMission | null
 }
 
 export default function RetoWeeklyGenerator({
-  profile, progress, config, brand, generating, setGenerating, demoMode, generateTrigger, containerRef,
+  profile, progress, config, brand, generating, setGenerating, demoMode, generateTrigger, containerRef, mission,
 }: Props) {
   const toast = useToast()
   const [items, setItems] = useSessionState<RetoItem[]>(`u:${profile?.id || 'demo'}:reto10k:items`, [])
@@ -60,6 +61,9 @@ export default function RetoWeeklyGenerator({
         phaseTitle: currentPhaseData?.title || '',
         currentDay: progress.current_day || 1,
         postsPerWeek: progress.posts_per_week || 4,
+        missionTitle: mission?.title,
+        missionDescription: mission?.description,
+        missionPromptHint: mission?.prompt_hint,
         brandContext,
       })
       setItems(output.items)

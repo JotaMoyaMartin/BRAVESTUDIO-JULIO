@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, CheckCircle, XCircle, Clock, ShieldAlert, History } from 'lucide-react'
+import { X, CheckCircle, XCircle, Clock, ShieldAlert, History, Mail } from 'lucide-react'
 import { Profile, UserActivityLog, PromoRedemption } from '@/types/database'
 import { hasActiveAccess } from '@/lib/access'
 import { SOURCE_LABELS, SIGNUP_LABELS, EVENT_LABELS } from '@/lib/admin-labels'
@@ -111,13 +111,24 @@ export default function UserDrawer({ user, onClose, onUpdate, stats }: UserDrawe
                 <h3 className="text-base font-bold text-cherry-dark">Ficha de usuaria</h3>
                 <p className="text-xs text-cherry-dark opacity-60 mt-0.5">{user.email}</p>
               </div>
-              <button
-                onClick={onClose}
-                className="p-2 rounded-[var(--radius-sm)] text-cherry-dark hover:bg-[rgba(122,24,50,0.06)]"
-                aria-label="Cerrar"
-              >
-                <X size={18} />
-              </button>
+              <div className="flex items-center gap-1">
+                {user.email && (
+                  <a
+                    href={`mailto:${user.email}?subject=BRÄVE Studio — Soporte`}
+                    className="p-2 rounded-[var(--radius-sm)] text-cherry-dark hover:bg-[rgba(122,24,50,0.06)] inline-flex items-center gap-1.5 text-xs font-medium"
+                    title="Enviar email a esta usuaria"
+                  >
+                    <Mail size={16} />
+                  </a>
+                )}
+                <button
+                  onClick={onClose}
+                  className="p-2 rounded-[var(--radius-sm)] text-cherry-dark hover:bg-[rgba(122,24,50,0.06)]"
+                  aria-label="Cerrar"
+                >
+                  <X size={18} />
+                </button>
+              </div>
             </div>
 
             {/* Body */}

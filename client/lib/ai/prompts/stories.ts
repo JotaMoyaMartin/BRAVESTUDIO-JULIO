@@ -8,11 +8,19 @@ export interface StoryInput {
   brandContext?: string
 }
 
+export interface StorySticker {
+  type: 'poll' | 'question' | 'emoji-slider' | 'mention' | 'hashtag' | 'location'
+  label: string
+  options?: string[]
+  emoji?: string
+}
+
 export interface SingleStory {
   number: number
   role: string
   text: string
   stickerSuggestion: string
+  sticker?: StorySticker
   visualIdea: string
 }
 
@@ -54,10 +62,18 @@ Devuelve EXACTAMENTE este JSON:
       "role": "Problema/Identificación",
       "text": "Texto de la story",
       "stickerSuggestion": "Sticker recomendado (encuesta, pregunta, emoji, etc.)",
+      "sticker": {
+        "type": "poll" | "question" | "emoji-slider" | "mention" | "hashtag" | "location",
+        "label": "Texto del sticker",
+        "options": ["opción1", "opción2"],
+        "emoji": "😍"
+      },
       "visualIdea": "Idea visual natural"
     }
   ]
-}`
+}
+
+El campo "sticker" es opcional. "options" solo para tipo "poll". "emoji" solo para tipo "emoji-slider". Para "question" solo "label". Para "mention"/"hashtag"/"location" solo "label" con el prefijo correspondiente (@/#/📍).`
 }
 
 export function getMockStories(input: StoryInput): StoriesOutput {

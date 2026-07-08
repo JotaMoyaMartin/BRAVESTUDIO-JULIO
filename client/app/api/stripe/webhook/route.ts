@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getPlanKeyByPriceId } from '@/lib/plans'
+import { sendEmail } from '@/lib/email/send'
+import { subscriptionCreatedEmail, subscriptionCanceledEmail, paymentFailedEmail } from '@/lib/email/templates'
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -84,6 +86,24 @@ export async function POST(req: NextRequest) {
           })
         } catch (logErr) {
           console.error('log_user_activity failed:', logErr)
+        }
+
+        // Email confirmación de suscripción (fire-and-forget)
+        try {
+          const { data: prof } = await supabase
+            .from('profiles')
+            .select('email, full_name')
+            .eq('id', userId)
+            .single()
+          if (prof?.email) {
+            await sendEmail(
+              prof.email,
+              'Suscripción activada — BRÄVE Studio',
+              subscriptionCreatedEmail(prof.full_name || '', subscriptionPlan || 'plan')
+            )
+          }
+        } catch (emailErr) {
+          console.error('subscription email failed:', emailErr)
         }
         break
       }
@@ -185,6 +205,25 @@ export async function POST(req: NextRequest) {
           } catch (logErr) {
             console.error('log_user_activity failed:', logErr)
           }
+
+          // Email cancelación (fire-and-forget)
+          try {
+            const { data: prof } = await supabase
+              .from('profiles')
+              .select('email, full_name')
+              .eq('id', deletedUserId)
+              .single()
+            if (prof?.email) {
+              const cancelsAt = new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })
+              await sendEmail(
+                prof.email,
+                'Suscripción cancelada — BRÄVE Studio',
+                subscriptionCanceledEmail(prof.full_name || '', cancelsAt)
+              )
+            }
+          } catch (emailErr) {
+            console.error('cancel email failed:', emailErr)
+          }
         }
         break
       }
@@ -217,6 +256,24 @@ export async function POST(req: NextRequest) {
               })
             } catch (logErr) {
               console.error('log_user_activity failed:', logErr)
+            }
+
+            // Email pago fallido (fire-and-forget)
+            try {
+              const { data: profFull } = await supabase
+                .from('profiles')
+                .select('email, full_name')
+                .eq('id', prof.id)
+                .single()
+              if (profFull?.email) {
+                await sendEmail(
+                  profFull.email,
+                  'Pago fallido — BRÄVE Studio',
+                  paymentFailedEmail(profFull.full_name || '')
+                )
+              }
+            } catch (emailErr) {
+              console.error('payment failed email error:', emailErr)
             }
           }
         }

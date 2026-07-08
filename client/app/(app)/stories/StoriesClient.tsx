@@ -55,6 +55,7 @@ export default function StoriesClient({ userId, brandFull }: { userId: string; b
           Stories estratégicas y preguntas para tu comunidad
         </p>
       </div>
+      <div className="w-full" />
 
       <div className="flex gap-2 p-1 rounded-2xl" style={{ background: '#F5F0E8' }}>
         <button
@@ -132,7 +133,10 @@ function StoriesCreator({ userId, brandFull }: { userId: string; brandFull: Bran
   async function handleSaveLibrary() {
     if (!result) return
     setSaving(true)
-    const fullText = result.stories.map(s => `Story ${s.number} — ${s.role}:\n${s.text}`).join('\n\n')
+    const fullText = result.stories.map(s => {
+      const stickerLabel = s.sticker?.label || s.stickerSuggestion || ''
+      return `Story ${s.number} — ${s.role}:\n${s.text}${stickerLabel ? `\nSticker: ${stickerLabel}` : ''}\nVisual: ${s.visualIdea}`
+    }).join('\n\n')
     const payload = {
       type: 'story' as const,
       title: `Stories: ${service || freeText}`,
@@ -153,7 +157,10 @@ function StoriesCreator({ userId, brandFull }: { userId: string; brandFull: Bran
   async function handleSchedule() {
     if (!result || !scheduleDate) return
     setSaving(true)
-    const fullText = result.stories.map(s => `Story ${s.number} — ${s.role}:\n${s.text}`).join('\n\n')
+    const fullText = result.stories.map(s => {
+      const stickerLabel = s.sticker?.label || s.stickerSuggestion || ''
+      return `Story ${s.number} — ${s.role}:\n${s.text}${stickerLabel ? `\nSticker: ${stickerLabel}` : ''}\nVisual: ${s.visualIdea}`
+    }).join('\n\n')
     const basePayload = {
       type: 'story' as const,
       title: `Stories: ${service || freeText}`,
@@ -231,7 +238,13 @@ function StoriesCreator({ userId, brandFull }: { userId: string; brandFull: Bran
   }
 
   if (result) {
-    const fullSequence = result.stories.map(s => s.text).join('\n\n---\n\n')
+    const fullSequence = result.stories.map(s => {
+      const stickerLabel = s.sticker?.label || s.stickerSuggestion || ''
+      return `Story ${s.number} — ${s.role}:
+${s.text}
+${stickerLabel ? `Sticker: ${stickerLabel}` : ''}
+Visual: ${s.visualIdea}`
+    }).join('\n\n---\n\n')
     return (
       <div className="space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -254,7 +267,10 @@ function StoriesCreator({ userId, brandFull }: { userId: string; brandFull: Bran
 
         {/* Result view */}
         {viewMode === 'mockup' ? (
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div
+            className="flex flex-col sm:flex-row gap-5 sm:gap-6 justify-center items-center sm:items-start py-4 rounded-2xl"
+            style={{ background: 'linear-gradient(180deg, #F5F0E8 0%, #FFFDF5 100%)', padding: '20px 12px' }}
+          >
             {result.stories.map(story => (
               <StoryMockup key={story.number} story={story} index={story.number}>
                 <button

@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { stripe } from '@/lib/stripe'
 import { getPriceId, Currency, Plan } from '@/lib/stripe-prices'
+import { sendEmail } from '@/lib/email/send'
+import { welcomeEmail } from '@/lib/email/templates'
 
 /**
  * Auth callback — handles email confirmation redirects and password reset
@@ -40,6 +42,15 @@ export async function GET(request: NextRequest) {
   const fullName = metadata.full_name
   if (fullName) {
     await supabase.from('profiles').update({ full_name: fullName as string }).eq('id', user.id)
+  }
+
+  // Send welcome email (fire-and-forget) — only if user has email
+  if (user.email) {
+    try {
+      await sendEmail(user.email, '¡Bienvenida a BRÄVE Studio!', welcomeEmail(fullName as string || ''))
+    } catch (e) {
+      console.error('[auth/callback] welcome email failed:', e)
+    }
   }
 
   // 2. If plan+currency → create Stripe checkout

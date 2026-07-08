@@ -25,7 +25,7 @@ export default function LandingCTA() {
           <div className="absolute text-2xl pointer-events-none" style={{ top: 16, left: 24, opacity: 0.3 }}>✨</div>
           <div className="absolute text-xl pointer-events-none" style={{ bottom: 20, right: 28, opacity: 0.25 }}>✦</div>
 
-          <div className="text-4xl mb-4">🤖</div>
+          <div className="mb-4 flex justify-center"><img src="/bravi.png" alt="Bravi" className="bravi-float" style={{ width: 56, height: 56, objectFit: 'contain' }} draggable={false} /></div>
           <h2 className="text-2xl sm:text-3xl font-bold mb-3" style={{ color: 'var(--color-buttermilk)', letterSpacing: '-0.5px' }}>
             No vuelvas a quedarte sin ideas.
           </h2>

@@ -218,7 +218,7 @@ function BraviAdvice({ message }: { message: string }) {
       className="rounded-[var(--radius-md)] p-4 flex items-start gap-3 float-soft"
       style={{ background: 'var(--color-buttermilk)', border: '1.5px solid rgba(122,24,50,0.15)' }}
     >
-      <span className="text-2xl flex-shrink-0">🤖</span>
+      <img src="/bravi.png" alt="Bravi" className="flex-shrink-0 bravi-float" style={{ width: 32, height: 32, objectFit: 'contain' }} draggable={false} />
       <div>
         <p className="text-xs font-bold uppercase tracking-wider text-cherry opacity-70 mb-1">Bravi dice</p>
         <p className="text-sm text-cherry-dark">{message}</p>

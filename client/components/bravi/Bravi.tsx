@@ -48,12 +48,13 @@ export default function Bravi({ size = 100, context, showMessage = false, classN
           background: POSE_BG[msg.pose],
         }}
       >
-        <div
+        <img
+          src="/bravi.png"
+          alt="Bravi"
           className={POSE_ANIMATION[msg.pose]}
-          style={{ fontSize: size * 0.55, lineHeight: 1 }}
-        >
-          🤖
-        </div>
+          style={{ width: size * 0.85, height: size * 0.85, objectFit: 'contain' }}
+          draggable={false}
+        />
       </div>
 
       {showMessage && (
@@ -90,7 +91,13 @@ export function BraviStatic({ size = 100, message, className = '' }: { size?: nu
           background: 'rgba(255,241,181,0.5)',
         }}
       >
-        <div style={{ fontSize: size * 0.55, lineHeight: 1 }}>🤖</div>
+        <img
+          src="/bravi.png"
+          alt="Bravi"
+          className="bravi-float"
+          style={{ width: size * 0.85, height: size * 0.85, objectFit: 'contain' }}
+          draggable={false}
+        />
       </div>
       {message && (
         <div className="bravi-appear relative max-w-[240px]">

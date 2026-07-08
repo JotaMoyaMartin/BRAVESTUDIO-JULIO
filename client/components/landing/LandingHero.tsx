@@ -112,7 +112,7 @@ export default function LandingHero() {
             >
               <BraviBubble
                 size={80}
-                message="Hola, soy Bravi 🤖 Estoy aquí para ayudarte a llenar tu agenda."
+                message="Hola, soy Bravi. Estoy aquí para ayudarte a llenar tu agenda."
               />
             </div>
 

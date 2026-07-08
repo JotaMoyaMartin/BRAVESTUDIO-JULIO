@@ -27,6 +27,7 @@ export interface Database {
           activated_by: string | null
           activated_at: string | null
           signup_method: 'signup' | 'admin_create' | 'skool' | 'stripe_checkout' | 'promo'
+          trial_started_at: string | null
           created_at: string
           updated_at: string
         }
@@ -53,6 +54,7 @@ export interface Database {
           activated_by?: string | null
           activated_at?: string | null
           signup_method?: 'signup' | 'admin_create' | 'skool' | 'stripe_checkout' | 'promo'
+          trial_started_at?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -78,6 +80,7 @@ export interface Database {
           activated_by?: string | null
           activated_at?: string | null
           signup_method?: 'signup' | 'admin_create' | 'skool' | 'stripe_checkout' | 'promo'
+          trial_started_at?: string | null
           updated_at?: string
         }
       }

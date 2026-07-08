@@ -29,6 +29,7 @@ const DEMO_PROFILE: Profile = {
   activated_by: null,
   activated_at: null,
   signup_method: 'signup',
+  trial_started_at: null,
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
 }

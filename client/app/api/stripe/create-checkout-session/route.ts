@@ -37,11 +37,14 @@ export async function POST(req: NextRequest) {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('stripe_customer_id, email')
+    .select('stripe_customer_id, email, trial_started_at')
     .eq('id', user.id)
     .single()
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+
+  // Si el usuario ya usó su trial, no se le otorga otro
+  const hasUsedTrial = !!profile?.trial_started_at
 
   const session = await stripe.checkout.sessions.create({
     mode: 'subscription',
@@ -49,7 +52,7 @@ export async function POST(req: NextRequest) {
       ? { customer: profile.stripe_customer_id }
       : { customer_email: profile?.email || user.email }),
     line_items: [{ price: priceId, quantity: 1 }],
-    subscription_data: { trial_period_days: trialDays },
+    subscription_data: hasUsedTrial ? {} : { trial_period_days: trialDays },
     phone_number_collection: { enabled: false },
     success_url: `${appUrl}/onboarding?checkout=success`,
     cancel_url: `${appUrl}/pricing`,

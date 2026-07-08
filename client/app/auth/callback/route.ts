@@ -50,9 +50,13 @@ export async function GET(request: NextRequest) {
     if (priceId) {
       const { data: profile } = await supabase
         .from('profiles')
-        .select('stripe_customer_id, email')
+        .select('stripe_customer_id, email, trial_started_at')
         .eq('id', user.id)
         .single()
+
+      // Un usuario nuevo que acaba de registrarse no debería tener trial_started_at,
+      // pero comprobamos por si reentrara al callback con sesión existente
+      const hasUsedTrial = !!(profile as { trial_started_at?: string | null })?.trial_started_at
 
       try {
         const session = await stripe.checkout.sessions.create({
@@ -61,7 +65,7 @@ export async function GET(request: NextRequest) {
             ? { customer: profile.stripe_customer_id }
             : { customer_email: profile?.email || user.email }),
           line_items: [{ price: priceId, quantity: 1 }],
-          subscription_data: { trial_period_days: 3 },
+          subscription_data: hasUsedTrial ? {} : { trial_period_days: 3 },
           phone_number_collection: { enabled: false },
           success_url: `${appUrl}/onboarding?checkout=success`,
           cancel_url: `${appUrl}/pricing`,

@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
           ? (await stripeClient.subscriptions.retrieve(session.subscription as string)).status
           : 'active'
 
-        await supabase.from('profiles').update({
+        const update: Record<string, unknown> = {
           stripe_customer_id: session.customer as string,
           stripe_subscription_id: session.subscription as string,
           access_status: 'active',
@@ -60,7 +60,14 @@ export async function POST(req: NextRequest) {
           subscription_status: subStatus as 'active' | 'trialing',
           subscription_plan: subscriptionPlan,
           is_active: true,
-        }).eq('id', userId)
+        }
+
+        // Marcar trial como usado si está en trialing
+        if (subStatus === 'trialing') {
+          update.trial_started_at = new Date().toISOString()
+        }
+
+        await supabase.from('profiles').update(update).eq('id', userId)
 
         try {
           await supabase.from('profiles').update({ signup_method: 'stripe_checkout' }).eq('id', userId)

@@ -50,7 +50,13 @@ DURACIÓN: Gancho 3-5s, Contexto 5-10s, Solución 20-30s, CTA 3-5s = 35-45s tota
 - El campo "category" debe ser "autoridad", "resultados" o "conexion" según corresponda.
 - Títulos atractivos, NO repetidos, coherentes con la misión.
 - "hookIdea" es una idea breve de gancho (un ángulo, no el texto literal).
-- "caption" es el texto de publicación con hashtags reales del sector.
+- "caption" es el texto de publicación LISTO PARA COPIAR y pegar en Instagram. Debe seguir EXACTAMENTE este formato:
+  · Varios párrafos de texto separados por doble salto de línea (\\n\\n).
+  · Cada párrafo empieza con UN emoji temático (✨ 💭 💡 🔒 ❤️ 📌 🔥 👇 🌿 ✂️ 🎨 💫) seguido del texto.
+  · El último párrafo es la CTA conversacional (sin hashtag).
+  · Después, en un ÚLTIMO párrafo aparte, los hashtags: MÁXIMO 4 hashtags, todos relevantes al tema concreto del reel (no genéricos como #estilista). Formato "#tag1 #tag2 #tag3 #tag4".
+  Ejemplo de caption:
+  "✨ Lo que me gustaría que supieras antes de hacerte balayage.\\n\\n💡 Muchas clientas llegan con una idea del servicio que no se ajusta a la realidad, y eso acaba en decepción. El problema no es el servicio, es la falta de información.\\n\\n🔒 Por eso, antes de tocar el color hago un diagnóstico completo y te explico qué se puede lograr y qué no.\\n\\n👇 Si tienes dudas, escríbeme y te ayudo a aclararlo antes de reservar.\\n\\n#balayage #rubionatural #cabellosano #bravestudio"
 - "visual_idea" describe cómo grabar (plano, luz, acción, música).
 - "day" = ${input.currentDay}.
 - Los "script.hook", "script.context", "script.solution" y "script.cta" deben ser textos reales y desarrollados (especialmente "solution", que debe ser largo y detallado), no esbozos.
@@ -103,7 +109,7 @@ export function generateMockRetos(input: RetoInput): RetoOutput {
         solution: `Por eso, antes de tocar el color o las tijeras, hago un diagnóstico completo: analizo el estado de la fibra, el historial químico y las expectativas reales de cada clienta. Después explico qué se puede lograr y qué no, qué técnica uso y por qué, y cuánto mantenimiento va a necesitar en casa. Así la clienta decide con criterio, no por impulso, y el resultado se sostiene en el tiempo.`,
         cta: `Si estás pensando en hacerte ${primary} y tienes dudas, escríbeme y te ayudo a aclararlo antes de reservar.`,
       },
-      caption: `Lo que me gustaría que supieras antes de ${mTitle ? mTitle.toLowerCase() : `hacerte ${primary}`}. Guarda este post para tu próxima cita. #${primary.replace(/\s/g, '')} #estilista #peluqueria #bravestudio`,
+      caption: `✨ Lo que me gustaría que supieras antes de ${mTitle ? mTitle.toLowerCase() : `hacerte ${primary}`}.\n\n💭 Muchas clientas llegan con una idea del servicio que no se ajusta a la realidad, y eso acaba en decepción. El problema no es el servicio, es la falta de información antes de empezar.\n\n💡 Por eso, antes de tocar el color o las tijeras, hago un diagnóstico completo: estado de la fibra, historial químico y expectativas reales. Te explico qué se puede lograr y qué no, y cuánto mantenimiento necesitarás en casa.\n\n👇 Si estás pensando en hacerte ${primary} y tienes dudas, escríbeme y te ayudo a aclararlo antes de reservar.\n\n#${primary.replace(/\s/g, '')} #cuidadodelcabello #diagnosticocapilar #bravestudio`,
       visual_idea: `Plano medio tuyo hablando a cámara en el salón, con el material del servicio de fondo. Tono cercano y seguro.`,
       day,
     },
@@ -121,7 +127,7 @@ export function generateMockRetos(input: RetoInput): RetoOutput {
         solution: `Mi forma de evitarlo es simple: nunca empiezo sin un diagnóstico previo. Miro la fibra al microscopio, valoro el historial químico de los últimos 12 meses y mido la elasticidad del cabello. Solo entonces elijo la técnica, la decoloración y el tono. Trabajo por capas finas, controlo los tiempos de exposición y uso tratamientos reconstructores entre pasos. Así protejo la fibra y consigo un resultado que dura.`,
         cta: `¿Te has llevado un susto con ${primary}? Cuéntamelo por mensaje y te digo si tiene solución.`,
       },
-      caption: `El error más común con ${primary} y cómo lo evito en el salón. #${primary.replace(/\s/g, '')} #consejos #estilista #bravestudio`,
+      caption: `🔒 El error más común con ${primary} no es de la clienta, es del profesional que se salta el diagnóstico.\n\n🔥 Cada semana reparo trabajos donde se aplicó la misma técnica a melenas distintas. El resultado: daño, color que no dura, clientas frustradas.\n\n✂️ Mi forma de evitarlo: nunca empiezo sin diagnóstico previo. Miro la fibra, valoro el historial químico de los últimos 12 meses y mido la elasticidad. Solo entonces elijo técnica, decoloración y tono.\n\n👇 ¿Te has llevado un susto con ${primary}? Cuéntamelo por mensaje y te digo si tiene solución.\n\n#${primary.replace(/\s/g, '')} #errorescapilares #cabellosano #bravestudio`,
       visual_idea: `Primer plano de tus manos trabajando, después corte a ti explicando a cámara.`,
       day,
     },
@@ -139,7 +145,7 @@ export function generateMockRetos(input: RetoInput): RetoOutput {
         solution: `Empezamos por un protocolo de reconstrucción de tres semanas. Después hice un ${secondary.toLowerCase()} trabajando desde la raíz solo donde la fibra lo permitía, respetando la elasticidad natural. Apliqué un tono matizador con bajo % de oxidante y sellé con un tratamiento ácido. El proceso tardó cuatro horas, pero el resultado fue un color limpio, sano y con brillo real.`,
         cta: `Si tienes un caso parecido y quieres una opinión honesta, escríbeme y valoro tu caso sin compromiso.`,
       },
-      caption: `Transformación real con ${secondary} en el salón. El proceso también importa, no solo el resultado. #transformacion #antesydespues #${secondary.replace(/\s/g, '')} #bravestudio`,
+      caption: `✨ Esta clienta llevaba años queriendo un cambio y nadie le daba una salida realista.\n\n💭 Llegó con el pelo dañado por decoloraciones anteriores y miedo a volver a intentarlo. Lo que necesitaba no era más color, era un plan.\n\n💡 Empezamos por un protocolo de reconstrucción de tres semanas. Después hice un ${secondary.toLowerCase()} trabajando solo donde la fibra lo permitía, con tono matizador y sellado ácido. Cuatro horas de proceso, brillo real al final.\n\n👇 Si tienes un caso parecido y quieres una opinión honesta, escríbeme y valoro tu caso sin compromiso.\n\n#${secondary.replace(/\s/g, '')} #antesydespues #reconstruccioncapilar #bravestudio`,
       visual_idea: `Montaje antes → proceso → después, con música emocional y cortes limpios.`,
       day,
     },
@@ -157,7 +163,7 @@ export function generateMockRetos(input: RetoInput): RetoOutput {
         solution: `Empiezo observando cómo cae el pelo limpio y seco, identifico la dirección de crecimiento y las zonas con más volumen. Después dibujo la guía en la nuca y trabajo de dentro a fuera respetando la densidad de cada zona. Acabo con un texturizado ligero solo en las puntas para dar movimiento sin perder forma, y repaso el contorno para que el peinado en casa sea fácil. Cada paso tiene un por qué.`,
         cta: `Si quieres un ${tertiary.toLowerCase()} pensado para tu pelo, reserva una consulta y lo hacemos a medida.`,
       },
-      caption: `El proceso real de ${tertiary} en el salón, paso a paso. #${tertiary.replace(/\s/g, '')} #detrasdecamaras #estilista #bravestudio`,
+      caption: `✂️ Si crees que un buen ${tertiary.toLowerCase()} es solo cortar, te falta ver cómo lo hago yo.\n\n💡 Un ${tertiary.toLowerCase()} bien hecho respeta la dirección natural del pelo, el tipo de rostro y el estilo de vida. No es estándar, es a medida.\n\n📌 Empiezo observando cómo cae el pelo limpio y seco, dibujo la guía en la nuca y trabajo de dentro a fuera respetando la densidad de cada zona. Acabo con texturizado ligero en puntas y repaso el contorno. Cada paso tiene un por qué.\n\n👇 Si quieres un ${tertiary.toLowerCase()} pensado para tu pelo, reserva una consulta y lo hacemos a medida.\n\n#${tertiary.replace(/\s/g, '')} #corteamano #cortepersonalizado #bravestudio`,
       visual_idea: `Cámara sobre el hombro mientras trabajas, mostrando cada paso con cortes rápidos.`,
       day,
     },
@@ -175,7 +181,7 @@ export function generateMockRetos(input: RetoInput): RetoOutput {
         solution: `Desde entonces trabajo así: escucho a la clienta antes de proponer nada, le pregunto qué necesita de su pelo y para qué, y traduzco eso en una técnica y un plan realistas. No busco impresionar, busco que se reconozca al mirarse. Esa es la diferencia que me mantiene haciendo esto cada día, y la que intento transmitir en cada cita.`,
         cta: `¿Tú también sientes que tu pelo no te representa? Cuéntamelo, me interesa leerte.`,
       },
-      caption: `Mi historia y por qué hago lo que hago. Cada clienta me enseña algo nuevo. #mihistoria #estilista #vocacion #bravestudio`,
+      caption: `❤️ No me hice estilista por moda. Me hice porque alguien me enseñó que cambiar un pelo puede cambiar un día.\n\n💫 Al principio veía esto como un trabajo más. Hasta que una clienta me contó que no se había reconocido en el espejo en meses, y que salir del salón le devolvió algo que había perdido. Ahí entendí el oficio.\n\n✨ Desde entonces escucho a la clienta antes de proponer nada, le pregunto qué necesita de su pelo y para qué, y traduzco eso en un plan realista. No busco impresionar, busco que se reconozca al mirarse.\n\n👇 ¿Tú también sientes que tu pelo no te representa? Cuéntamelo, me interesa leerte.\n\n#${primary.replace(/\s/g, '')} #mihistoria #vocacion #bravestudio`,
       visual_idea: `Tú en el salón preparando el puesto mientras hablas a cámara, tono íntimo.`,
       day,
     },
@@ -193,7 +199,7 @@ export function generateMockRetos(input: RetoInput): RetoOutput {
         solution: `Hoy te pregunto: ¿cuál es la parte de tu pelo que más te cuesta manejar y qué has probado hasta ahora? Con tus respuestas preparé contenido de las próximas semanas, así que cuento contigo. Leo todos los comentarios y respondo siempre que puedo. Y si tu caso es más personal, mi privado está abierto.`,
         cta: `Cuéntamelo en comentarios, los leo todos y te respondo.`,
       },
-      caption: `Pregunta para mi comunidad. ¡Quiero leerte! #comunidad #estilista #bravestudio #${primary.replace(/\s/g, '')}`,
+      caption: `💬 Tengo una pregunta para ti y de verdad quiero leer tu respuesta, no un emoji.\n\n💭 Después de años en el salón, lo que más me ayuda a mejorar no son las tendencias, sino lo que me cuentan las clientas reales.\n\n✨ Hoy te pregunto: ¿cuál es la parte de tu pelo que más te cuesta manejar y qué has probado hasta ahora? Con tus respuestas preparé el contenido de las próximas semanas.\n\n👇 Cuéntamelo en comentarios, los leo todos y te respondo.\n\n#${primary.replace(/\s/g, '')} #comunidad #dudas_capilares #bravestudio`,
       visual_idea: `Habla a cámara en tu salón, tono cercano y cálido, sin música fuerte.`,
       day,
     },
@@ -211,7 +217,7 @@ export function generateMockRetos(input: RetoInput): RetoOutput {
         solution: `Hice un diagnóstico honesto, le expliqué qué se podía salvar y qué no, y monté un plan de tres sesiones: primero reconstrucción, después ${tertiary.toLowerCase()} respetando la fibra, y por último un tono matizador suave. Trabajé con decoloraciones de bajo volumen, tiempos controlados y tratamientos intermedios. El resultado no fue solo estético, fue una clienta que volvió a confiar en su pelo y en su estilista.`,
         cta: `Si vienes de una experiencia parecida, escríbeme y te doy una opinión honesta de lo que se puede hacer.`,
       },
-      caption: `El antes y después que más me enorgullece. #antesydespues #${tertiary.replace(/\s/g, '')} #bravestudio #estilista`,
+      caption: `🔥 Este es el antes y después que más me enorgullece, y no por el color, por el proceso detrás.\n\n💭 La clienta venía de dos servicios fallidos en otro sitio y estaba a punto de dejarlo. Necesitaba confianza, no solo técnica.\n\n💡 Hice un diagnóstico honesto, le expliqué qué se podía salvar y monté un plan de tres sesiones: reconstrucción, ${tertiary.toLowerCase()} respetando la fibra y tono matizador suave. Trabajé con bajo volumen, tiempos controlados y tratamientos intermedios.\n\n👇 Si vienes de una experiencia parecida, escríbeme y te doy una opinión honesta de lo que se puede hacer.\n\n#${tertiary.replace(/\s/g, '')} #antesydespues #reconstruccioncapilar #bravestudio`,
       visual_idea: `Antes y después con música emocional, cortes lentos para dejar ver el detalle.`,
       day,
     },

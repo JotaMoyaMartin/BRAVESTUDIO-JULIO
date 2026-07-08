@@ -273,6 +273,17 @@ export default function RetoWeeklyGenerator({
                 </div>
               )}
 
+              {/* Caption preview (listo para copiar) */}
+              {item.caption && (
+                <div
+                  className="rounded-[var(--radius-sm)] p-3 mb-2"
+                  style={{ background: 'white', border: '1px dashed var(--color-cherry)' }}
+                >
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-cherry opacity-60 mb-1">Copy para Instagram</p>
+                  <p className="text-xs text-cherry-dark whitespace-pre-line leading-relaxed">{item.caption}</p>
+                </div>
+              )}
+
               {/* Actions */}
               <div className="flex flex-wrap gap-2 mt-2">
                 <button

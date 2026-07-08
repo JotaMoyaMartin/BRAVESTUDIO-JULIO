@@ -16,7 +16,6 @@ import {
 } from '@/lib/content-utils'
 import StoryMockup from '@/components/content/StoryMockup'
 import QuestionCard from '@/components/content/QuestionCard'
-import TransicionesVirales from '@/components/stories/TransicionesVirales'
 import Link from 'next/link'
 import { useSessionState, clearSectionState } from '@/lib/session-store'
 import { BrandFullContextInput, hasBrandContext, buildBrandFullContext } from '@/lib/ai/brand-context'
@@ -339,14 +338,6 @@ Visual: ${s.visualIdea}`
           <p className="text-xs font-bold uppercase tracking-wider mb-1" style={{ color: '#7A1832', opacity: 0.6 }}>METODOLOGÍA BRÄVE</p>
           <p className="text-xs" style={{ color: '#591427' }}>3 Stories: Problema → Autoridad → Resultado + Acción. Esta secuencia lleva a la clienta desde la identificación hasta la reserva.</p>
         </div>
-
-        {/* Transiciones virales — sección colapsable integrada */}
-        <TransicionesVirales
-          onCopy={handleCopy}
-          copiedKey={copied}
-          storiesCount={result.stories.length}
-          mode={mode}
-        />
 
         {/* General buttons */}
         <div className="flex flex-wrap gap-2">

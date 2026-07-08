@@ -13,6 +13,7 @@ import PlansTab from '@/components/admin/PlansTab'
 import SubscriptionsTab from '@/components/admin/SubscriptionsTab'
 import SupportTab from '@/components/admin/SupportTab'
 import InspiracionTab from '@/components/admin/InspiracionTab'
+import TransicionTab from '@/components/admin/TransicionTab'
 import { hasActiveAccess } from '@/lib/access'
 
 interface Props {
@@ -98,6 +99,7 @@ export default function AdminClient({
           {activeTab === 'codigos' && <CodesTab promoCodes={promoCodes} />}
           {activeTab === 'planes' && <PlansTab />}
           {activeTab === 'inspiracion' && <InspiracionTab />}
+          {activeTab === 'transiciones' && <TransicionTab />}
           {activeTab === 'suscripciones' && <SubscriptionsTab users={users} />}
           {activeTab === 'soporte' && (
             <SupportTab users={users} userStats={userStats} onUserUpdate={handleUserUpdate} />

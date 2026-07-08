@@ -389,6 +389,45 @@ export interface Database {
           saved_at?: string
         }
       }
+      reel_transitions: {
+        Row: {
+          id: string
+          title: string
+          short_description: string
+          description: string
+          idea_text: string | null
+          why_text: string | null
+          how_text: string | null
+          cover_image: string
+          instagram_url: string | null
+          status: 'active' | 'hidden'
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          title: string
+          short_description: string
+          description: string
+          idea_text?: string | null
+          why_text?: string | null
+          how_text?: string | null
+          cover_image: string
+          instagram_url?: string | null
+          status?: 'active' | 'hidden'
+          created_at?: string
+        }
+        Update: {
+          title?: string
+          short_description?: string
+          description?: string
+          idea_text?: string | null
+          why_text?: string | null
+          how_text?: string | null
+          cover_image?: string
+          instagram_url?: string | null
+          status?: 'active' | 'hidden'
+        }
+      }
       user_activity_log: {
         Row: {
           id: string
@@ -441,6 +480,7 @@ export type PromoCode = Database['public']['Tables']['promo_codes']['Row']
 export type Plan = Database['public']['Tables']['plans']['Row']
 export type PlanPriceHistory = Database['public']['Tables']['plan_price_history']['Row']
 export type ReelInspiration = Database['public']['Tables']['reel_inspirations']['Row']
+export type ReelTransition = Database['public']['Tables']['reel_transitions']['Row']
 export type SavedInspiration = Database['public']['Tables']['saved_inspirations']['Row']
 export type UserActivityLog = Database['public']['Tables']['user_activity_log']['Row']
 export type PromoRedemption = Database['public']['Tables']['promo_redemptions']['Row']

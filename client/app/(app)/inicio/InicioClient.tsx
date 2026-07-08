@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { useState, useEffect, useMemo } from 'react'
 import { Sparkles, Film, LayoutGrid, Star, ArrowRight } from 'lucide-react'
-import { Profile, BrandProfile, ContentItem, ReelInspiration } from '@/types/database'
+import { Profile, BrandProfile, ContentItem, ReelInspiration, ReelTransition } from '@/types/database'
 import { demoGetPlan } from '@/lib/demo-store'
 import Bravi from '@/components/bravi/Bravi'
 import QuickActionCard from '@/components/home/QuickActionCard'
@@ -11,6 +11,7 @@ import ContinueCard from '@/components/home/ContinueCard'
 import LevelBar from '@/components/home/LevelBar'
 import AchievementsCarousel from '@/components/home/AchievementsCarousel'
 import InspirationPreview from '@/components/home/InspirationPreview'
+import TransitionsPreview from '@/components/home/TransitionsPreview'
 
 const SERVICES = ['Balayage', 'Rubios', 'Canas', 'Alisados', 'Tratamientos', 'Corte', 'Color']
 
@@ -79,11 +80,13 @@ export default function InicioClient({
   brand,
   contentItems,
   inspirations,
+  transitions,
 }: {
   profile: Profile | null
   brand: Partial<BrandProfile> | null
   contentItems: Partial<ContentItem>[]
   inspirations: Pick<ReelInspiration, 'id' | 'title' | 'short_description' | 'cover_image'>[]
+  transitions: Pick<ReelTransition, 'id' | 'title' | 'short_description' | 'cover_image'>[]
 }) {
   const [items, setItems] = useState<Partial<ContentItem>[]>(contentItems)
   const isDemo = profile?.id === 'demo'
@@ -197,6 +200,9 @@ export default function InicioClient({
 
       {/* 3.5 Inspiración de Reels — portadas visuales rotativas */}
       <InspirationPreview inspirations={inspirations} />
+
+      {/* 3.6 Transiciones de Reels — portadas visuales rotativas */}
+      <TransitionsPreview transitions={transitions} />
 
       {/* 4. Sorpréndeme protagonista */}
       <SurpriseCard brandContext={brandContext} userId={profile?.id} />

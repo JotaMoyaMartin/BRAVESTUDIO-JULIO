@@ -6,7 +6,7 @@ import { Profile } from '@/types/database'
 import {
   Home, Sparkles, Star,
   Film, LayoutGrid, BookOpen, Calendar, LogOut, Menu, X,
-  Clapperboard, Settings, Shield
+  Clapperboard, Wand2, Settings, Shield
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -19,6 +19,7 @@ const navItems = [
   { href: '/crear-contenido', label: 'Crear Contenido', icon: Film },
   { href: '/stories', label: 'Stories BRÄVE', icon: LayoutGrid },
   { href: '/inspiracion-reels', label: 'Inspiración Reels', icon: Clapperboard },
+  { href: '/transiciones-reels', label: 'Transiciones Reels', icon: Wand2 },
   { href: '/biblioteca', label: 'Biblioteca', icon: BookOpen },
   { href: '/calendario', label: 'Calendario', icon: Calendar },
 ]

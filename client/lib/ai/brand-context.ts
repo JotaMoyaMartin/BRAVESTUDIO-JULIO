@@ -24,7 +24,8 @@ export function hasBrandContext(brand: BrandFullContextInput | null | undefined)
       brand.strategy_json ||
       brand.service_to_promote ||
       (brand.main_services && brand.main_services.length > 0) ||
-      brand.raw_input
+      brand.raw_input ||
+      brand.salon_name
   )
 }
 

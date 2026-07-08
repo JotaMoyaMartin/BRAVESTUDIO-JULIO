@@ -61,7 +61,11 @@ export default function LandingHeader() {
         <div className="flex items-center gap-2">
           <Link
             href="/login"
-            className="text-sm font-medium text-cherry-dark opacity-70 hover:opacity-100 transition-opacity hidden sm:inline-block px-3 py-2"
+            className="text-sm font-semibold text-cherry-dark hidden sm:inline-flex items-center px-3.5 py-2 rounded-xl transition-all hover:-translate-y-0.5"
+            style={{
+              background: 'var(--color-buttermilk)',
+              border: '1.5px solid rgba(122,24,50,0.18)',
+            }}
           >
             Ya tengo cuenta
           </Link>
@@ -99,7 +103,11 @@ export default function LandingHeader() {
               <Link
                 href="/login"
                 onClick={() => setOpen(false)}
-                className="btn-ghost flex-1 justify-center text-sm"
+                className="flex-1 justify-center text-sm font-semibold text-cherry-dark inline-flex items-center px-3.5 py-2.5 rounded-xl transition-colors"
+                style={{
+                  background: 'var(--color-buttermilk)',
+                  border: '1.5px solid rgba(122,24,50,0.18)',
+                }}
               >
                 Ya tengo cuenta
               </Link>

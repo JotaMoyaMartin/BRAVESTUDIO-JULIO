@@ -184,6 +184,7 @@ export interface Database {
           visual_idea: string | null
           scheduled_date: string | null
           status: 'library' | 'scheduled' | 'draft'
+          tag: string | null
           created_at: string
           updated_at: string
         }
@@ -200,6 +201,7 @@ export interface Database {
           visual_idea?: string | null
           scheduled_date?: string | null
           status?: 'library' | 'scheduled' | 'draft'
+          tag?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -214,6 +216,7 @@ export interface Database {
           visual_idea?: string | null
           scheduled_date?: string | null
           status?: 'library' | 'scheduled' | 'draft'
+          tag?: string | null
           updated_at?: string
         }
       }
@@ -469,6 +472,69 @@ export interface Database {
           redeemed_at?: string
         }
       }
+      reto_10k_progress: {
+        Row: {
+          user_id: string
+          joined_at: string
+          started_at: string | null
+          objective: string | null
+          services: string[]
+          level: string | null
+          current_day: number
+          current_phase: number
+          status: 'not_started' | 'active' | 'paused' | 'completed'
+          completed_at: string | null
+          last_generated_week: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          joined_at?: string
+          started_at?: string | null
+          objective?: string | null
+          services?: string[]
+          level?: string | null
+          current_day?: number
+          current_phase?: number
+          status?: 'not_started' | 'active' | 'paused' | 'completed'
+          completed_at?: string | null
+          last_generated_week?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          started_at?: string | null
+          objective?: string | null
+          services?: string[]
+          level?: string | null
+          current_day?: number
+          current_phase?: number
+          status?: 'not_started' | 'active' | 'paused' | 'completed'
+          completed_at?: string | null
+          last_generated_week?: number
+          updated_at?: string
+        }
+      }
+      reto_10k_config: {
+        Row: {
+          id: string
+          config_json: Record<string, unknown>
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          config_json: Record<string, unknown>
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          config_json?: Record<string, unknown>
+          updated_at?: string
+          updated_by?: string | null
+        }
+      }
     }
   }
 }
@@ -484,3 +550,5 @@ export type ReelTransition = Database['public']['Tables']['reel_transitions']['R
 export type SavedInspiration = Database['public']['Tables']['saved_inspirations']['Row']
 export type UserActivityLog = Database['public']['Tables']['user_activity_log']['Row']
 export type PromoRedemption = Database['public']['Tables']['promo_redemptions']['Row']
+export type Reto10kProgressRow = Database['public']['Tables']['reto_10k_progress']['Row']
+export type Reto10kConfigRow = Database['public']['Tables']['reto_10k_config']['Row']

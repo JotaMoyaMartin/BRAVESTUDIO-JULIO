@@ -11,6 +11,12 @@ export type BraviCategory =
   | 'tip'
   | 'reminder'
   | 'continue'
+  | 'reto_10k_start'
+  | 'reto_10k_day'
+  | 'reto_10k_week'
+  | 'reto_10k_phase'
+  | 'reto_10k_complete'
+  | 'reto_10k_streak'
 
 interface BraviMessage {
   text: string
@@ -71,6 +77,43 @@ export const BRAVI_MESSAGES: Record<BraviCategory, BraviMessage[]> = {
     { text: 'Volviste, qué bien. ¿Seguimos con lo de antes?', pose: 'normal' },
     { text: 'Justo a tiempo, teníamos algo pendiente.', pose: 'normal' },
   ],
+  reto_10k_start: [
+    { text: '¡Hoy empieza tu transformación! 30 días, 30 misiones, un nuevo tú.', pose: 'celebrating' },
+    { text: 'Vamos a construir tu presencia en Instagram paso a paso. Yo te guío.', pose: 'normal' },
+    { text: 'Confía en el proceso. Cada día una misión, cada misión un paso.', pose: 'normal' },
+    { text: 'Tu comunidad te está esperando. Es hora de mostrarte al mundo.', pose: 'thinking' },
+  ],
+  reto_10k_day: [
+    { text: '¡Nuevo día del Reto! Misión de hoy lista para ti. ¡Tú puedes!', pose: 'normal' },
+    { text: 'Cada contenido cuenta. Vas por buen camino, sigue así.', pose: 'normal' },
+    { text: 'Hoy toca una misión nueva. Recuerda, hecho es mejor que perfecto.', pose: 'thinking' },
+    { text: 'Día a día se construye la transformación. No pares ahora.', pose: 'normal' },
+    { text: 'Tu misión de hoy te espera. Yo sé que la vas a clavar.', pose: 'celebrating' },
+  ],
+  reto_10k_week: [
+    { text: '¡Has completado otra semana del Reto! Vamos a generar tu contenido.', pose: 'celebrating' },
+    { text: 'Nueva semana, nuevas ideas. Deja que te ayude a planificar.', pose: 'normal' },
+    { text: 'Es momento de crear tu contenido semanal. ¡Genera y guarda!', pose: 'normal' },
+    { text: 'Una semana más de progreso. Tu constancia te está transformando.', pose: 'thinking' },
+  ],
+  reto_10k_phase: [
+    { text: '¡Nueva fase del Reto! Estás evolucionando como estilista.', pose: 'celebrating' },
+    { text: 'Fase completada y nueva etapa. ¡Vas por más!', pose: 'normal' },
+    { text: 'Subes de nivel. Esta fase te lleva un paso más allá.', pose: 'thinking' },
+    { text: 'Cada fase tiene su reto. Confía en ti, lo estás haciendo genial.', pose: 'normal' },
+  ],
+  reto_10k_complete: [
+    { text: '¡Completaste el Reto 10K! 30 días de transformación. ¡Orgullosa de ti!', pose: 'celebrating' },
+    { text: 'Eres oficialmente una estilista referente. Lo lograste.', pose: 'celebrating' },
+    { text: '30 días, 30 misiones, infinitas posibilidades. ¡Enhorabuena!', pose: 'celebrating' },
+    { text: 'Tu transformación es real. Tu comunidad lo nota. Lo lograste.', pose: 'normal' },
+  ],
+  reto_10k_streak: [
+    { text: '¡Qué racha! Eres imparable. Sigue así.', pose: 'celebrating' },
+    { text: 'Llevas días seguidos creando contenido. Así se hace.', pose: 'normal' },
+    { text: 'Tu racha es tu mejor prueba de constancia. ¡Bravo!', pose: 'celebrating' },
+    { text: '¡Fuego! Días sin parar. No bajes el ritmo ahora.', pose: 'normal' },
+  ],
 }
 
 export interface BraviContext {
@@ -79,10 +122,20 @@ export interface BraviContext {
   itemsToday: number
   hasScheduled: boolean
   hour: number // 0-23
+  retoActive?: boolean
+  retoStatus?: string
+  retoDay?: number
+  retoItemsCount?: number
 }
 
 // Pick category by context rules
 export function pickCategory(ctx: BraviContext): BraviCategory {
+  // Reto 10K complete
+  if (ctx.retoActive && ctx.retoStatus === 'completed') return 'reto_10k_complete'
+  // Reto 10K streak (5+ days)
+  if (ctx.retoDay && ctx.retoDay >= 5 && ctx.retoActive) return 'reto_10k_streak'
+  // Reto 10K day
+  if (ctx.retoActive && ctx.retoDay && ctx.retoDay >= 1) return 'reto_10k_day'
   // Celebrate: 3+ items today
   if (ctx.itemsToday >= 3) return 'celebrate'
   // Encourage: no streak

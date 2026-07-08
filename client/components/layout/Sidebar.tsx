@@ -6,14 +6,24 @@ import { Profile } from '@/types/database'
 import {
   Home, Sparkles, Star,
   Film, LayoutGrid, BookOpen, Calendar, LogOut, Menu, X,
-  Clapperboard, Wand2, Settings, Shield
+  Clapperboard, Wand2, Settings, Shield, Rocket
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import BraviMascot from '@/components/bravi/BraviMascot'
 
-const navItems = [
+interface NavItem {
+  href: string
+  label: string
+  icon: typeof Home
+  highlight?: boolean
+  badge?: string
+  pulse?: boolean
+}
+
+const navItems: NavItem[] = [
   { href: '/inicio', label: 'Inicio', icon: Home },
+  { href: '/reto-10k', label: 'Reto 10K', icon: Rocket, badge: 'NUEVO', highlight: true },
   { href: '/mi-marca', label: 'Mi Marca', icon: Star },
   { href: '/planificar', label: 'Planificación', icon: Sparkles },
   { href: '/crear-contenido', label: 'Crear Contenido', icon: Film },
@@ -68,13 +78,13 @@ export default function Sidebar({ profile }: { profile: Profile }) {
             <span className="text-xs font-semibold text-cherry-dark">Modo Admin activo</span>
           </div>
         )}
-        {navItems.map(({ href, label, icon: Icon }) => {
+        {navItems.map(({ href, label, icon: Icon, badge, highlight }) => {
           const active = pathname === href || pathname.startsWith(href + '/')
           return (
             <Link
               key={href}
               href={href}
-              className="flex items-center gap-3 px-4 py-3 rounded-[var(--radius-sm)] text-sm font-medium transition-all"
+              className={`flex items-center gap-3 px-4 py-3 rounded-[var(--radius-sm)] text-sm font-medium transition-all ${highlight ? 'glow-ready' : ''}`}
               style={{
                 background: active ? 'var(--color-cherry)' : 'transparent',
                 color: active ? 'white' : 'var(--color-cherry-dark)',
@@ -82,6 +92,14 @@ export default function Sidebar({ profile }: { profile: Profile }) {
             >
               <Icon size={18} />
               {label}
+              {badge && (
+                <span
+                  className="ml-auto inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold"
+                  style={{ background: 'var(--color-cherry)', color: 'white' }}
+                >
+                  {badge}
+                </span>
+              )}
             </Link>
           )
         })}
@@ -221,13 +239,13 @@ export default function Sidebar({ profile }: { profile: Profile }) {
 
         {/* Nav */}
         <nav className="px-4 py-3 space-y-1">
-          {navItems.map(({ href, label, icon: Icon }) => {
+          {navItems.map(({ href, label, icon: Icon, badge, highlight }) => {
             const active = pathname === href || pathname.startsWith(href + '/')
             return (
               <Link
                 key={href}
                 href={href}
-                className="flex items-center gap-3 px-4 py-3 rounded-[var(--radius-sm)] text-sm font-medium transition-all"
+                className={`flex items-center gap-3 px-4 py-3 rounded-[var(--radius-sm)] text-sm font-medium transition-all ${highlight ? 'glow-ready' : ''}`}
                 style={{
                   background: active ? 'var(--color-cherry)' : 'transparent',
                   color: active ? 'white' : 'var(--color-cherry-dark)',
@@ -235,6 +253,14 @@ export default function Sidebar({ profile }: { profile: Profile }) {
               >
                 <Icon size={18} />
                 {label}
+                {badge && (
+                  <span
+                    className="ml-auto inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold"
+                    style={{ background: 'var(--color-cherry)', color: 'white' }}
+                  >
+                    {badge}
+                  </span>
+                )}
               </Link>
             )
           })}

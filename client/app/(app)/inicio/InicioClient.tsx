@@ -1,8 +1,9 @@
 'use client'
 import Link from 'next/link'
 import { useState, useEffect, useMemo } from 'react'
-import { Sparkles, Film, LayoutGrid, Star, ArrowRight } from 'lucide-react'
+import { Sparkles, Film, LayoutGrid, Star, ArrowRight, Rocket } from 'lucide-react'
 import { Profile, BrandProfile, ContentItem, ReelInspiration, ReelTransition } from '@/types/database'
+import { Reto10kProgress } from '@/types/reto10k'
 import { demoGetPlan } from '@/lib/demo-store'
 import Bravi from '@/components/bravi/Bravi'
 import QuickActionCard from '@/components/home/QuickActionCard'
@@ -61,12 +62,16 @@ function getStreak(items: Partial<ContentItem>[]): number {
 }
 
 const ACHIEVEMENTS = [
-  { id: 'primera_idea', label: 'Primera idea', desc: 'Guardaste tu primer contenido', emoji: '🌟', req: (n: number) => n >= 1 },
-  { id: 'cinco_ideas', label: '5 contenidos', desc: '5 piezas creadas', emoji: '🎯', req: (n: number) => n >= 5 },
-  { id: 'diez_ideas', label: '10 contenidos', desc: '10 piezas creadas', emoji: '💪', req: (n: number) => n >= 10 },
-  { id: 'racha_2', label: 'Racha x2', desc: '2 semanas seguidas', emoji: '🔥', req: (_n: number, s: number) => s >= 2 },
-  { id: 'racha_4', label: 'Racha x4', desc: '4 semanas seguidas', emoji: '⚡', req: (_n: number, s: number) => s >= 4 },
-  { id: 'veinte_ideas', label: '20 contenidos', desc: '20 piezas creadas', emoji: '🏆', req: (n: number) => n >= 20 },
+  { id: 'primera_idea', label: 'Primera idea', desc: 'Guardaste tu primer contenido', emoji: '🌟', req: (n: number, _s: number, ctx?: any) => n >= 1 },
+  { id: 'cinco_ideas', label: '5 contenidos', desc: '5 piezas creadas', emoji: '🎯', req: (n: number, _s: number, _ctx?: any) => n >= 5 },
+  { id: 'diez_ideas', label: '10 contenidos', desc: '10 piezas creadas', emoji: '💪', req: (n: number, _s: number, _ctx?: any) => n >= 10 },
+  { id: 'racha_2', label: 'Racha x2', desc: '2 semanas seguidas', emoji: '🔥', req: (_n: number, s: number, _ctx?: any) => s >= 2 },
+  { id: 'racha_4', label: 'Racha x4', desc: '4 semanas seguidas', emoji: '⚡', req: (_n: number, s: number, _ctx?: any) => s >= 4 },
+  { id: 'veinte_ideas', label: '20 contenidos', desc: '20 piezas creadas', emoji: '🏆', req: (n: number, _s: number, _ctx?: any) => n >= 20 },
+  { id: 'reto_inicio', label: 'Reto 10K', desc: 'Empezaste el Reto 10K', emoji: '🚀', req: (_n: number, _s: number, ctx?: any) => ctx?.retoActive === true },
+  { id: 'reto_7dias', label: '7 días Reto', desc: '7 días en el Reto 10K', emoji: '🔥', req: (_n: number, _s: number, ctx?: any) => (ctx?.retoDay ?? 0) >= 7 },
+  { id: 'reto_20contenidos', label: '20 del Reto', desc: '20 contenidos del Reto', emoji: '💪', req: (_n: number, _s: number, ctx?: any) => (ctx?.retoItemsCount ?? 0) >= 20 },
+  { id: 'reto_completado', label: 'Reto completo', desc: 'Completaste el Reto 10K', emoji: '👑', req: (_n: number, _s: number, ctx?: any) => ctx?.retoStatus === 'completed' },
 ]
 
 function greeting(hour: number): string {
@@ -81,12 +86,16 @@ export default function InicioClient({
   contentItems,
   inspirations,
   transitions,
+  retoProgress,
+  retoItemsCount,
 }: {
   profile: Profile | null
   brand: Partial<BrandProfile> | null
   contentItems: Partial<ContentItem>[]
   inspirations: Pick<ReelInspiration, 'id' | 'title' | 'short_description' | 'cover_image'>[]
   transitions: Pick<ReelTransition, 'id' | 'title' | 'short_description' | 'cover_image'>[]
+  retoProgress: Reto10kProgress | null
+  retoItemsCount: number
 }) {
   const [items, setItems] = useState<Partial<ContentItem>[]>(contentItems)
   const isDemo = profile?.id === 'demo'
@@ -123,22 +132,35 @@ export default function InicioClient({
     return sorted[0]
   }, [items])
 
+  const brandContext = brand?.optimized_summary || brand?.salon_name || undefined
+
+  const retoDay = retoProgress?.started_at ? Math.max(1, Math.min(30, Math.floor((Date.now() - new Date(retoProgress.started_at).getTime()) / 86400000) + 1)) : 0
+
   const braviContext = {
     lastSection: profile?.last_visited_section ?? null,
     streak,
     itemsToday,
     hasScheduled,
     hour,
+    retoActive: retoProgress?.status === 'active' || retoProgress?.status === 'completed',
+    retoStatus: retoProgress?.status,
+    retoDay,
+    retoItemsCount,
   }
 
-  const brandContext = brand?.optimized_summary || brand?.salon_name || undefined
+  const retoCtx = {
+    retoActive: retoProgress?.status === 'active' || retoProgress?.status === 'completed',
+    retoDay,
+    retoStatus: retoProgress?.status,
+    retoItemsCount,
+  }
 
   const achievements = ACHIEVEMENTS.map(a => ({
     id: a.id,
     label: a.label,
     desc: a.desc,
     emoji: a.emoji,
-    unlocked: a.req(xpTotal, streak),
+    unlocked: a.req(xpTotal, streak, retoCtx),
   }))
 
   return (
@@ -182,6 +204,61 @@ export default function InicioClient({
               Completar Mi Marca <ArrowRight size={14} />
             </Link>
           </div>
+        </div>
+      )}
+
+      {/* Reto 10K Hero */}
+      {retoProgress?.status === 'active' ? (
+        <div
+          className="rounded-[var(--radius-md)] p-5"
+          style={{
+            background: 'linear-gradient(135deg, var(--color-buttermilk) 0%, var(--color-warm-light) 100%)',
+            border: '2px solid var(--color-cherry)',
+          }}
+        >
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-[var(--radius-sm)] flex items-center justify-center" style={{ background: 'var(--color-cherry)' }}>
+              <Rocket size={20} className="text-white" />
+            </div>
+            <div className="flex-1">
+              <p className="font-bold text-sm text-cherry-dark">Reto 10K en marcha</p>
+              <p className="text-xs text-cherry-dark opacity-70">Día {retoDay} de 30 · {retoItemsCount} contenidos creados</p>
+            </div>
+            <Link href="/reto-10k" className="text-xs font-bold text-cherry hover:underline">Ir al Reto</Link>
+          </div>
+          <div className="h-2 rounded-full overflow-hidden mb-3" style={{ background: 'var(--color-warm-gray)' }}>
+            <div
+              className="h-full rounded-full"
+              style={{ width: `${Math.round((retoDay / 30) * 100)}%`, background: 'linear-gradient(90deg, var(--color-cherry) 0%, var(--color-cherry-dark) 100%)' }}
+            />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/reto-10k" className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-sm)] text-xs font-semibold text-white" style={{ background: 'var(--color-cherry)' }}>
+              <Sparkles size={13} /> Tu misión de hoy
+            </Link>
+            <Link href="/crear-contenido" className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-sm)] text-xs font-semibold text-cherry-dark" style={{ background: 'white', border: '1px solid var(--color-buttermilk)' }}>
+              <Film size={13} /> Crear contenido
+            </Link>
+            <Link href="/calendario" className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-sm)] text-xs font-semibold text-cherry-dark" style={{ background: 'white', border: '1px solid var(--color-buttermilk)' }}>
+              <ArrowRight size={13} /> Calendario
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <div
+          className="rounded-[var(--radius-md)] p-5 flex items-center gap-4"
+          style={{ background: 'var(--color-buttermilk)', border: '1.5px solid rgba(122,24,50,0.15)' }}
+        >
+          <div className="w-12 h-12 rounded-[var(--radius-sm)] flex items-center justify-center flex-shrink-0" style={{ background: 'var(--color-cherry)' }}>
+            <Rocket size={24} className="text-white" />
+          </div>
+          <div className="flex-1">
+            <p className="font-bold text-sm text-cherry-dark">Empieza el Reto 10K</p>
+            <p className="text-xs text-cherry-dark opacity-70">30 días para transformar tu presencia en Instagram</p>
+          </div>
+          <Link href="/reto-10k" className="inline-flex items-center gap-1.5 px-4 py-2 rounded-[var(--radius-sm)] text-xs font-bold text-white glow-ready" style={{ background: 'var(--color-cherry)' }}>
+            Empezar <ArrowRight size={13} />
+          </Link>
         </div>
       )}
 
@@ -245,7 +322,7 @@ export default function InicioClient({
 }
 
 // Render Bravi's contextual message as text
-function BraviMessage({ context }: { context: { lastSection?: string | null; streak: number; itemsToday: number; hasScheduled: boolean; hour: number } }) {
+function BraviMessage({ context }: { context: { lastSection?: string | null; streak: number; itemsToday: number; hasScheduled: boolean; hour: number; retoActive?: boolean; retoStatus?: string; retoDay?: number; retoItemsCount?: number } }) {
   // Use the same logic as Bravi but render only the text (SSR-safe via state)
   const [text, setText] = useState('¡Hola! ¿Qué creamos hoy?')
   useEffect(() => {

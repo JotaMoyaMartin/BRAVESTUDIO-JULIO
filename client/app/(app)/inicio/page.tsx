@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import InicioClient from './InicioClient'
 import { Profile, BrandProfile, ContentItem, ReelInspiration, ReelTransition } from '@/types/database'
+import { Reto10kProgress } from '@/types/reto10k'
 
 const IS_CONFIGURED = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').startsWith('http')
 
@@ -19,7 +20,7 @@ const DEMO_PROFILE: Profile = {
 
 export default async function InicioPage() {
   if (!IS_CONFIGURED) {
-    return <InicioClient profile={DEMO_PROFILE} brand={null} contentItems={[]} inspirations={[]} transitions={[]} />
+    return <InicioClient profile={DEMO_PROFILE} brand={null} contentItems={[]} inspirations={[]} transitions={[]} retoProgress={null} retoItemsCount={0} />
   }
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -27,7 +28,7 @@ export default async function InicioPage() {
   const { data: brand } = await supabase.from('brand_profiles').select('completion_status, salon_name').eq('user_id', user!.id).single()
   const { data: items } = await supabase
     .from('content_items')
-    .select('id, type, title, status, scheduled_date, created_at, updated_at')
+    .select('id, type, title, status, scheduled_date, created_at, updated_at, tag')
     .eq('user_id', user!.id)
     .order('updated_at', { ascending: false })
 
@@ -45,6 +46,20 @@ export default async function InicioPage() {
     .order('created_at', { ascending: false })
     .limit(20)
 
+  // Cargar progreso del Reto 10K
+  const { data: retoProgressRow } = await supabase
+    .from('reto_10k_progress')
+    .select('*')
+    .eq('user_id', user!.id)
+    .maybeSingle()
+
+  // Contar content_items con tag reto-10k
+  const { count: retoItemsCount } = await supabase
+    .from('content_items')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', user!.id)
+    .eq('tag', 'reto-10k')
+
   return (
     <InicioClient
       profile={profile as Profile | null}
@@ -52,6 +67,8 @@ export default async function InicioPage() {
       contentItems={(items as Partial<ContentItem>[]) || []}
       inspirations={(inspirationsData as Pick<ReelInspiration, 'id' | 'title' | 'short_description' | 'cover_image'>[]) || []}
       transitions={(transitionsData as Pick<ReelTransition, 'id' | 'title' | 'short_description' | 'cover_image'>[]) || []}
+      retoProgress={retoProgressRow as Reto10kProgress | null}
+      retoItemsCount={retoItemsCount || 0}
     />
   )
 }

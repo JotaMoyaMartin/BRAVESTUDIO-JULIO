@@ -35,6 +35,7 @@ interface MiniCardProps {
 
 function MiniCard({ item, onClick, isDragging }: MiniCardProps) {
   const config = TYPE_CONFIG[item.type] || TYPE_CONFIG.story
+  const isReto = item.tag === 'reto-10k'
   return (
     <button
       onClick={onClick}
@@ -42,11 +43,12 @@ function MiniCard({ item, onClick, isDragging }: MiniCardProps) {
       style={{
         background: config.bg,
         color: config.color,
-        border: `1px solid ${config.color}22`,
+        border: isReto ? `2px solid var(--color-cherry)` : `1px solid ${config.color}22`,
         opacity: isDragging ? 0.4 : 1,
         cursor: isDragging ? 'grabbing' : 'pointer',
       }}
     >
+      {isReto && <span className="inline-block w-1.5 h-1.5 rounded-full mr-1" style={{ background: 'var(--color-cherry)' }} />}
       <span className="font-semibold">{config.label}:</span> {item.title}
     </button>
   )

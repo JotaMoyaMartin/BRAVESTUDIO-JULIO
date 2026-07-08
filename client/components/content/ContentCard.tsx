@@ -117,6 +117,14 @@ export default function ContentCard({
                 >
                   {config.label}
                 </span>
+                {item.tag === 'reto-10k' && (
+                  <span
+                    className="text-xs font-bold uppercase px-2 py-0.5 rounded-full"
+                    style={{ background: 'var(--color-cherry)', color: 'white' }}
+                  >
+                    RETO 10K
+                  </span>
+                )}
                 {item.service && (
                   <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: '#FFF1B5', color: '#591427' }}>
                     {item.service}

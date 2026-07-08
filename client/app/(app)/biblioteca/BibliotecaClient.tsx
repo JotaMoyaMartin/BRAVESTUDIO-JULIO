@@ -1,6 +1,6 @@
 'use client'
 import { useState, useMemo } from 'react'
-import { Search, Filter, Check, Copy, BookOpen, X, Film, LayoutGrid, MessageSquare, Clapperboard, Trash2, ArrowRight } from 'lucide-react'
+import { Search, Filter, Check, Copy, BookOpen, X, Film, LayoutGrid, MessageSquare, Clapperboard, Trash2, ArrowRight, Rocket } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -11,13 +11,14 @@ import { formatMultipleForCopy, copyToClipboard } from '@/lib/content-utils'
 
 type PartialBrand = Pick<BrandProfile, 'optimized_summary' | 'salon_name' | 'main_services' | 'service_to_promote'> | null
 
-type FilterType = 'all' | 'reel' | 'carrusel' | 'story' | 'inspiraciones'
+type FilterType = 'all' | 'reel' | 'carrusel' | 'story' | 'inspiraciones' | 'reto-10k'
 
 const FILTER_OPTIONS: { id: FilterType; label: string; icon: typeof Film | null }[] = [
   { id: 'all', label: 'Todos', icon: null },
   { id: 'reel', label: 'Reels', icon: Film },
   { id: 'carrusel', label: 'Carruseles', icon: LayoutGrid },
   { id: 'story', label: 'Stories', icon: MessageSquare },
+  { id: 'reto-10k', label: 'Reto 10K', icon: Rocket },
   { id: 'inspiraciones', label: 'Inspiraciones', icon: Clapperboard },
 ]
 
@@ -33,8 +34,11 @@ export default function BibliotecaClient({ userId, items, brandContext, savedIns
 
   const filtered = useMemo(() => {
     let result = items
-    if (filter !== 'all') {
+    if (filter !== 'all' && filter !== 'inspiraciones' && filter !== 'reto-10k') {
       result = result.filter(i => i.type === filter)
+    }
+    if (filter === 'reto-10k') {
+      result = result.filter(i => i.tag === 'reto-10k')
     }
     if (search.trim()) {
       const q = search.toLowerCase().trim()
@@ -160,7 +164,9 @@ export default function BibliotecaClient({ userId, items, brandContext, savedIns
               ? items.length
               : opt.id === 'inspiraciones'
                 ? inspirations.length
-                : items.filter(i => i.type === opt.id).length
+                : opt.id === 'reto-10k'
+                  ? items.filter(i => i.tag === 'reto-10k').length
+                  : items.filter(i => i.type === opt.id).length
             return (
               <button
                 key={opt.id}

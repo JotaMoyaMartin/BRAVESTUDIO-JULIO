@@ -23,6 +23,13 @@ const LEVELS = [
   { id: 'avanzado', label: 'Avanzado', desc: 'Publico regularmente pero quiero crecer más' },
 ]
 
+const POSTS_PER_WEEK = [
+  { id: 3, label: '3', desc: 'Soy realista, empiezo suave' },
+  { id: 4, label: '4', desc: 'Equilibrado, recomendado', recommended: true },
+  { id: 5, label: '5', desc: 'Quiero acelerar' },
+  { id: 7, label: '7', desc: 'Cada día, modo bestia' },
+]
+
 interface Props {
   userId: string
   progress: Reto10kProgress | null
@@ -32,10 +39,11 @@ interface Props {
 }
 
 export default function RetoOnboarding({ userId, progress, config, brand, demoMode }: Props) {
-  const [step, setStep] = useState<1 | 2 | 3>(1)
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
   const [objective, setObjective] = useState('recomendado')
   const [services, setServices] = useState<string[]>([])
   const [level, setLevel] = useState('')
+  const [postsPerWeek, setPostsPerWeek] = useState<number>(4)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -69,6 +77,7 @@ export default function RetoOnboarding({ userId, progress, config, brand, demoMo
           objective,
           services,
           level,
+          posts_per_week: postsPerWeek,
         })
         .eq('user_id', userId)
       if (updateError) throw updateError
@@ -93,7 +102,7 @@ export default function RetoOnboarding({ userId, progress, config, brand, demoMo
 
       {/* Progress indicator */}
       <div className="flex items-center justify-center gap-2">
-        {[1, 2, 3].map(s => (
+        {[1, 2, 3, 4].map(s => (
           <div
             key={s}
             className="h-2 rounded-full transition-all"
@@ -120,7 +129,8 @@ export default function RetoOnboarding({ userId, progress, config, brand, demoMo
         <p className="text-sm text-cherry-dark">
           {step === 1 && '¿Qué te gustaría conseguir con tu contenido? Si no lo tienes claro, elige "Recomiéndame" y yo diseño un mix equilibrado para ti.'}
           {step === 2 && 'Ahora dime: ¿cuáles son tus servicios estrella?'}
-          {step === 3 && 'Por último, ¿en qué nivel estás ahora mismo?'}
+          {step === 3 && '¿En qué nivel estás ahora mismo?'}
+          {step === 4 && 'Por último: ¿cuántas veces a la semana te comprometes a publicar?'}
         </p>
       </div>
 
@@ -213,6 +223,47 @@ export default function RetoOnboarding({ userId, progress, config, brand, demoMo
             ))}
           </motion.div>
         )}
+
+        {step === 4 && (
+          <motion.div
+            key="step4"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="space-y-3"
+          >
+            <p className="text-xs text-cherry-dark opacity-60 text-center">
+              Sé realista: mejor 3 constantes que 7 que no cumples
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              {POSTS_PER_WEEK.map(p => (
+                <button
+                  key={p.id}
+                  onClick={() => setPostsPerWeek(p.id)}
+                  className={`${fieldStyle} text-left relative`}
+                  style={postsPerWeek === p.id ? selectedStyle : unselectedStyle}
+                >
+                  {p.recommended && (
+                    <span
+                      className="absolute top-2.5 right-3 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded"
+                      style={{
+                        background: postsPerWeek === p.id ? 'var(--color-buttermilk)' : 'var(--color-cherry)',
+                        color: postsPerWeek === p.id ? 'var(--color-cherry)' : 'white',
+                      }}
+                    >
+                      Recomendado
+                    </span>
+                  )}
+                  <p className="font-semibold flex items-baseline gap-1.5">
+                    <span className="text-2xl">{p.label}</span>
+                    <span className="text-xs opacity-70">/sem</span>
+                  </p>
+                  <p className="text-xs opacity-70 mt-0.5">{p.desc}</p>
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        )}
       </AnimatePresence>
 
       {/* Error */}
@@ -224,20 +275,21 @@ export default function RetoOnboarding({ userId, progress, config, brand, demoMo
       <div className="flex items-center justify-between gap-3">
         {step > 1 ? (
           <button
-            onClick={() => setStep(s => (s - 1) as 1 | 2 | 3)}
+            onClick={() => setStep(s => (s - 1) as 1 | 2 | 3 | 4)}
             className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-[var(--radius-sm)] text-sm font-semibold text-cherry-dark hover:bg-warm-gray transition-colors"
           >
             <ArrowLeft size={15} /> Atrás
           </button>
         ) : <div />}
 
-        {step < 3 ? (
+        {step < 4 ? (
           <button
             onClick={() => {
               if (step === 1 && !objective) { setError('Selecciona tu objetivo.'); return }
               if (step === 2 && services.length === 0) { setError('Selecciona al menos un servicio.'); return }
+              if (step === 3 && !level) { setError('Selecciona tu nivel.'); return }
               setError('')
-              setStep(s => (s + 1) as 1 | 2 | 3)
+              setStep(s => (s + 1) as 1 | 2 | 3 | 4)
             }}
             className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-[var(--radius-sm)] text-sm font-semibold text-white transition-all"
             style={{ background: 'var(--color-cherry)' }}

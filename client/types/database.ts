@@ -483,6 +483,7 @@ export interface Database {
           current_day: number
           current_phase: number
           status: 'not_started' | 'active' | 'paused' | 'completed'
+          posts_per_week: number
           completed_at: string | null
           last_generated_week: number
           created_at: string
@@ -498,6 +499,7 @@ export interface Database {
           current_day?: number
           current_phase?: number
           status?: 'not_started' | 'active' | 'paused' | 'completed'
+          posts_per_week?: number
           completed_at?: string | null
           last_generated_week?: number
           created_at?: string
@@ -511,6 +513,7 @@ export interface Database {
           current_day?: number
           current_phase?: number
           status?: 'not_started' | 'active' | 'paused' | 'completed'
+          posts_per_week?: number
           completed_at?: string | null
           last_generated_week?: number
           updated_at?: string

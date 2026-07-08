@@ -31,6 +31,8 @@ export default function BibliotecaClient({ userId, items, brandContext, savedIns
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [refreshKey, setRefreshKey] = useState(0)
   const [inspirations, setInspirations] = useState<ReelInspiration[]>(savedInspirations)
+  const [confirmingClear, setConfirmingClear] = useState(false)
+  const [clearing, setClearing] = useState(false)
 
   const filtered = useMemo(() => {
     let result = items
@@ -83,6 +85,27 @@ export default function BibliotecaClient({ userId, items, brandContext, savedIns
     }
   }
 
+  async function handleClearAll() {
+    setClearing(true)
+    try {
+      const supabase = createClient()
+      // Borrar todo el contenido guardado por la usuaria
+      const { error: cErr } = await supabase.from('content_items').delete().eq('user_id', userId)
+      if (cErr) throw cErr
+      // Borrar también las inspiraciones guardadas para dejar todo a cero
+      const { error: iErr } = await supabase.from('saved_inspirations').delete().eq('user_id', userId)
+      if (iErr) throw iErr
+      setInspirations([])
+      setConfirmingClear(false)
+      setRefreshKey(k => k + 1)
+      router.refresh()
+    } catch (e) {
+      console.error('Error al vaciar biblioteca:', e)
+    } finally {
+      setClearing(false)
+    }
+  }
+
   if (items.length === 0 && inspirations.length === 0) {
     return (
       <div className="space-y-6">
@@ -125,11 +148,62 @@ export default function BibliotecaClient({ userId, items, brandContext, savedIns
           </p>
         </div>
         {!multiSelect && items.length > 0 && (
-          <button onClick={() => setMultiSelect(true)} className="btn-ghost text-sm py-2 px-4">
-            <Check size={15} /> Seleccionar varios
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setConfirmingClear(true)}
+              disabled={isDemoMode}
+              className="btn-ghost text-sm py-2 px-4"
+              style={{ color: 'var(--color-cherry)', opacity: isDemoMode ? 0.4 : 1 }}
+              title={isDemoMode ? 'Disponible en modo completo' : 'Borrar todo el contenido guardado'}
+            >
+              <Trash2 size={15} /> Vaciar biblioteca
+            </button>
+            <button onClick={() => setMultiSelect(true)} className="btn-ghost text-sm py-2 px-4">
+              <Check size={15} /> Seleccionar varios
+            </button>
+          </div>
         )}
       </div>
+
+      {/* Confirmación vaciar biblioteca */}
+      {confirmingClear && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(89,20,39,0.4)' }}
+          onClick={() => !clearing && setConfirmingClear(false)}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            className="rounded-[var(--radius-md)] p-6 max-w-sm w-full text-center"
+            style={{ background: 'var(--color-cream)', border: '1.5px solid var(--color-cherry)' }}
+          >
+            <div className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center" style={{ background: '#fde8e8' }}>
+              <Trash2 size={22} style={{ color: 'var(--color-cherry)' }} />
+            </div>
+            <h3 className="font-bold text-base text-cherry-dark mb-1">¿Vaciar toda la biblioteca?</h3>
+            <p className="text-xs text-cherry-dark opacity-70 mb-5">
+              Se borrarán <strong>todos</strong> los contenidos e inspiraciones guardadas. Esta acción no se puede deshacer.
+            </p>
+            <div className="flex gap-2 justify-center">
+              <button
+                onClick={() => setConfirmingClear(false)}
+                disabled={clearing}
+                className="btn-ghost text-sm py-2.5 px-5"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleClearAll}
+                disabled={clearing}
+                className="inline-flex items-center gap-1.5 text-sm font-semibold text-white py-2.5 px-5 rounded-[var(--radius-sm)]"
+                style={{ background: 'var(--color-cherry)', opacity: clearing ? 0.65 : 1 }}
+              >
+                <Trash2 size={14} /> {clearing ? 'Vaciando...' : 'Sí, vaciar todo'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Multi-select bar */}
       {multiSelect && (

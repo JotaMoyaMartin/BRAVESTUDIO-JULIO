@@ -2,14 +2,15 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Sparkles, Save, Calendar as CalendarIcon, Film, LayoutGrid, Copy, Check } from 'lucide-react'
+import { Sparkles, Save, Calendar as CalendarIcon, Film, Copy, Check } from 'lucide-react'
 import Link from 'next/link'
 import { Profile, BrandProfile, ContentItem } from '@/types/database'
 import { Reto10kConfig, Reto10kProgress, RetoItem } from '@/types/reto10k'
 import { generateRetos } from '@/lib/ai/prompts/reto10k'
 import { buildBrandFullContext, hasBrandContext } from '@/lib/ai/brand-context'
-import { saveToLibrary, copyToClipboard, scheduleItem } from '@/lib/content-utils'
+import { saveToLibrary, copyToClipboard } from '@/lib/content-utils'
 import { useToast } from '@/components/ui/Toast'
+import { useSessionState } from '@/lib/session-store'
 
 interface Props {
   profile: Profile | null
@@ -26,15 +27,17 @@ export default function RetoWeeklyGenerator({
   profile, progress, config, brand, generating, setGenerating, demoMode,
 }: Props) {
   const toast = useToast()
-  const [items, setItems] = useState<RetoItem[]>([])
+  const [items, setItems] = useSessionState<RetoItem[]>(`u:${profile?.id || 'demo'}:reto10k:items`, [])
   const [loading, setLoading] = useState(false)
-  const [savedIds, setSavedIds] = useState<Set<number>>(new Set())
-  const [scheduledIds, setScheduledIds] = useState<Set<number>>(new Set())
+  const [savedIds, setSavedIds] = useSessionState<number[]>(`u:${profile?.id || 'demo'}:reto10k:savedIds`, [])
+  const [scheduledIds, setScheduledIds] = useSessionState<number[]>(`u:${profile?.id || 'demo'}:reto10k:scheduledIds`, [])
   const [copiedIds, setCopiedIds] = useState<Set<number>>(new Set())
   const [schedulingId, setSchedulingId] = useState<number | null>(null)
   const [scheduleDate, setScheduleDate] = useState('')
 
   const userId = profile?.id || 'demo'
+  const savedSet = new Set(savedIds)
+  const scheduledSet = new Set(scheduledIds)
   const phases = config?.phases || []
   const currentPhase = progress.current_phase || 1
   const currentPhaseData = phases.find(p => p.order === currentPhase) || phases[0]
@@ -53,6 +56,7 @@ export default function RetoWeeklyGenerator({
         currentPhase,
         phaseTitle: currentPhaseData?.title || '',
         currentDay: progress.current_day || 1,
+        postsPerWeek: progress.posts_per_week || 4,
         brandContext,
       })
       setItems(output.items)
@@ -69,7 +73,6 @@ export default function RetoWeeklyGenerator({
     try {
       const contentJson: Record<string, unknown> = {}
       if (item.script) contentJson.script = item.script
-      if (item.slides) contentJson.slides = item.slides
 
       await saveToLibrary(userId, {
         type: item.type,
@@ -92,7 +95,7 @@ export default function RetoWeeklyGenerator({
           .eq('id', userId)
       }
 
-      setSavedIds(prev => new Set(prev).add(idx))
+      setSavedIds(prev => prev.includes(idx) ? prev : [...prev, idx])
       toast.show('Guardado en Biblioteca +10 XP', 'success')
     } catch {
       toast.show('Error al guardar', 'info')
@@ -106,7 +109,6 @@ export default function RetoWeeklyGenerator({
     try {
       const contentJson: Record<string, unknown> = {}
       if (item.script) contentJson.script = item.script
-      if (item.slides) contentJson.slides = item.slides
 
       await saveToLibrary(userId, {
         type: item.type,
@@ -122,7 +124,7 @@ export default function RetoWeeklyGenerator({
         tag: 'reto-10k',
       }, demoMode)
 
-      setScheduledIds(prev => new Set(prev).add(idx))
+      setScheduledIds(prev => prev.includes(idx) ? prev : [...prev, idx])
       setSchedulingId(null)
       setScheduleDate('')
       toast.show('Añadido al Calendario', 'success')
@@ -215,7 +217,7 @@ export default function RetoWeeklyGenerator({
                   className="text-xs font-bold uppercase px-2 py-0.5 rounded-full"
                   style={{ background: 'var(--color-cherry)', color: 'white' }}
                 >
-                  {item.type === 'reel' ? 'Reel' : 'Carrusel'}
+                  Reel
                 </span>
                 <span
                   className="text-xs px-2 py-0.5 rounded-full"
@@ -251,35 +253,18 @@ export default function RetoWeeklyGenerator({
                 </div>
               )}
 
-              {/* Slides preview */}
-              {item.slides && (
-                <div
-                  className="rounded-[var(--radius-sm)] p-3 mb-2"
-                  style={{ background: 'var(--color-warm-light)', border: '1px solid var(--color-buttermilk)' }}
-                >
-                  {item.slides.slice(0, 3).map((s, j) => (
-                    <p key={j} className="text-xs text-cherry-dark mb-1">
-                      <strong>{s.number}. {s.role}:</strong> {s.text.slice(0, 60)}{s.text.length > 60 ? '...' : ''}
-                    </p>
-                  ))}
-                  {item.slides.length > 3 && (
-                    <p className="text-xs text-cherry opacity-50">+{item.slides.length - 3} slides más</p>
-                  )}
-                </div>
-              )}
-
               {/* Actions */}
               <div className="flex flex-wrap gap-2 mt-2">
                 <button
                   onClick={() => handleSave(item, idx)}
-                  disabled={savedIds.has(idx)}
+                  disabled={savedSet.has(idx)}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-sm)] text-xs font-semibold transition-all"
                   style={{
-                    background: savedIds.has(idx) ? 'var(--color-pastel-green)' : 'var(--color-cherry)',
+                    background: savedSet.has(idx) ? 'var(--color-pastel-green)' : 'var(--color-cherry)',
                     color: 'white',
                   }}
                 >
-                  {savedIds.has(idx) ? <><Check size={13} /> Guardado</> : <><Save size={13} /> Guardar</>}
+                  {savedSet.has(idx) ? <><Check size={13} /> Guardado</> : <><Save size={13} /> Guardar</>}
                 </button>
 
                 {schedulingId === idx ? (
@@ -302,23 +287,23 @@ export default function RetoWeeklyGenerator({
                 ) : (
                   <button
                     onClick={() => setSchedulingId(idx)}
-                    disabled={scheduledIds.has(idx)}
+                    disabled={scheduledSet.has(idx)}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-sm)] text-xs font-semibold transition-all"
                     style={{
-                      background: scheduledIds.has(idx) ? 'var(--color-pastel-green)' : 'var(--color-warm-gray)',
+                      background: scheduledSet.has(idx) ? 'var(--color-pastel-green)' : 'var(--color-warm-gray)',
                       color: 'var(--color-cherry-dark)',
                     }}
                   >
-                    {scheduledIds.has(idx) ? <><Check size={13} /> Programado</> : <><CalendarIcon size={13} /> Calendario</>}
+                    {scheduledSet.has(idx) ? <><Check size={13} /> Programado</> : <><CalendarIcon size={13} /> Calendario</>}
                   </button>
                 )}
 
                 <Link
-                  href={item.type === 'reel' ? '/crear-contenido' : '/crear-contenido'}
+                  href="/crear-contenido"
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-sm)] text-xs font-semibold transition-all"
                   style={{ background: 'var(--color-warm-gray)', color: 'var(--color-cherry-dark)' }}
                 >
-                  {item.type === 'reel' ? <Film size={13} /> : <LayoutGrid size={13} />} Crear
+                  <Film size={13} /> Crear
                 </Link>
 
                 <button

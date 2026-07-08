@@ -43,6 +43,7 @@ export interface Reto10kProgress {
   current_day: number
   current_phase: number
   status: RetoStatus
+  posts_per_week: number
   completed_at: string | null
   last_generated_week: number
   created_at: string
@@ -56,13 +57,14 @@ export interface RetoInput {
   currentPhase: number
   phaseTitle: string
   currentDay: number
+  postsPerWeek: number
   brandContext?: string
 }
 
 export type RetoCategory = 'autoridad' | 'resultados' | 'conexion'
 
 export interface RetoItem {
-  type: 'reel' | 'carrusel'
+  type: 'reel'
   title: string
   service: string
   objective: string
@@ -70,7 +72,6 @@ export interface RetoItem {
   hookIdea: string
   format: string
   script?: { hook: string; context: string; solution: string; cta: string }
-  slides?: { number: number; role: string; text: string }[]
   caption: string
   visual_idea: string
   day: number

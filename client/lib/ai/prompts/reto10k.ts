@@ -3,6 +3,7 @@ import { RetoInput, RetoOutput, RetoItem } from '@/types/reto10k'
 
 export function buildRetosPrompt(input: RetoInput): string {
   const services = input.services.length > 0 ? input.services.join(', ') : 'servicios generales de peluquería'
+  const count = Math.max(3, Math.min(7, input.postsPerWeek || 4))
   return `Eres un experto en creación de contenido para estilistas en Instagram, especializado en el Reto 10K BRÄVE.
 
 FASE ACTUAL: ${input.currentPhase} — ${input.phaseTitle}
@@ -10,31 +11,30 @@ DÍA DEL RETO: ${input.currentDay} de 30
 OBJETIVO DE LA USUARIA: ${input.objective === 'recomendado' ? 'Sin objetivo prioritario — aplicar mix equilibrado 40/40/20 (autoridad/resultados/conexión)' : input.objective}
 SERVICIOS ESTRELLA: ${services}
 NIVEL: ${input.level}
+PUBLICACIONES POR SEMANA: ${count}
 ${input.brandContext ? `CONTEXTO DEL SALÓN: ${input.brandContext}` : ''}
 
 METODOLOGÍA:
-- Genera entre 4 y 7 items de contenido para esta fase del Reto 10K.
+- Genera EXACTAMENTE ${count} items de contenido para esta semana del Reto 10K.
+- TODOS los items deben ser de tipo "reel" (NO se usan carruseles en este reto).
 - Balance: 40% autoridad (educación, consejos, opiniones), 40% resultados (antes/después, transformaciones, testimonios), 20% conexión (historia personal, comunidad, conversación).
 - Cada item debe tener un título atractivo, no repetido, coherente con la fase.
 - El campo "category" debe ser "autoridad", "resultados" o "conexion" según el balance.
-- Para cada item incluye: type (reel o carrusel), title, service, objective, hookIdea, format, caption (texto de publicación con hashtags), visual_idea.
-- Para los reels, incluye "script" con hook, context, solution y cta.
-- Para los carruseles, incluye "slides" como array de {number, role, text}.
+- Para cada item incluye: type (siempre "reel"), title, service, objective, hookIdea, format, script (con hook, context, solution y cta), caption (texto de publicación con hashtags), visual_idea.
 - El campo "day" debe ser ${input.currentDay}.
 
 Devuelve EXACTAMENTE este JSON, sin texto adicional:
 {
   "items": [
     {
-      "type": "reel" | "carrusel",
+      "type": "reel",
       "title": "Título atractivo",
       "service": "Servicio al que pertenece",
       "objective": "autoridad" | "reservas" | "visibilidad",
       "category": "autoridad" | "resultados" | "conexion",
       "hookIdea": "Idea de gancho breve",
-      "format": "Reel 35-45s" | "Carrusel 5-7 slides",
+      "format": "Reel 35-45s",
       "script": { "hook": "...", "context": "...", "solution": "...", "cta": "..." },
-      "slides": [{ "number": 1, "role": "Portada", "text": "..." }],
       "caption": "Texto de publicación con hashtags",
       "visual_idea": "Idea visual para grabar",
       "day": ${input.currentDay}
@@ -48,8 +48,9 @@ export function generateMockRetos(input: RetoInput): RetoOutput {
   const services = input.services.length > 0 ? input.services : ['Balayage', 'Color', 'Corte']
   const day = input.currentDay
   const phaseTitle = input.phaseTitle || 'Tu fase actual'
+  const count = Math.max(3, Math.min(7, input.postsPerWeek || 4))
 
-  const items: RetoItem[] = [
+  const all: RetoItem[] = [
     {
       type: 'reel',
       title: `Mi consejo profesional sobre ${services[0]}`,
@@ -69,24 +70,21 @@ export function generateMockRetos(input: RetoInput): RetoOutput {
       day,
     },
     {
-      type: 'carrusel',
-      title: `5 cosas que debes saber antes de hacerte ${services[0]}`,
+      type: 'reel',
+      title: `3 errores comunes con ${services[0]}`,
       service: services[0],
       objective: input.objective,
       category: 'autoridad',
-      hookIdea: `Antes de reservar tu cita, lee esto`,
-      format: 'Carrusel 5-7 slides',
-      slides: [
-        { number: 1, role: 'Portada', text: `5 cosas que debes saber antes de hacerte ${services[0]}` },
-        { number: 2, role: 'Punto 1', text: `El resultado depende del estado inicial de tu cabello.` },
-        { number: 3, role: 'Punto 2', text: `El mantenimiento en casa es tan importante como el servicio.` },
-        { number: 4, role: 'Punto 3', text: `No todos los cabellos son iguales: el diagnóstico es clave.` },
-        { number: 5, role: 'Punto 4', text: `Los resultados evolucionan con los lavados.` },
-        { number: 6, role: 'Punto 5', text: `Comunica siempre tus expectativas a tu estilista.` },
-        { number: 7, role: 'CTA', text: `¿Tienes dudas? Reserva tu consulta y lo hablamos.` },
-      ],
-      caption: `5 cosas esenciales antes de hacerte ${services[0]}. Guarda este carrusel. #${services[0].replace(/\s/g, '')} #consejos #peluqueria`,
-      visual_idea: `Carrusel con fotos de antes/después y texto claro en cada slide.`,
+      hookIdea: `Si haces ${services[0]}, esto te interesa`,
+      format: 'Reel 35-45s',
+      script: {
+        hook: `Estos 3 errores arruinan un buen ${services[0]}.`,
+        context: `Los veo cada semana en el salón y casi siempre se pueden evitar.`,
+        solution: `Te cuento cuáles son y cómo evitarlos para que tu resultado dure más.`,
+        cta: `¿Cuál te suena? Cuéntamelo abajo.`,
+      },
+      caption: `3 errores comunes con ${services[0]} que conviene evitar. #${services[0].replace(/\s/g, '')} #consejos #estilista #bravestudio`,
+      visual_idea: `Plano corto tuyo hablando a cámara con el servicio de fondo.`,
       day,
     },
     {
@@ -108,24 +106,21 @@ export function generateMockRetos(input: RetoInput): RetoOutput {
       day,
     },
     {
-      type: 'carrusel',
-      title: `Antes y después: ${services[0]} que cambiará tu look`,
+      type: 'reel',
+      title: `El proceso paso a paso de ${services[0]}`,
       service: services[0],
       objective: input.objective,
       category: 'resultados',
-      hookIdea: `El poder de un buen ${services[0]}`,
-      format: 'Carrusel 5-7 slides',
-      slides: [
-        { number: 1, role: 'Portada', text: `Antes y después: el poder de un buen ${services[0]}` },
-        { number: 2, role: 'Antes', text: `Así llegaba la clienta al salón.` },
-        { number: 3, role: 'Proceso', text: `El diagnóstico y la técnica que aplicamos.` },
-        { number: 4, role: 'Después', text: `El resultado final. ¡Mira la diferencia!` },
-        { number: 5, role: 'Detalle', text: `Un primer plano del brillo y la textura.` },
-        { number: 6, role: 'CTA', text: `¿Quieres tu transformación? Reserva cita.`,
-        },
-      ],
-      caption: `Antes y después de ${services[0]}. Guarda si te inspira. #antesydespues #${services[0].replace(/\s/g, '')} #bravestudio`,
-      visual_idea: `Fotos de calidad del antes y después, con buena iluminación.`,
+      hookIdea: `Así trabajo un ${services[0]} en el salón`,
+      format: 'Reel 35-45s',
+      script: {
+        hook: `¿Te has preguntado cómo hago un ${services[0]} de verdad?`,
+        context: `Hoy te enseño el proceso completo, desde el diagnóstico hasta el acabado.`,
+        solution: `Cada paso tiene un porqué. Mira el resultado final.`,
+        cta: `Guarda este reel para tu próxima cita.`,
+      },
+      caption: `El proceso real de ${services[0]} en el salón. #${services[0].replace(/\s/g, '')} #detrasdecamaras #estilista`,
+      visual_idea: `Montaje rápido de los pasos del servicio terminando en el resultado.`,
       day,
     },
     {
@@ -146,11 +141,50 @@ export function generateMockRetos(input: RetoInput): RetoOutput {
       visual_idea: `Graba en tu salón, muestra tu día a día mientras cuentas tu historia.`,
       day,
     },
+    {
+      type: 'reel',
+      title: `Pregunta del día para mi comunidad`,
+      service: services[0],
+      objective: input.objective,
+      category: 'conexion',
+      hookIdea: `Quiero leer tus opiniones`,
+      format: 'Reel 35-45s',
+      script: {
+        hook: `Tengo una pregunta para ti y quiero leer tu respuesta.`,
+        context: `Cada semana hablo con clientas y siempre aprendo algo nuevo.`,
+        solution: `Hoy te pregunto: ¿cuál es el cambio que más te ha gustado en tu pelo?`,
+        cta: `Responde en comentarios, los leo todos.`,
+      },
+      caption: `Pregunta para mi comunidad. ¡Quiero leerte! #comunidad #estilista #bravestudio`,
+      visual_idea: `Habla a cámara en tu salón, tono cercano y cálido.`,
+      day,
+    },
+    {
+      type: 'reel',
+      title: `Antes y después en 15 segundos`,
+      service: services[services.length > 2 ? 2 : 0],
+      objective: input.objective,
+      category: 'resultados',
+      hookIdea: `Cambio en 15 segundos`,
+      format: 'Reel 35-45s',
+      script: {
+        hook: `Cuenta los segundos mientras ves el cambio.`,
+        context: `Un buen ${services[services.length > 2 ? 2 : 0]} puede transformar por completo un look.`,
+        solution: `Mira el resultado final y dime qué opinas.`,
+        cta: `Comenta tu parte favorita.`,
+      },
+      caption: `Antes y después en segundos. #antesydespues #${services[services.length > 2 ? 2 : 0].replace(/\s/g, '')} #bravestudio`,
+      visual_idea: `Transición rápida antes/después con ritmo de música.`,
+      day,
+    },
   ]
+
+  // Mantener balance 40/40/20 lo más fiel posible al count pedido
+  const items = all.slice(0, count)
 
   return {
     items,
-    summary: `5 ideas de contenido para la fase "${phaseTitle}" (día ${day} del Reto 10K).`,
+    summary: `${items.length} ideas de reels para la fase "${phaseTitle}" (día ${day} del Reto 10K).`,
   }
 }
 
@@ -165,7 +199,7 @@ export async function generateRetos(input: RetoInput): Promise<RetoOutput> {
       parsed.items.every(
         it =>
           it &&
-          (it.type === 'reel' || it.type === 'carrusel') &&
+          it.type === 'reel' &&
           typeof it.title === 'string' &&
           typeof it.service === 'string' &&
           typeof it.hookIdea === 'string' &&
@@ -174,6 +208,7 @@ export async function generateRetos(input: RetoInput): Promise<RetoOutput> {
     ) {
       const items: RetoItem[] = parsed.items.map((it, i) => ({
         ...it,
+        type: 'reel',
         day: input.currentDay,
         objective: it.objective || input.objective,
         category: it.category || (i % 5 < 2 ? 'autoridad' : i % 5 < 4 ? 'resultados' : 'conexion'),

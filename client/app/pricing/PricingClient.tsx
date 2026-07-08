@@ -16,6 +16,7 @@ export default function PricingClient() {
   const [usdReady, setUsdReady] = useState(false)
   const [plans, setPlans] = useState<PublicPlan[]>([])
   const [hasSession, setHasSession] = useState(false)
+  const [trialUsed, setTrialUsed] = useState(false)
   const [checkoutLoading, setCheckoutLoading] = useState<null | 'monthly' | 'yearly'>(null)
   const [checkoutError, setCheckoutError] = useState('')
 
@@ -24,6 +25,14 @@ export default function PricingClient() {
     const supabase = createClient()
     supabase.auth.getSession().then(({ data: { session } }) => {
       setHasSession(!!session)
+      if (session) {
+        supabase.from('profiles')
+          .select('trial_started_at')
+          .single()
+          .then(({ data }) => {
+            setTrialUsed(!!data?.trial_started_at)
+          })
+      }
     })
   }, [])
 
@@ -151,7 +160,7 @@ export default function PricingClient() {
               </div>
             </div>
             <p className="text-sm text-cherry-dark opacity-70">
-              {monthly ? `Prueba gratuita de ${monthly.trial_days} días` : 'Prueba gratuita de 3 días'}
+              {trialUsed ? 'Suscripción inmediata' : (monthly ? `Prueba gratuita de ${monthly.trial_days} días` : 'Prueba gratuita de 3 días')}
             </p>
             <button
               onClick={() => handlePlanClick('monthly')}
@@ -159,7 +168,7 @@ export default function PricingClient() {
               className="btn-primary w-full justify-center mt-auto"
               style={{ opacity: checkoutLoading !== null ? 0.7 : 1 }}
             >
-              {checkoutLoading === 'monthly' ? 'Redirigiendo a Stripe...' : 'Empieza gratis'}
+              {checkoutLoading === 'monthly' ? 'Redirigiendo a Stripe...' : (trialUsed ? 'Suscribirme' : 'Empieza gratis')}
             </button>
           </div>
 
@@ -208,7 +217,7 @@ export default function PricingClient() {
               </p>
             </div>
             <p className="text-sm" style={{ color: 'rgba(255,255,255,0.7)' }}>
-              {yearly ? `Prueba gratuita de ${yearly.trial_days} días` : 'Prueba gratuita de 3 días'}
+              {trialUsed ? 'Suscripción inmediata' : (yearly ? `Prueba gratuita de ${yearly.trial_days} días` : 'Prueba gratuita de 3 días')}
             </p>
             <button
               onClick={() => handlePlanClick('yearly')}
@@ -221,7 +230,7 @@ export default function PricingClient() {
                 opacity: checkoutLoading !== null ? 0.7 : 1,
               }}
             >
-              {checkoutLoading === 'yearly' ? 'Redirigiendo a Stripe...' : 'Empieza gratis'}
+              {checkoutLoading === 'yearly' ? 'Redirigiendo a Stripe...' : (trialUsed ? 'Suscribirme' : 'Empieza gratis')}
             </button>
           </div>
         </div>

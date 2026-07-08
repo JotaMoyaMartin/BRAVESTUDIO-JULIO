@@ -19,8 +19,11 @@ const wrapper = (title: string, content: string): string => `
         ${content}
       </div>
       <div style="padding:16px 32px;background:#FFF8E7;text-align:center;">
-        <p style="color:#591427;font-size:11px;opacity:0.6;margin:0;">
+        <p style="color:#591427;font-size:11px;opacity:0.6;margin:0 0 4px 0;">
           BRÄVE Studio — Contenido para estilistas
+        </p>
+        <p style="color:#591427;font-size:10px;opacity:0.4;margin:0;">
+          Este es un email automático. No respondas a este correo. Para soporte, escribe a braveheadquartes@gmail.com
         </p>
       </div>
     </div>

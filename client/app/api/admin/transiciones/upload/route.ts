@@ -27,15 +27,23 @@ export async function POST(request: NextRequest) {
   const path = `${crypto.randomUUID()}.${ext}`
   const bytes = new Uint8Array(await file.arrayBuffer())
 
+  // Asegurar que el bucket existe (lo crea si no está). Idempotente.
+  const BUCKET = 'reel-transitions'
+  const { error: bucketErr } = await auth.admin.storage.createBucket(BUCKET, { public: true })
+  if (bucketErr && !/already exists|duplicado/i.test(bucketErr.message)) {
+    // Si el error no es "ya existe", lo devolvemos
+    return NextResponse.json({ error: `Bucket: ${bucketErr.message}` }, { status: 500 })
+  }
+
   const { error: upErr } = await auth.admin
     .storage
-    .from('reel-transitions')
+    .from(BUCKET)
     .upload(path, bytes, { cacheControl: '3600', upsert: false, contentType: file.type || 'image/jpeg' })
 
   if (upErr) {
     return NextResponse.json({ error: upErr.message }, { status: 500 })
   }
 
-  const publicUrl = auth.admin.storage.from('reel-transitions').getPublicUrl(path).data.publicUrl
+  const publicUrl = auth.admin.storage.from(BUCKET).getPublicUrl(path).data.publicUrl
   return NextResponse.json({ url: publicUrl })
 }

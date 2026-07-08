@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import InicioClient from './InicioClient'
-import { Profile, BrandProfile, ContentItem } from '@/types/database'
+import { Profile, BrandProfile, ContentItem, ReelInspiration } from '@/types/database'
 
 const IS_CONFIGURED = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').startsWith('http')
 
@@ -19,7 +19,7 @@ const DEMO_PROFILE: Profile = {
 
 export default async function InicioPage() {
   if (!IS_CONFIGURED) {
-    return <InicioClient profile={DEMO_PROFILE} brand={null} contentItems={[]} />
+    return <InicioClient profile={DEMO_PROFILE} brand={null} contentItems={[]} inspirations={[]} />
   }
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -31,11 +31,19 @@ export default async function InicioPage() {
     .eq('user_id', user!.id)
     .order('updated_at', { ascending: false })
 
+  const { data: inspirationsData } = await supabase
+    .from('reel_inspirations')
+    .select('id, title, short_description, cover_image')
+    .eq('status', 'active')
+    .order('created_at', { ascending: false })
+    .limit(20)
+
   return (
     <InicioClient
       profile={profile as Profile | null}
       brand={brand as Partial<BrandProfile> | null}
       contentItems={(items as Partial<ContentItem>[]) || []}
+      inspirations={(inspirationsData as Pick<ReelInspiration, 'id' | 'title' | 'short_description' | 'cover_image'>[]) || []}
     />
   )
 }

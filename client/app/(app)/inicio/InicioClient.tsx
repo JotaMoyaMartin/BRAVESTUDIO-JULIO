@@ -1,8 +1,8 @@
 'use client'
 import Link from 'next/link'
 import { useState, useEffect, useMemo } from 'react'
-import { Sparkles, Film, LayoutGrid, Star, ArrowRight, Clapperboard } from 'lucide-react'
-import { Profile, BrandProfile, ContentItem } from '@/types/database'
+import { Sparkles, Film, LayoutGrid, Star, ArrowRight } from 'lucide-react'
+import { Profile, BrandProfile, ContentItem, ReelInspiration } from '@/types/database'
 import { demoGetPlan } from '@/lib/demo-store'
 import Bravi from '@/components/bravi/Bravi'
 import QuickActionCard from '@/components/home/QuickActionCard'
@@ -10,6 +10,7 @@ import SurpriseCard from '@/components/home/SurpriseCard'
 import ContinueCard from '@/components/home/ContinueCard'
 import LevelBar from '@/components/home/LevelBar'
 import AchievementsCarousel from '@/components/home/AchievementsCarousel'
+import InspirationPreview from '@/components/home/InspirationPreview'
 
 const SERVICES = ['Balayage', 'Rubios', 'Canas', 'Alisados', 'Tratamientos', 'Corte', 'Color']
 
@@ -77,10 +78,12 @@ export default function InicioClient({
   profile,
   brand,
   contentItems,
+  inspirations,
 }: {
   profile: Profile | null
   brand: Partial<BrandProfile> | null
   contentItems: Partial<ContentItem>[]
+  inspirations: Pick<ReelInspiration, 'id' | 'title' | 'short_description' | 'cover_image'>[]
 }) {
   const [items, setItems] = useState<Partial<ContentItem>[]>(contentItems)
   const isDemo = profile?.id === 'demo'
@@ -192,30 +195,8 @@ export default function InicioClient({
         <QuickActionCard href="/mi-marca" icon={Star} label="Mi Marca" desc="Perfil de tu salón" tone="buttermilk" />
       </div>
 
-      {/* 3.5 ¿Sin ideas para publicar? */}
-      <Link
-        href="/inspiracion-reels"
-        className="block rounded-[var(--radius-md)] p-5 transition-all hover:scale-[1.01]"
-        style={{ background: 'var(--color-pastel-blue)', border: '1.5px solid rgba(122,24,50,0.08)' }}
-      >
-        <div className="flex items-center gap-4">
-          <div
-            className="w-12 h-12 rounded-[var(--radius-sm)] flex items-center justify-center flex-shrink-0"
-            style={{ background: 'white' }}
-          >
-            <Clapperboard size={24} className="text-cherry" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-bold text-cherry-dark">¿Sin ideas para publicar?</p>
-            <p className="text-sm mt-0.5" style={{ color: '#1a3a4a' }}>
-              Explora ideas de Reels listas para adaptar.
-            </p>
-          </div>
-          <span className="btn-primary text-sm py-2 px-4 flex-shrink-0">
-            ✨ Explorar inspiración
-          </span>
-        </div>
-      </Link>
+      {/* 3.5 Inspiración de Reels — portadas visuales rotativas */}
+      <InspirationPreview inspirations={inspirations} />
 
       {/* 4. Sorpréndeme protagonista */}
       <SurpriseCard brandContext={brandContext} />

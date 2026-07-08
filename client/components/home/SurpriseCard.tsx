@@ -1,11 +1,12 @@
 'use client'
 import { useState } from 'react'
 import Link from 'next/link'
-import { Shuffle, Sparkles, ArrowRight, Loader2, ChevronDown, ChevronUp, Copy, Check } from 'lucide-react'
+import { Shuffle, Sparkles, ArrowRight, Loader2, ChevronDown, ChevronUp, Copy, Check, BookOpen } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { generateAIContent, extractJSON } from '@/lib/ai/client'
 import { generateReel, ReelOutput, ContentObjective } from '@/lib/ai/prompts/reels'
 import { generateCarousel, CarouselOutput } from '@/lib/ai/prompts/carousels'
+import { saveToLibrary } from '@/lib/content-utils'
 
 interface SurpriseIdea {
   type: 'reel' | 'carrusel' | 'story'
@@ -41,20 +42,48 @@ function mapObjective(obj: string): ContentObjective {
 
 interface SurpriseCardProps {
   brandContext?: string
+  userId?: string
 }
 
-export default function SurpriseCard({ brandContext }: SurpriseCardProps) {
+export default function SurpriseCard({ brandContext, userId }: SurpriseCardProps) {
   const [idea, setIdea] = useState<SurpriseIdea | null>(null)
   const [loading, setLoading] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [generatingScript, setGeneratingScript] = useState(false)
   const [script, setScript] = useState<ReelOutput | CarouselOutput | null>(null)
   const [copied, setCopied] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  async function handleSaveLibrary() {
+    if (!script || !idea || !userId) return
+    setSaving(true)
+    try {
+      const objective = mapObjective(idea.objective)
+      const payload: Record<string, unknown> = {
+        type: idea.type,
+        title: idea.idea,
+        service: idea.service,
+        objective,
+        content_json: script as unknown as Record<string, unknown>,
+        caption_with_hashtags: ('captionWithHashtags' in script ? script.captionWithHashtags : null) as string | null,
+        format: idea.type,
+        visual_idea: ('visualIdea' in script ? script.visualIdea : null) as string | null,
+        scheduled_date: null,
+      }
+      await saveToLibrary(userId, payload, userId === 'demo')
+      setSaved(true)
+    } catch (e) {
+      console.error('save to library failed:', e)
+    }
+    setSaving(false)
+  }
 
   async function handleSurprise() {
     setLoading(true)
     setExpanded(false)
     setScript(null)
+    setSaved(false)
     try {
       const prompt = `Eres un generador de ideas de contenido para una estilista profesional. Responde SOLO con un JSON válido, sin texto adicional.
 ${brandContext ? `Contexto de marca: ${brandContext}` : 'Contexto: estilista general'}
@@ -286,14 +315,27 @@ Sé creativa, específica y evita clichés.`
                         >
                           {copied ? <><Check size={14} /> Copiado</> : <><Copy size={14} /> Copiar</>}
                         </button>
-                        <Link
-                          href={`/crear-contenido?service=${encodeURIComponent(idea.service)}&type=${idea.type}&tema=${encodeURIComponent(idea.idea)}&contexto=${encodeURIComponent(idea.objective)}`}
-                          className="flex-1 py-2 rounded-[var(--radius-sm)] font-semibold text-xs text-center flex items-center justify-center gap-1.5 transition-all hover:bg-white/10"
+                        <button
+                          onClick={handleSaveLibrary}
+                          disabled={saving || saved || !userId}
+                          className="flex-1 py-2 rounded-[var(--radius-sm)] font-semibold text-xs flex items-center justify-center gap-1.5 transition-all hover:bg-white/10 disabled:opacity-60"
                           style={{ border: '1.5px solid rgba(255,255,255,0.3)' }}
                         >
-                          Guardar en Biblioteca <ArrowRight size={14} />
-                        </Link>
+                          {saving ? <><Loader2 size={14} className="animate-spin" /> Guardando…</>
+                           : saved ? <><Check size={14} /> ¡Guardado!</>
+                           : <><BookOpen size={14} /> Guardar en Biblioteca</>}
+                        </button>
                       </div>
+
+                      {saved && (
+                        <Link
+                          href="/biblioteca"
+                          className="flex items-center justify-center gap-1.5 mt-2 text-xs font-semibold transition-all hover:underline"
+                          style={{ color: 'var(--color-buttermilk)' }}
+                        >
+                          Ver en Biblioteca <ArrowRight size={12} />
+                        </Link>
+                      )}
                     </div>
                   ) : (
                     <div className="p-4 rounded-[var(--radius-md)] text-center" style={{ background: 'rgba(255,255,255,0.08)' }}>

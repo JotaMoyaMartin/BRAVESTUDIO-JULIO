@@ -199,7 +199,7 @@ export default function InicioClient({
       <InspirationPreview inspirations={inspirations} />
 
       {/* 4. Sorpréndeme protagonista */}
-      <SurpriseCard brandContext={brandContext} />
+      <SurpriseCard brandContext={brandContext} userId={profile?.id} />
 
       {/* 5. Nivel BRÄVE compacto */}
       <LevelBar

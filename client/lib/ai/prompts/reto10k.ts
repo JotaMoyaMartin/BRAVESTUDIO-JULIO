@@ -7,7 +7,7 @@ export function buildRetosPrompt(input: RetoInput): string {
 
 FASE ACTUAL: ${input.currentPhase} — ${input.phaseTitle}
 DÍA DEL RETO: ${input.currentDay} de 30
-OBJETIVO DE LA FASE: ${input.objective}
+OBJETIVO DE LA USUARIA: ${input.objective === 'recomendado' ? 'Sin objetivo prioritario — aplicar mix equilibrado 40/40/20 (autoridad/resultados/conexión)' : input.objective}
 SERVICIOS ESTRELLA: ${services}
 NIVEL: ${input.level}
 ${input.brandContext ? `CONTEXTO DEL SALÓN: ${input.brandContext}` : ''}

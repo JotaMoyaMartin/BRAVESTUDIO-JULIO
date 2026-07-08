@@ -8,10 +8,11 @@ import { Reto10kConfig, Reto10kProgress } from '@/types/reto10k'
 import { BrandProfile } from '@/types/database'
 
 const OBJECTIVES = [
-  { id: 'visibilidad', label: 'Ganar visibilidad', desc: 'Quiero que más gente conozca mi trabajo' },
-  { id: 'reservas', label: 'Conseguir reservas', desc: 'Quiero más clientas en mi salón' },
-  { id: 'autoridad', label: 'Posicionarme como experta', desc: 'Quiero que me vean como referente' },
-  { id: 'comunidad', label: 'Crear comunidad', desc: 'Quiero conectar con mi audiencia' },
+  { id: 'recomendado', label: 'Recomiéndame un mix equilibrado', desc: 'No estoy segura, guíame tú', emoji: '✨', recommended: true },
+  { id: 'visibilidad', label: 'Ganar visibilidad', desc: 'Quiero que más gente conozca mi trabajo', emoji: '📈' },
+  { id: 'reservas', label: 'Conseguir reservas', desc: 'Quiero más clientas en mi salón', emoji: '💼' },
+  { id: 'autoridad', label: 'Posicionarme como experta', desc: 'Quiero que me vean como referente', emoji: '👑' },
+  { id: 'comunidad', label: 'Crear comunidad', desc: 'Quiero conectar con mi audiencia', emoji: '👥' },
 ]
 
 const SERVICES = ['Balayage', 'Rubios', 'Color', 'Canas', 'Tratamientos', 'Alisados', 'Corte']
@@ -32,7 +33,7 @@ interface Props {
 
 export default function RetoOnboarding({ userId, progress, config, brand, demoMode }: Props) {
   const [step, setStep] = useState<1 | 2 | 3>(1)
-  const [objective, setObjective] = useState('')
+  const [objective, setObjective] = useState('recomendado')
   const [services, setServices] = useState<string[]>([])
   const [level, setLevel] = useState('')
   const [loading, setLoading] = useState(false)
@@ -117,7 +118,7 @@ export default function RetoOnboarding({ userId, progress, config, brand, demoMo
           draggable={false}
         />
         <p className="text-sm text-cherry-dark">
-          {step === 1 && 'Empecemos por tu objetivo. ¿Qué quieres lograr en 30 días?'}
+          {step === 1 && '¿Qué te gustaría conseguir con tu contenido? Si no lo tienes claro, elige "Recomiéndame" y yo diseño un mix equilibrado para ti.'}
           {step === 2 && 'Ahora dime: ¿cuáles son tus servicios estrella?'}
           {step === 3 && 'Por último, ¿en qué nivel estás ahora mismo?'}
         </p>
@@ -137,10 +138,24 @@ export default function RetoOnboarding({ userId, progress, config, brand, demoMo
               <button
                 key={obj.id}
                 onClick={() => setObjective(obj.id)}
-                className={`${fieldStyle} text-left`}
+                className={`${fieldStyle} text-left relative`}
                 style={objective === obj.id ? selectedStyle : unselectedStyle}
               >
-                <p className="font-semibold">{obj.label}</p>
+                {obj.recommended && (
+                  <span
+                    className="absolute top-2.5 right-3 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded"
+                    style={{
+                      background: objective === obj.id ? 'var(--color-buttermilk)' : 'var(--color-cherry)',
+                      color: objective === obj.id ? 'var(--color-cherry)' : 'white',
+                    }}
+                  >
+                    Recomendado
+                  </span>
+                )}
+                <p className="font-semibold flex items-center gap-2">
+                  <span className="text-lg">{obj.emoji}</span>
+                  {obj.label}
+                </p>
                 <p className="text-xs opacity-70 mt-0.5">{obj.desc}</p>
               </button>
             ))}

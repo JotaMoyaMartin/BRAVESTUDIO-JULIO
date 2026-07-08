@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { Rocket, BookOpen, Sparkles, Calendar, Film } from 'lucide-react'
 import { Profile, BrandProfile, ContentItem } from '@/types/database'
@@ -31,6 +31,8 @@ export default function RetoDashboard({ profile, progress, config, brand, conten
   const userId = profile?.id || 'demo'
   const [view, setView] = useState<'dashboard' | 'roadmap'>('dashboard')
   const [generating, setGenerating] = useSessionState(`u:${userId}:reto10k:generating`, false)
+  const [generateTrigger, setGenerateTrigger] = useState(0)
+  const generatorRef = useRef<HTMLDivElement>(null)
 
   const currentDay = computeCurrentDay(progress.started_at)
   const currentPhase = progress.current_phase || 1
@@ -136,21 +138,25 @@ export default function RetoDashboard({ profile, progress, config, brand, conten
         <RetoMissionDay
           mission={currentMission}
           phase={currentPhaseData}
-          onGenerate={() => setGenerating(true)}
+          onGenerate={() => setGenerateTrigger(t => t + 1)}
         />
       )}
 
       {/* Generador semanal */}
-      <RetoWeeklyGenerator
-        progress={progress}
-        config={config}
-        brand={brand}
-        profile={profile}
-        generating={generating}
-        setGenerating={setGenerating}
-        contentItems={contentItems}
-        demoMode={demoMode}
-      />
+      <div ref={generatorRef}>
+        <RetoWeeklyGenerator
+          progress={progress}
+          config={config}
+          brand={brand}
+          profile={profile}
+          generating={generating}
+          setGenerating={setGenerating}
+          contentItems={contentItems}
+          demoMode={demoMode}
+          generateTrigger={generateTrigger}
+          containerRef={generatorRef}
+        />
+      </div>
 
       {/* Ver roadmap */}
       <button

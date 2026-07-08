@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { Sparkles, Save, Calendar as CalendarIcon, Film, Copy, Check } from 'lucide-react'
 import Link from 'next/link'
@@ -21,10 +21,12 @@ interface Props {
   setGenerating: (v: boolean) => void
   contentItems: ContentItem[]
   demoMode: boolean
+  generateTrigger?: number
+  containerRef?: React.RefObject<HTMLDivElement | null>
 }
 
 export default function RetoWeeklyGenerator({
-  profile, progress, config, brand, generating, setGenerating, demoMode,
+  profile, progress, config, brand, generating, setGenerating, demoMode, generateTrigger, containerRef,
 }: Props) {
   const toast = useToast()
   const [items, setItems] = useSessionState<RetoItem[]>(`u:${profile?.id || 'demo'}:reto10k:items`, [])
@@ -34,6 +36,7 @@ export default function RetoWeeklyGenerator({
   const [copiedIds, setCopiedIds] = useState<Set<number>>(new Set())
   const [schedulingId, setSchedulingId] = useState<number | null>(null)
   const [scheduleDate, setScheduleDate] = useState('')
+  const generatingRef = useRef(false)
 
   const userId = profile?.id || 'demo'
   const savedSet = new Set(savedIds)
@@ -66,8 +69,21 @@ export default function RetoWeeklyGenerator({
       toast.show('No se pudo generar. Inténtalo de nuevo.', 'info')
     } finally {
       setLoading(false)
+      generatingRef.current = false
     }
   }
+
+  // Disparar generación desde fuera (botón "Generar contenido para esta misión")
+  useEffect(() => {
+    if (!generateTrigger) return
+    if (generatingRef.current) return
+    generatingRef.current = true
+    handleGenerate()
+    // Scroll al contenedor del generador
+    if (containerRef?.current) {
+      containerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }, [generateTrigger])
 
   async function handleSave(item: RetoItem, idx: number) {
     try {

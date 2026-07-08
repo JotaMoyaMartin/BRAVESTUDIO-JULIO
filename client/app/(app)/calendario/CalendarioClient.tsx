@@ -54,6 +54,8 @@ export default function CalendarioClient({ userId, items: initialItems }: Props)
   const [editDate, setEditDate] = useState(false)
   const [newDate, setNewDate] = useState('')
   const [copied, setCopied] = useState(false)
+  const [confirmingClear, setConfirmingClear] = useState(false)
+  const [clearing, setClearing] = useState(false)
 
   const refresh = useCallback(async () => {
     if (isDemoMode) {
@@ -164,6 +166,31 @@ export default function CalendarioClient({ userId, items: initialItems }: Props)
     await refresh()
   }
 
+  async function handleClearCalendar() {
+    if (items.length === 0) return
+    setClearing(true)
+    try {
+      if (isDemoMode) {
+        for (const it of items) {
+          demoUpdatePlan(it.id, { scheduled_date: null, status: 'library' })
+        }
+      } else {
+        const supabase = createClient()
+        await supabase.from('content_items')
+          .update({ scheduled_date: null, status: 'library' })
+          .eq('user_id', userId)
+          .not('scheduled_date', 'is', null)
+      }
+      setConfirmingClear(false)
+      await refresh()
+      showToast('Calendario limpiado · contenido enviado a Biblioteca')
+    } catch (e) {
+      console.error('Error al limpiar calendario:', e)
+    } finally {
+      setClearing(false)
+    }
+  }
+
   return (
     <div className="space-y-5">
       {/* Header */}
@@ -176,6 +203,17 @@ export default function CalendarioClient({ userId, items: initialItems }: Props)
         </div>
 
         <div className="flex items-center gap-2">
+          {sorted.length > 0 && (
+            <button
+              onClick={() => setConfirmingClear(true)}
+              disabled={isDemoMode}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[var(--radius-sm)] text-xs font-semibold transition-all bg-[var(--color-warm-gray)] text-cherry"
+              style={{ opacity: isDemoMode ? 0.4 : 1 }}
+              title={isDemoMode ? 'Disponible en modo completo' : 'Quita todas las fechas y envía el contenido a la Biblioteca'}
+            >
+              <Trash2 size={14} /> <span className="hidden sm:inline">Limpiar calendario</span>
+            </button>
+          )}
           <button
             onClick={refresh}
             className="p-2 rounded-[var(--radius-sm)] transition-transform hover:scale-105 bg-[var(--color-warm-gray)] text-cherry"
@@ -301,6 +339,55 @@ export default function CalendarioClient({ userId, items: initialItems }: Props)
           ))}
         </div>
       )}
+
+      {/* Confirmación limpiar calendario */}
+      <AnimatePresence>
+        {confirmingClear && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: 'rgba(89,20,39,0.4)' }}
+            onClick={() => !clearing && setConfirmingClear(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={e => e.stopPropagation()}
+              className="rounded-[var(--radius-md)] p-6 max-w-sm w-full text-center"
+              style={{ background: 'var(--color-cream)', border: '1.5px solid var(--color-cherry)' }}
+            >
+              <div className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center" style={{ background: '#fde8e8' }}>
+                <Trash2 size={22} style={{ color: 'var(--color-cherry)' }} />
+              </div>
+              <h3 className="font-bold text-base text-cherry-dark mb-1">¿Limpiar el calendario?</h3>
+              <p className="text-xs text-cherry-dark opacity-70 mb-5">
+                Se quitarán las fechas de <strong>{sorted.length}</strong> contenidos y volverán a tu Biblioteca sin programar. No se borran, solo se desprograman.
+              </p>
+              <div className="flex gap-2 justify-center">
+                <button
+                  onClick={() => setConfirmingClear(false)}
+                  disabled={clearing}
+                  className="btn-ghost text-sm py-2.5 px-5"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleClearCalendar}
+                  disabled={clearing}
+                  className="inline-flex items-center gap-1.5 text-sm font-semibold text-white py-2.5 px-5 rounded-[var(--radius-sm)]"
+                  style={{ background: 'var(--color-cherry)', opacity: clearing ? 0.65 : 1 }}
+                >
+                  <Trash2 size={14} /> {clearing ? 'Limpiando...' : 'Sí, limpiar'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Detail Modal */}
       <AnimatePresence>

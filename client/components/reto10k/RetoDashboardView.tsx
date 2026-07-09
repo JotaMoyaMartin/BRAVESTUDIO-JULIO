@@ -275,9 +275,31 @@ export default function RetoDashboardView({ profile, progress, config, brand, co
             onPhaseClick={() => onGoToTab('camino')}
           />
 
-          {/* ── Misión de hoy: estado inteligente ── */}
+          {/* ── Recomendación de hoy ── */}
+          {todayItem && !todayIsPlaceholder && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between px-1">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-cherry opacity-70">
+                  Recomendación de hoy · Día {currentDay}
+                </p>
+                <button
+                  onClick={() => onGoToTab('ideas')}
+                  className="text-[10px] font-semibold text-cherry"
+                >
+                  Ver todas →
+                </button>
+              </div>
+              <RetoContentCard
+                item={todayItem}
+                userId={profile?.id || 'demo'}
+                demoMode={demoMode}
+                currentXp={xp}
+                onChanged={onChanged}
+              />
+            </div>
+          )}
+
           {todayItem && todayIsPlaceholder && currentMission && (
-            // Placeholder → mostrar misión con botón "Crear contenido"
             <RetoMissionDay
               mission={currentMission}
               phase={currentPhaseData}
@@ -292,25 +314,7 @@ export default function RetoDashboardView({ profile, progress, config, brand, co
             />
           )}
 
-          {todayItem && !todayIsPlaceholder && (
-            // Contenido generado → mostrar RetoContentCard directamente
-            <div className="space-y-2">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-cherry opacity-70 px-1">
-                Misión de hoy · Día {currentDay}
-              </p>
-              <RetoContentCard
-                item={todayItem}
-                userId={profile?.id || 'demo'}
-                demoMode={demoMode}
-                currentXp={xp}
-                onChanged={onChanged}
-                defaultExpanded
-              />
-            </div>
-          )}
-
           {!todayItem && nextMission && (
-            // Hoy no toca publicación → mostrar próxima misión
             <div
               className="rounded-[var(--radius-md)] p-4 flex items-center gap-3"
               style={{ background: 'var(--color-warm-light)', border: '1.5px solid var(--color-buttermilk)' }}
@@ -321,17 +325,15 @@ export default function RetoDashboardView({ profile, progress, config, brand, co
               <div className="flex-1">
                 <p className="text-xs font-bold text-cherry-dark">Hoy no toca publicación</p>
                 <p className="text-xs text-cherry-dark opacity-70">
-                  Próxima misión: {nextMission.title}
-                  {nextMission.scheduled_date && (
-                    <> · {formatDate(nextMission.scheduled_date)}</>
-                  )}
+                  Próxima: {nextMission.title}
+                  {nextMission.scheduled_date && <> · {formatDate(nextMission.scheduled_date)}</>}
                 </p>
               </div>
               <button
                 onClick={() => onGoToTab('calendario')}
                 className="text-xs font-semibold text-cherry whitespace-nowrap"
               >
-                Ver calendario →
+                Calendario →
               </button>
             </div>
           )}
@@ -360,6 +362,7 @@ export default function RetoDashboardView({ profile, progress, config, brand, co
           profile={profile}
           progress={progress}
           config={config}
+          brand={brand}
           demoMode={demoMode}
           onDone={() => { setShowPlan(false); onChanged(); onGoToTab('calendario') }}
           onClose={() => setShowPlan(false)}

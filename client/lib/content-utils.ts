@@ -247,7 +247,7 @@ export async function saveRetoPlanDay(
     category: string
   },
   isDemoMode: boolean
-): Promise<void> {
+): Promise<string> {
   const payload = {
     type: 'reel' as const,
     title: day.mission.title,
@@ -271,11 +271,12 @@ export async function saveRetoPlanDay(
     reto_status: 'idea' as const,
   }
   if (isDemoMode) {
-    demoSavePlan(payload as Record<string, unknown>)
-    return
+    const saved = demoSavePlan(payload as Record<string, unknown>)
+    return saved.id
   }
   const supabase = createClient()
-  await supabase.from('content_items').insert({ user_id: userId, ...payload })
+  const { data } = await supabase.from('content_items').insert({ user_id: userId, ...payload }).select().single()
+  return data?.id || ''
 }
 
 /**

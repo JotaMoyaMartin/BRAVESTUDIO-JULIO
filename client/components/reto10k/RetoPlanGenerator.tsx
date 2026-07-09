@@ -2,17 +2,20 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Rocket, X, Check, Calendar as CalendarIcon } from 'lucide-react'
-import { Profile } from '@/types/database'
+import { Rocket, X, Check, Calendar as CalendarIcon, Film } from 'lucide-react'
+import { Profile, BrandProfile } from '@/types/database'
 import { Reto10kConfig, Reto10kProgress, RetoFrequency } from '@/types/reto10k'
 import { build30DayPlan, resolveStartDate } from '@/lib/reto-plan'
-import { saveRetoPlanDay } from '@/lib/content-utils'
+import { saveRetoPlanDay, updateRetoMissionItem } from '@/lib/content-utils'
+import { generateMissionContent } from '@/lib/ai/prompts/reto10k'
+import { buildBrandFullContext, hasBrandContext } from '@/lib/ai/brand-context'
 import { useToast } from '@/components/ui/Toast'
 
 interface Props {
   profile: Profile | null
   progress: Reto10kProgress
   config: Reto10kConfig | null
+  brand?: Partial<BrandProfile> | null
   demoMode: boolean
   onDone: () => void
   onClose: () => void
@@ -31,14 +34,19 @@ const FREQ_OPTIONS: { id: RetoFrequency; label: string; desc: string; days: stri
   { id: 7, label: 'Diario', desc: 'Modo bestia', days: 'Todos los días' },
 ]
 
-export default function RetoPlanGenerator({ profile, progress, config, demoMode, onDone, onClose }: Props) {
+const BATCH_SIZE = 5
+
+export default function RetoPlanGenerator({ profile, progress, config, brand, demoMode, onDone, onClose }: Props) {
   const toast = useToast()
   const userId = profile?.id || 'demo'
-  const [step, setStep] = useState<1 | 2>(1)
+  const [step, setStep] = useState<1 | 2 | 3>(1)
   const [startOption, setStartOption] = useState<'today' | 'next_week' | 'pick'>('today')
   const [pickDate, setPickDate] = useState('')
   const [frequency, setFrequency] = useState<RetoFrequency>(4)
   const [generating, setGenerating] = useState(false)
+  const [genProgress, setGenProgress] = useState({ done: 0, total: 30 })
+
+  const phases = config?.phases || []
 
   async function handleGenerate() {
     let startDate = resolveStartDate(startOption)
@@ -47,15 +55,57 @@ export default function RetoPlanGenerator({ profile, progress, config, demoMode,
       startDate = pickDate
     }
     setGenerating(true)
+    setStep(3)
     try {
       const plan = build30DayPlan(config, startDate, frequency)
+      setGenProgress({ done: 0, total: plan.length })
+
+      // 1. Guardar 30 placeholders rápido
+      const placeholderIds: string[] = []
       for (const day of plan) {
-        await saveRetoPlanDay(userId, day, demoMode)
+        const id = await saveRetoPlanDay(userId, day, demoMode)
+        placeholderIds.push(id)
       }
-      toast.show(`Plan de 30 días creado · ${plan.length} misiones`, 'success')
+
+      // 2. Generar contenido completo en lotes
+      const brandContext = hasBrandContext(brand) ? buildBrandFullContext(brand as any) : undefined
+
+      for (let i = 0; i < plan.length; i += BATCH_SIZE) {
+        const batch = plan.slice(i, i + BATCH_SIZE)
+        const batchIds = placeholderIds.slice(i, i + BATCH_SIZE)
+
+        await Promise.all(batch.map(async (day, idx) => {
+          const itemId = batchIds[idx]
+          if (!itemId) return
+          try {
+            const mission = day.mission
+            const output = await generateMissionContent({
+              objective: progress.objective || 'visibilidad',
+              services: progress.services || [],
+              level: progress.level || 'principiante',
+              currentPhase: mission.phase,
+              phaseTitle: phases.find(p => p.order === mission.phase)?.title || '',
+              currentDay: day.day,
+              missionTitle: mission.title,
+              missionDescription: mission.description,
+              missionPromptHint: mission.prompt_hint,
+              brandContext,
+            })
+            await updateRetoMissionItem(userId, itemId, output.item, demoMode)
+          } catch {
+            // Si falla, el placeholder se queda pendiente — el usuario puede generarlo después
+          }
+        }))
+
+        setGenProgress({ done: Math.min(i + BATCH_SIZE, plan.length), total: plan.length })
+      }
+
+      toast.show('Plan de 30 días creado con contenido completo', 'success')
       onDone()
     } catch {
       toast.show('No se pudo generar el plan. Inténtalo de nuevo.', 'info')
+      setGenerating(false)
+      setStep(2)
     } finally {
       setGenerating(false)
     }
@@ -63,6 +113,7 @@ export default function RetoPlanGenerator({ profile, progress, config, demoMode,
 
   const selectedStyle = { background: 'var(--color-cherry)', color: 'white', border: '2px solid var(--color-cherry)' as const }
   const unselectedStyle = { background: 'var(--color-warm-light)', color: 'var(--color-cherry-dark)', border: '1.5px solid var(--color-buttermilk)' as const }
+  const progressPct = Math.round((genProgress.done / genProgress.total) * 100)
 
   return (
     <AnimatePresence>
@@ -72,7 +123,7 @@ export default function RetoPlanGenerator({ profile, progress, config, demoMode,
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
       >
-        <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+        <div className="absolute inset-0 bg-black/40" onClick={!generating ? onClose : undefined} />
         <motion.div
           initial={{ scale: 0.95, opacity: 0, y: 10 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -85,20 +136,24 @@ export default function RetoPlanGenerator({ profile, progress, config, demoMode,
             <div className="flex items-center gap-2">
               <Rocket size={20} className="text-white" />
               <div>
-                <h3 className="font-bold text-base text-white">Generar mi plan de 30 días</h3>
-                <p className="text-xs text-white/80">Distribución estratégica · balance 40/40/20</p>
+                <h3 className="font-bold text-base text-white">Plan de 30 días</h3>
+                <p className="text-xs text-white/80">{step < 3 ? 'Configura tu reto' : 'Generando contenido...'}</p>
               </div>
             </div>
-            <button onClick={onClose} className="text-white/80 hover:text-white p-1"><X size={20} /></button>
+            {!generating && <button onClick={onClose} className="text-white/80 hover:text-white p-1"><X size={20} /></button>}
           </div>
 
           <div className="p-5 space-y-5">
-            {/* Step indicator */}
-            <div className="flex items-center justify-center gap-2">
-              {[1, 2].map(s => (
-                <div key={s} className="h-2 rounded-full transition-all" style={{ width: s === step ? 32 : 8, background: s <= step ? 'var(--color-cherry)' : 'var(--color-warm-gray)' }} />
-              ))}
-            </div>
+            {step < 3 && (
+              <>
+                {/* Step indicator */}
+                <div className="flex items-center justify-center gap-2">
+                  {[1, 2].map(s => (
+                    <div key={s} className="h-2 rounded-full transition-all" style={{ width: s === step ? 32 : 8, background: s <= step ? 'var(--color-cherry)' : 'var(--color-warm-gray)' }} />
+                  ))}
+                </div>
+              </>
+            )}
 
             {step === 1 && (
               <div className="space-y-3">
@@ -132,7 +187,7 @@ export default function RetoPlanGenerator({ profile, progress, config, demoMode,
 
             {step === 2 && (
               <div className="space-y-3">
-                <p className="text-sm font-semibold text-cherry-dark">¿Cuántas publicaciones quieres hacer?</p>
+                <p className="text-sm font-semibold text-cherry-dark">¿Cuántas publicaciones a la semana?</p>
                 {FREQ_OPTIONS.map(opt => (
                   <button
                     key={opt.id}
@@ -159,38 +214,79 @@ export default function RetoPlanGenerator({ profile, progress, config, demoMode,
                 <div className="rounded-[var(--radius-sm)] p-3 flex items-start gap-2" style={{ background: 'var(--color-buttermilk)' }}>
                   <CalendarIcon size={14} className="text-cherry mt-0.5 flex-shrink-0" />
                   <p className="text-xs text-cherry-dark">
-                    Distribuiremos tus publicaciones en días estratégicos (priorizando Mar, Mié, Jue, Dom) y balancearemos el contenido: <strong>40% autoridad · 40% resultados · 20% viralidad</strong>.
+                    Bravi generará el <strong>guion completo, copy e idea visual</strong> para cada uno de los 30 días. Podrás grabar y editar en bloques, sin pensar cada día qué publicar.
                   </p>
                 </div>
               </div>
             )}
 
+            {step === 3 && (
+              <div className="space-y-4 py-4">
+                <div className="text-center">
+                  <motion.div
+                    animate={{ rotate: generating ? 360 : 0 }}
+                    transition={{ duration: 1, repeat: generating ? Infinity : 0, ease: 'linear' }}
+                    className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center"
+                    style={{ border: '3px solid var(--color-buttermilk)', borderTopColor: 'var(--color-cherry)' }}
+                  >
+                    {!generating && <Check size={20} className="text-cherry" />}
+                  </motion.div>
+                  <p className="text-sm font-bold text-cherry-dark">
+                    {generating ? 'Bravi está creando tu contenido' : 'Plan listo'}
+                  </p>
+                  <p className="text-xs text-cherry-dark opacity-60 mt-1">
+                    {generating
+                      ? `${genProgress.done} / ${genProgress.total} misiones completadas`
+                      : '30 misiones con guion completo listas'}
+                  </p>
+                </div>
+
+                {generating && (
+                  <>
+                    <div className="h-2.5 rounded-full overflow-hidden" style={{ background: 'var(--color-warm-gray)' }}>
+                      <motion.div
+                        animate={{ width: `${progressPct}%` }}
+                        transition={{ duration: 0.3 }}
+                        className="h-full rounded-full"
+                        style={{ background: 'linear-gradient(90deg, var(--color-cherry) 0%, var(--color-cherry-dark) 100%)' }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-center gap-1.5 text-xs text-cherry-dark opacity-60">
+                      <Film size={12} /> Generando guiones, copy e ideas visuales...
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
             {/* Navigation */}
-            <div className="flex items-center justify-between gap-3 pt-2">
-              {step > 1 ? (
-                <button onClick={() => setStep(1)} className="px-4 py-2.5 rounded-[var(--radius-sm)] text-sm font-semibold text-cherry-dark hover:bg-warm-gray transition-colors">
-                  Atrás
-                </button>
-              ) : <div />}
-              {step < 2 ? (
-                <button
-                  onClick={() => setStep(2)}
-                  className="px-5 py-2.5 rounded-[var(--radius-sm)] text-sm font-semibold text-white"
-                  style={{ background: 'var(--color-cherry)' }}
-                >
-                  Siguiente
-                </button>
-              ) : (
-                <button
-                  onClick={handleGenerate}
-                  disabled={generating}
-                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-[var(--radius-sm)] text-sm font-bold text-white glow-ready"
-                  style={{ background: 'var(--color-cherry)', opacity: generating ? 0.6 : 1 }}
-                >
-                  {generating ? 'Generando...' : <>🚀 Generar mi plan</>}
-                </button>
-              )}
-            </div>
+            {step < 3 && (
+              <div className="flex items-center justify-between gap-3 pt-2">
+                {step > 1 ? (
+                  <button onClick={() => setStep(1)} className="px-4 py-2.5 rounded-[var(--radius-sm)] text-sm font-semibold text-cherry-dark hover:bg-warm-gray transition-colors">
+                    Atrás
+                  </button>
+                ) : <div />}
+                {step < 2 ? (
+                  <button
+                    onClick={() => setStep(2)}
+                    className="px-5 py-2.5 rounded-[var(--radius-sm)] text-sm font-semibold text-white"
+                    style={{ background: 'var(--color-cherry)' }}
+                  >
+                    Siguiente
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleGenerate}
+                    disabled={generating}
+                    className="inline-flex items-center gap-2 px-6 py-2.5 rounded-[var(--radius-sm)] text-sm font-bold text-white glow-ready"
+                    style={{ background: 'var(--color-cherry)', opacity: generating ? 0.6 : 1 }}
+                  >
+                    Generar mi plan
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </motion.div>
       </motion.div>

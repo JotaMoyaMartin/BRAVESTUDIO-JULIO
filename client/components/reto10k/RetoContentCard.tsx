@@ -256,22 +256,40 @@ export default function RetoContentCard({ item, userId, demoMode, currentXp, onC
             <p className="font-semibold text-sm text-cherry-dark leading-snug">{item.title}</p>
           </div>
 
-          {/* Dropdown de estado compacto */}
-          <div ref={statusRef} className="relative flex-shrink-0">
-            <button
-              onClick={() => setShowStatusMenu(s => !s)}
-              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-bold transition-all"
-              style={{
-                background: statusMeta.bg,
-                color: statusMeta.color,
-                border: `1px solid ${tint.border}`,
-                minHeight: 28,
-              }}
-            >
-              <span className="text-xs leading-none">{statusMeta.emoji}</span>
-              {statusMeta.label}
-              <ChevronDown size={10} style={{ transform: showStatusMenu ? 'rotate(180deg)' : 'none' }} />
-            </button>
+          {/* Dropdown de estado + botón Publicar */}
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            {!isPublished && !placeholder && (
+              <button
+                onClick={handlePublish}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold text-white transition-all"
+                style={{ background: '#2a6a3a', minHeight: 26 }}
+              >
+                <Rocket size={11} /> Publicar
+              </button>
+            )}
+            {isPublished && (
+              <span
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold"
+                style={{ background: 'rgba(184,216,176,0.2)', color: '#2a6a3a', minHeight: 26 }}
+              >
+                <Check size={11} /> +{RETO_POINTS.publishReel}XP
+              </span>
+            )}
+            <div ref={statusRef} className="relative">
+              <button
+                onClick={() => setShowStatusMenu(s => !s)}
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-bold transition-all"
+                style={{
+                  background: statusMeta.bg,
+                  color: statusMeta.color,
+                  border: `1px solid ${tint.border}`,
+                  minHeight: 28,
+                }}
+              >
+                <span className="text-xs leading-none">{statusMeta.emoji}</span>
+                {statusMeta.label}
+                <ChevronDown size={10} style={{ transform: showStatusMenu ? 'rotate(180deg)' : 'none' }} />
+              </button>
             {showStatusMenu && (
               <div
                 className="absolute right-0 top-full mt-1 rounded-[var(--radius-sm)] py-1 z-20 min-w-[140px]"
@@ -296,26 +314,8 @@ export default function RetoContentCard({ item, userId, demoMode, currentXp, onC
               </div>
             )}
           </div>
-        </div>
-
-        {/* Botón Publicar destacado (si no está publicado) */}
-        {!isPublished && !placeholder && (
-          <button
-            onClick={handlePublish}
-            className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-[var(--radius-sm)] text-sm font-bold text-white transition-all mt-2"
-            style={{ background: 'linear-gradient(135deg, #2a6a3a 0%, #3a8a4a 100%)', minHeight: 42 }}
-          >
-            <Rocket size={16} /> Marcar como publicado
-          </button>
-        )}
-        {isPublished && (
-          <div
-            className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-[var(--radius-sm)] text-sm font-bold mt-2"
-            style={{ background: 'rgba(184,216,176,0.2)', color: '#2a6a3a', minHeight: 38 }}
-          >
-            <Check size={16} /> Publicado · +{RETO_POINTS.publishReel} XP
           </div>
-        )}
+        </div>
 
         {!expanded ? (
           placeholder ? (

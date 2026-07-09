@@ -247,7 +247,12 @@ export async function generateRetos(input: RetoInput): Promise<RetoOutput> {
           typeof it.title === 'string' &&
           typeof it.service === 'string' &&
           typeof it.hookIdea === 'string' &&
-          typeof it.format === 'string'
+          typeof it.format === 'string' &&
+          it.script &&
+          typeof it.script.hook === 'string' &&
+          typeof it.script.context === 'string' &&
+          typeof it.script.solution === 'string' &&
+          typeof it.script.cta === 'string'
       )
     ) {
       const items: RetoItem[] = parsed.items.map((it, i) => ({

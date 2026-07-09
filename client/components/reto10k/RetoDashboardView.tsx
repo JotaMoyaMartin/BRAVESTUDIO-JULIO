@@ -2,11 +2,12 @@
 
 import { useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Rocket, Flame, Film, TrendingUp, Sparkles, ChevronDown, Calendar, PenSquare, Clapperboard, Check } from 'lucide-react'
+import { Rocket, Flame, Film, TrendingUp, Sparkles, ChevronDown, RefreshCw, Calendar as CalendarIcon } from 'lucide-react'
 import { Profile, BrandProfile, ContentItem } from '@/types/database'
 import { Reto10kConfig, Reto10kProgress, RETO_LEVELS, RETO_POINTS } from '@/types/reto10k'
 import { computeCurrentDay } from '@/lib/reto-plan'
 import RetoMissionDay from './RetoMissionDay'
+import RetoContentCard from './RetoContentCard'
 import RetoRoadmap from './RetoRoadmap'
 import RetoPlanGenerator from './RetoPlanGenerator'
 import { RetoTabId } from './RetoTabs'
@@ -22,17 +23,22 @@ interface Props {
   onChanged: () => void
 }
 
-const GUIDE_STEPS = [
-  { emoji: '📅', icon: Calendar, title: 'Genera tu plan de 30 días', text: 'Crea tu calendario con una misión estratégica para cada día. El plan se distribuye solito según tu frecuencia de publicación.' },
-  { emoji: '✨', icon: Sparkles, title: 'Crea el contenido del día', text: 'Abre la misión de hoy y genera el reel completo: guion (gancho, contexto, solución, CTA), copy para Instagram e idea visual.' },
-  { emoji: '🎬', icon: Clapperboard, title: 'Graba y edita tu reel', text: 'Usa el guion para grabar. Copia el texto bloque a bloque. Marca como "Grabado" o "Editado" si quieres llevar control.' },
-  { emoji: '🚀', icon: Rocket, title: 'Publica y márcalo como publicado', text: `Sube tu reel a Instagram y pulsa "Marcar como publicado". Solo esto suma ${RETO_POINTS.publishReel} XP y cuenta para tu progreso del Reto.` },
-]
+const MONTHS = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']
+const DAYS = ['dom','lun','mar','mié','jue','vie','sáb']
+
+function isPlaceholder(item: ContentItem): boolean {
+  const json = item.content_json as Record<string, unknown>
+  return Boolean(json?.is_plan_placeholder)
+}
+
+function getMissionDay(item: ContentItem): number | null {
+  const json = item.content_json as Record<string, unknown>
+  return (json?.mission_day as number) || null
+}
 
 export default function RetoDashboardView({ profile, progress, config, brand, contentItems, demoMode, onGoToTab, onChanged }: Props) {
   const [showPlan, setShowPlan] = useState(false)
   const [guideOpen, setGuideOpen] = useState(() => {
-    // Auto-colapsar si ya tiene publicadas o va avanzado en el reto
     const publicadas = contentItems.filter(i => i.tag === 'reto-10k' && i.reto_status === 'publicado').length
     const day = progress.started_at ? computeCurrentDay(progress.started_at) : 1
     return publicadas < 2 && day <= 5
@@ -46,13 +52,28 @@ export default function RetoDashboardView({ profile, progress, config, brand, co
   const currentMission = missions.find(m => m.day === currentDay) || null
   const progressPct = Math.round((currentDay / 30) * 100)
 
-  const currentPlaceholder = useMemo(() => {
+  // ¿Existe el plan?
+  const hasPlan = contentItems.some(i => i.tag === 'reto-10k')
+
+  // Item de hoy (del plan)
+  const todayItem = useMemo(() => {
     return contentItems.find(i => {
       if (i.tag !== 'reto-10k') return false
-      const json = i.content_json as Record<string, unknown>
-      return json?.is_plan_placeholder === true && json?.mission_day === currentDay
+      return getMissionDay(i) === currentDay
     }) || null
   }, [contentItems, currentDay])
+
+  const todayIsPlaceholder = todayItem ? isPlaceholder(todayItem) : false
+
+  // Próxima misión si hoy no toca
+  const nextMission = useMemo(() => {
+    if (todayItem) return null
+    const today = new Date().toISOString().split('T')[0]
+    const upcoming = contentItems
+      .filter(i => i.tag === 'reto-10k' && i.scheduled_date && i.scheduled_date >= today)
+      .sort((a, b) => (a.scheduled_date || '').localeCompare(b.scheduled_date || ''))
+    return upcoming[0] || null
+  }, [contentItems, todayItem])
 
   const stats = useMemo(() => {
     const retoItems = contentItems.filter(i => i.tag === 'reto-10k')
@@ -78,6 +99,19 @@ export default function RetoDashboardView({ profile, progress, config, brand, co
   }, [xp])
   const nextLevel = RETO_LEVELS.find(l => l.minXp > xp)
   const levelProgress = nextLevel ? Math.round(((xp - level.minXp) / (nextLevel.minXp - level.minXp)) * 100) : 100
+
+  // Guía según si hay plan o no
+  const guideSteps = hasPlan
+    ? [
+        { num: 1, emoji: '📅', title: 'Tu plan está listo', text: 'Tienes 30 misiones estratégicas asignadas, una por día, según tu frecuencia de publicación.' },
+        { num: 2, emoji: '✨', title: 'Crea el contenido de hoy', text: 'Abre la misión de hoy y genera el reel completo: guion, copy para Instagram e idea visual.' },
+        { num: 3, emoji: '🚀', title: 'Publica y márcalo aquí', text: `Sube tu reel a Instagram y pulsa "Marcar como publicado". Solo esto suma ${RETO_POINTS.publishReel} XP y cuenta para tu progreso.` },
+      ]
+    : [
+        { num: 1, emoji: '📅', title: 'Genera tu plan de 30 días', text: 'Crea tu calendario con una misión estratégica para cada día. El plan se distribuye solito según tu frecuencia.' },
+        { num: 2, emoji: '✨', title: 'Crea el contenido de cada día', text: 'Cada día, abre la misión de hoy y genera el reel completo: guion, copy e idea visual.' },
+        { num: 3, emoji: '🚀', title: 'Publica y márcalo aquí', text: `Sube tu reel a Instagram y pulsa "Marcar como publicado". Solo esto cuenta para tu progreso.` },
+      ]
 
   return (
     <div className="space-y-5">
@@ -105,7 +139,7 @@ export default function RetoDashboardView({ profile, progress, config, brand, co
         </div>
       </div>
 
-      {/* Guía visual del proceso (colapsable) */}
+      {/* Guía visual (colapsable) */}
       <div className="rounded-[var(--radius-md)] overflow-hidden" style={{ background: 'white', border: '1.5px solid var(--color-buttermilk)' }}>
         <button
           onClick={() => setGuideOpen(o => !o)}
@@ -131,9 +165,9 @@ export default function RetoDashboardView({ profile, progress, config, brand, co
               className="overflow-hidden"
             >
               <div className="px-4 pb-4 space-y-3">
-                {GUIDE_STEPS.map((step, i) => (
+                {guideSteps.map((step) => (
                   <div
-                    key={i}
+                    key={step.num}
                     className="flex gap-3 items-start rounded-[var(--radius-sm)] p-3"
                     style={{ background: 'var(--color-warm-light)', border: '1px solid var(--color-buttermilk)' }}
                   >
@@ -141,7 +175,7 @@ export default function RetoDashboardView({ profile, progress, config, brand, co
                       className="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold"
                       style={{ background: 'var(--color-cherry)', color: 'white' }}
                     >
-                      {i + 1}
+                      {step.num}
                     </div>
                     <div className="flex-1">
                       <p className="text-sm font-bold text-cherry-dark flex items-center gap-1.5">
@@ -157,7 +191,7 @@ export default function RetoDashboardView({ profile, progress, config, brand, co
                 >
                   <Rocket size={16} className="text-cherry flex-shrink-0" />
                   <p className="text-xs text-cherry-dark">
-                    <strong>Solo publicar cuenta para el reto.</strong> Ni grabar, ni editar, ni guardar ideas suman puntos. Tu avance se mide por los reels que publicas en Instagram y marcas como publicados aquí.
+                    <strong>Solo publicar cuenta para el reto.</strong> Ni grabar, ni editar, ni guardar ideas suman puntos.
                   </p>
                 </div>
               </div>
@@ -166,82 +200,160 @@ export default function RetoDashboardView({ profile, progress, config, brand, co
         </AnimatePresence>
       </div>
 
-      {/* Stats principales */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <BigStat icon={Flame} value={`${stats.streak} días`} label="Racha creando" emoji="🔥" />
-        <BigStat icon={Film} value={stats.creadas} label="Piezas creadas" emoji="🎥" />
-        <BigStat icon={TrendingUp} value={stats.publicadas} label="Publicadas" emoji="🚀" />
-        <BigStat icon={Sparkles} value={xp} label="Puntos" emoji="⭐" />
-      </div>
-
-      {/* Barra de progreso del reto */}
-      <div className="rounded-[var(--radius-md)] p-4" style={{ background: 'white', border: '1.5px solid var(--color-buttermilk)' }}>
-        <div className="flex items-center justify-between text-xs font-semibold text-cherry-dark mb-2">
-          <span>Progreso del Reto</span>
-          <span>{progressPct}% · Día {currentDay}/30</span>
-        </div>
-        <div className="h-2.5 rounded-full overflow-hidden" style={{ background: 'var(--color-warm-gray)' }}>
-          <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: `${progressPct}%` }}
-            transition={{ duration: 0.8, ease: 'easeOut' }}
-            className="h-full rounded-full"
-            style={{ background: 'linear-gradient(90deg, var(--color-cherry) 0%, var(--color-cherry-dark) 100%)' }}
-          />
-        </div>
-        {nextLevel && (
-          <p className="text-[10px] text-cherry-dark opacity-60 mt-2">
-            {levelProgress}% hacia {nextLevel.emoji} {nextLevel.name} · {nextLevel.minXp - xp} puntos
+      {/* ── Si NO hay plan: solo hero CTA ── */}
+      {!hasPlan && (
+        <div
+          className="rounded-[var(--radius-md)] p-6 text-center"
+          style={{ background: 'linear-gradient(135deg, var(--color-buttermilk) 0%, var(--color-warm-light) 100%)', border: '2px solid var(--color-cherry)' }}
+        >
+          <div className="text-4xl mb-3">📅</div>
+          <h2 className="text-lg font-bold text-cherry-dark mb-2">Empieza por tu plan de 30 días</h2>
+          <p className="text-sm text-cherry-dark opacity-70 mb-4 max-w-sm mx-auto">
+            Bravi creará un calendario con una misión estratégica para cada día. Tú solo sigues el plan y publicas.
           </p>
-        )}
-        {/* Barra de publicadas */}
-        <div className="flex items-center justify-between text-xs font-semibold text-cherry-dark mt-3 mb-1.5">
-          <span>Publicadas 🚀</span>
-          <span>{stats.publicadas} / {Math.max(30, stats.creadas)}</span>
+          <button
+            onClick={() => setShowPlan(true)}
+            className="inline-flex items-center gap-2 px-6 py-3.5 rounded-[var(--radius-sm)] text-sm font-bold text-white transition-all glow-ready"
+            style={{ background: 'var(--color-cherry)', minHeight: 48 }}
+          >
+            <Rocket size={18} /> Generar mi plan de 30 días
+          </button>
         </div>
-        <div className="h-2.5 rounded-full overflow-hidden" style={{ background: 'var(--color-warm-gray)' }}>
-          <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: `${Math.min(100, (stats.publicadas / Math.max(30, stats.creadas)) * 100)}%` }}
-            transition={{ duration: 0.8, ease: 'easeOut' }}
-            className="h-full rounded-full"
-            style={{ background: 'linear-gradient(90deg, #2a6a3a 0%, #3a8a4a 100%)' }}
-          />
-        </div>
-      </div>
-
-      {/* Roadmap compacto siempre visible */}
-      <RetoRoadmap
-        phases={phases}
-        currentPhase={currentPhase}
-        variant="compact"
-        onPhaseClick={() => onGoToTab('camino')}
-      />
-
-      {/* Misión del día */}
-      {currentMission && (
-        <RetoMissionDay
-          mission={currentMission}
-          phase={currentPhaseData}
-          profile={profile}
-          progress={progress}
-          config={config}
-          brand={brand}
-          demoMode={demoMode}
-          placeholderId={currentPlaceholder?.id || null}
-          placeholderScheduledDate={currentPlaceholder?.scheduled_date || null}
-          onChanged={onChanged}
-        />
       )}
 
-      {/* CTA Plan de 30 días */}
-      <button
-        onClick={() => setShowPlan(true)}
-        className="w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-[var(--radius-md)] text-sm font-bold text-white transition-all glow-ready"
-        style={{ background: 'linear-gradient(135deg, var(--color-cherry-light) 0%, var(--color-cherry) 100%)', minHeight: 48 }}
-      >
-        <Rocket size={18} /> Generar mi plan de 30 días
-      </button>
+      {/* ── Si hay plan: stats + progreso + misión de hoy ── */}
+      {hasPlan && (
+        <>
+          {/* Stats principales */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <BigStat icon={Flame} value={`${stats.streak} días`} label="Racha creando" emoji="🔥" />
+            <BigStat icon={Film} value={stats.creadas} label="Piezas creadas" emoji="🎥" />
+            <BigStat icon={TrendingUp} value={stats.publicadas} label="Publicadas" emoji="🚀" />
+            <BigStat icon={Sparkles} value={xp} label="Puntos" emoji="⭐" />
+          </div>
+
+          {/* Barras de progreso */}
+          <div className="rounded-[var(--radius-md)] p-4" style={{ background: 'white', border: '1.5px solid var(--color-buttermilk)' }}>
+            <div className="flex items-center justify-between text-xs font-semibold text-cherry-dark mb-2">
+              <span>Progreso del Reto</span>
+              <span>{progressPct}% · Día {currentDay}/30</span>
+            </div>
+            <div className="h-2.5 rounded-full overflow-hidden" style={{ background: 'var(--color-warm-gray)' }}>
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${progressPct}%` }}
+                transition={{ duration: 0.8, ease: 'easeOut' }}
+                className="h-full rounded-full"
+                style={{ background: 'linear-gradient(90deg, var(--color-cherry) 0%, var(--color-cherry-dark) 100%)' }}
+              />
+            </div>
+            {nextLevel && (
+              <p className="text-[10px] text-cherry-dark opacity-60 mt-2">
+                {levelProgress}% hacia {nextLevel.emoji} {nextLevel.name} · {nextLevel.minXp - xp} puntos
+              </p>
+            )}
+            <div className="flex items-center justify-between text-xs font-semibold text-cherry-dark mt-3 mb-1.5">
+              <span>Publicadas 🚀</span>
+              <span>{stats.publicadas} / {Math.max(30, stats.creadas)}</span>
+            </div>
+            <div className="h-2.5 rounded-full overflow-hidden" style={{ background: 'var(--color-warm-gray)' }}>
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${Math.min(100, (stats.publicadas / Math.max(30, stats.creadas)) * 100)}%` }}
+                transition={{ duration: 0.8, ease: 'easeOut' }}
+                className="h-full rounded-full"
+                style={{ background: 'linear-gradient(90deg, #2a6a3a 0%, #3a8a4a 100%)' }}
+              />
+            </div>
+          </div>
+
+          {/* Roadmap compacto */}
+          <RetoRoadmap
+            phases={phases}
+            currentPhase={currentPhase}
+            variant="compact"
+            onPhaseClick={() => onGoToTab('camino')}
+          />
+
+          {/* ── Misión de hoy: estado inteligente ── */}
+          {todayItem && todayIsPlaceholder && currentMission && (
+            // Placeholder → mostrar misión con botón "Crear contenido"
+            <RetoMissionDay
+              mission={currentMission}
+              phase={currentPhaseData}
+              profile={profile}
+              progress={progress}
+              config={config}
+              brand={brand}
+              demoMode={demoMode}
+              placeholderId={todayItem.id}
+              placeholderScheduledDate={todayItem.scheduled_date}
+              onChanged={onChanged}
+            />
+          )}
+
+          {todayItem && !todayIsPlaceholder && (
+            // Contenido generado → mostrar RetoContentCard directamente
+            <div className="space-y-2">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-cherry opacity-70 px-1">
+                Misión de hoy · Día {currentDay}
+              </p>
+              <RetoContentCard
+                item={todayItem}
+                userId={profile?.id || 'demo'}
+                demoMode={demoMode}
+                currentXp={xp}
+                onChanged={onChanged}
+                defaultExpanded
+              />
+            </div>
+          )}
+
+          {!todayItem && nextMission && (
+            // Hoy no toca publicación → mostrar próxima misión
+            <div
+              className="rounded-[var(--radius-md)] p-4 flex items-center gap-3"
+              style={{ background: 'var(--color-warm-light)', border: '1.5px solid var(--color-buttermilk)' }}
+            >
+              <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'white' }}>
+                <CalendarIcon size={18} className="text-cherry opacity-60" />
+              </div>
+              <div className="flex-1">
+                <p className="text-xs font-bold text-cherry-dark">Hoy no toca publicación</p>
+                <p className="text-xs text-cherry-dark opacity-70">
+                  Próxima misión: {nextMission.title}
+                  {nextMission.scheduled_date && (
+                    <> · {formatDate(nextMission.scheduled_date)}</>
+                  )}
+                </p>
+              </div>
+              <button
+                onClick={() => onGoToTab('calendario')}
+                className="text-xs font-semibold text-cherry whitespace-nowrap"
+              >
+                Ver calendario →
+              </button>
+            </div>
+          )}
+
+          {!todayItem && !nextMission && hasPlan && (
+            <div
+              className="rounded-[var(--radius-md)] p-4 text-center"
+              style={{ background: 'var(--color-warm-light)', border: '1.5px solid var(--color-buttermilk)' }}
+            >
+              <p className="text-sm font-semibold text-cherry-dark">Has completado las 30 misiones del Reto 🎉</p>
+            </div>
+          )}
+
+          {/* Botón discreto: Regenerar plan */}
+          <button
+            onClick={() => setShowPlan(true)}
+            className="w-full inline-flex items-center justify-center gap-1.5 py-2 text-xs font-semibold text-cherry-dark opacity-50 hover:opacity-80 transition-all"
+          >
+            <RefreshCw size={12} /> Regenerar plan
+          </button>
+        </>
+      )}
 
       {showPlan && (
         <RetoPlanGenerator
@@ -255,6 +367,11 @@ export default function RetoDashboardView({ profile, progress, config, brand, co
       )}
     </div>
   )
+}
+
+function formatDate(iso: string): string {
+  const d = new Date(iso + 'T00:00:00')
+  return `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`
 }
 
 function BigStat({ icon: Icon, value, label, emoji }: { icon: typeof Film; value: number | string; label: string; emoji: string }) {

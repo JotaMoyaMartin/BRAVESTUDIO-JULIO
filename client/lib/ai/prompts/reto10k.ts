@@ -1,5 +1,5 @@
 import { generateAIContent, extractJSON } from '../client'
-import { RetoInput, RetoOutput, RetoItem, RetoMissionInput, RetoMissionOutput, RetoMissionItem } from '@/types/reto10k'
+import { RetoInput, RetoOutput, RetoItem, RetoMissionInput, RetoMissionOutput, RetoMissionItem, RetoMissionBatchInput, RetoMissionBatchOutput, RetoCategory } from '@/types/reto10k'
 
 export function buildRetosPrompt(input: RetoInput): string {
   const services = input.services.length > 0 ? input.services.join(', ') : 'servicios generales de peluquería'
@@ -418,4 +418,158 @@ export async function generateMissionContent(input: RetoMissionInput): Promise<R
     // fall through to mock
   }
   return generateMockMissionContent(input)
+}
+
+// ── Batch: generar varias misiones en una sola llamada IA ─────────────
+
+export function buildMissionBatchPrompt(input: RetoMissionBatchInput): string {
+  const services = input.services.length > 0 ? input.services.join(', ') : 'servicios generales de peluquería'
+  const daysBlock = input.days.map((d, i) => {
+    return `--- DÍA ${d.day} (item ${i + 1} de ${input.days.length}) ---
+Misión: ${d.missionTitle}
+Descripción: ${d.missionDescription || ''}
+Pista: ${d.missionPromptHint || ''}
+Fase: ${d.phase} — ${d.phaseTitle}`
+  }).join('\n\n')
+
+  const dayNumbers = input.days.map(d => d.day)
+
+  return `Eres un guionista profesional para estilistas en Instagram, especializado en el Reto 10K BRÄVE. Sigues el MANUAL OFICIAL DE GUIONES BRÄVE al pie de la letra.
+
+OBJETIVO DE LA USUARIA: ${input.objective === 'recomendado' ? 'Sin objetivo prioritario — aplicar mix equilibrado entre los 6 pilares' : input.objective}
+SERVICIOS ESTRELLA: ${services}
+NIVEL: ${input.level}
+${input.brandContext ? `CONTEXTO DEL SALÓN: ${input.brandContext}` : ''}
+
+=== MANUAL DE GUIONES BRÄVE (OBLIGATORIO) ===
+
+Filosofía: no vendemos servicios, vendemos confianza. No vendemos color, vendemos seguridad.
+
+Todos los reels son de AUTORIDAD (35-45s) con esta estructura INALTERABLE:
+
+1. GANCHO (3-5s): detener el scroll. Claro, directo, basado en dolor / error / falsa creencia / deseo.
+   - VÁLIDO: "Si tu rubio dura pocas semanas, algo está fallando."
+   - PROHIBIDO: "No vas a creer esto", "El secreto mejor guardado", "Tienes que ver esto".
+
+2. CONTEXTO (5-10s): generar identificación. El problema, el error habitual. NO expliques la solución todavía.
+
+3. SOLUCIÓN (20-30s) — LA PARTE MÁS IMPORTANTE: demostrar autoridad, educar, justificar valor.
+   - QUÉ haces, CÓMO lo haces, POR QUÉ lo haces.
+   - Debe ser largo, detallado y rico. El proceso vende.
+
+4. CTA (3-5s): conversacional. NUNCA palabras clave ni automatizaciones.
+   - VÁLIDO: "Si estás pensando en hacerte este servicio, escríbeme y te ayudo."
+   - PROHIBIDO: "Comenta BALAYAGE", "Escribe INFO".
+
+=== MISIONES A GENERAR ===
+
+Genera EXACTAMENTE ${input.days.length} reels, uno por cada día listado abajo. Cada reel debe estar 100% dedicado a su misión.
+
+${daysBlock}
+
+=== REGLAS DE CATEGORÍA ===
+Cada reel debe tener un "category" distinto cuando sea posible, rotando entre: "autoridad", "viralidad", "educacion", "deseo", "dolor", "objecion".
+
+=== ENTREGABLE ===
+
+Devuelve EXACTAMENTE este JSON, sin texto adicional:
+{
+  "items": [
+    {
+      "type": "reel",
+      "title": "Título atractivo conectado a la misión del día",
+      "service": "Servicio al que pertenece",
+      "objective": "autoridad" | "reservas" | "visibilidad",
+      "category": "autoridad" | "viralidad" | "educacion" | "deseo" | "dolor" | "objecion",
+      "hookIdea": "Idea breve de gancho",
+      "format": "Reel 35-45s",
+      "script": { "hook": "...", "context": "...", "solution": "...", "cta": "..." },
+      "caption": "Texto LISTO PARA COPIAR. Varios párrafos separados por \\n\\n. UN SOLO emoji temático al inicio del primer párrafo. Penúltimo párrafo = CTA conversacional. Último párrafo = máx 4 hashtags.",
+      "visual_idea": "Cómo grabar (plano, luz, acción, música)",
+      "recording_tip": "Recomendación práctica de grabación: plano, duración de cada bloque, luz, música.",
+      "day": ${dayNumbers.length > 0 ? dayNumbers[0] : 1}
+    }
+  ],
+  "summary": "Resumen breve"
+}
+
+IMPORTANTE: El array "items" debe tener EXACTAMENTE ${input.days.length} elementos, uno por cada día, en el mismo orden. El campo "day" de cada item debe corresponder al día de su misión: ${dayNumbers.join(', ')}.`
+}
+
+export function generateMockMissionBatch(input: RetoMissionBatchInput): RetoMissionBatchOutput {
+  const services = input.services.length > 0 ? input.services : ['Balayage', 'Color', 'Corte']
+  const categories: RetoCategory[] = ['dolor', 'autoridad', 'educacion', 'deseo', 'viralidad', 'objecion']
+
+  const items: RetoMissionItem[] = input.days.map((d, i) => {
+    const primary = services[i % services.length] || services[0]
+    const category = categories[i % categories.length]
+    return {
+      type: 'reel' as const,
+      title: d.missionTitle,
+      service: primary,
+      objective: input.objective || 'visibilidad',
+      category,
+      hookIdea: d.missionPromptHint || `Conecta con tu audiencia desde ${d.missionTitle.toLowerCase()}`,
+      format: 'Reel 35-45s',
+      script: {
+        hook: `Si te tengo que contar algo sobre ${d.missionTitle.toLowerCase()}, es esto.`,
+        context: `Muchas clientas llegan al salón con una idea sobre ${d.missionTitle.toLowerCase()} que no se ajusta a la realidad. El problema no es el servicio, es la falta de información antes de empezar.`,
+        solution: `Por eso, antes de tocar el color o las tijeras, hago un diagnóstico completo: analizo el estado de la fibra, el historial químico y las expectativas reales de cada clienta. Después explico qué se puede lograr y qué no, qué técnica uso y por qué, y cuánto mantenimiento va a necesitar en casa. Así la clienta decide con criterio, no por impulso, y el resultado se sostiene en el tiempo.`,
+        cta: `Si tienes dudas sobre ${d.missionTitle.toLowerCase()}, escríbeme y te ayudo a aclararlo antes de reservar.`,
+      },
+      caption: `✨ Lo que me gustaría que supieras sobre ${d.missionTitle.toLowerCase()}.\n\nMuchas clientas llegan al salón con una idea que no se ajusta a la realidad, y eso acaba en decepción.\n\nPor eso hago un diagnóstico completo: estado de la fibra, historial químico y expectativas reales.\n\nSi tienes dudas, escríbeme y te ayudo a aclararlo antes de reservar.\n\n#${primary.replace(/\s/g, '')} #cuidadodelcabello #diagnosticocapilar #bravestudio`,
+      visual_idea: `Plano medio tuyo hablando a cámara en el salón, con el material del servicio de fondo. Tono cercano y seguro.`,
+      recording_tip: `Plano frontal a la altura de los ojos, luz natural de ventana al lado. Empieza con energía en el gancho (3-5s), baja el ritmo en contexto (5-10s), habla pausado y claro en la solución (20-30s), cierra mirando a cámara con cercanía en el CTA (3-5s). Música suave de fondo. Graba en 4K vertical 9:16.`,
+      day: d.day,
+    }
+  })
+
+  return {
+    items,
+    summary: `${items.length} reels generados para ${input.days.length} misiones.`,
+  }
+}
+
+export async function generateMissionBatch(input: RetoMissionBatchInput): Promise<RetoMissionBatchOutput> {
+  try {
+    const raw = await generateAIContent(buildMissionBatchPrompt(input))
+    const parsed = extractJSON<{ items: Array<Omit<RetoMissionItem, 'day'>>, summary: string }>(raw)
+    if (
+      parsed &&
+      Array.isArray(parsed.items) &&
+      parsed.items.length === input.days.length &&
+      parsed.items.every(
+        (it, i) =>
+          it &&
+          it.type === 'reel' &&
+          typeof it.title === 'string' &&
+          typeof it.service === 'string' &&
+          it.script &&
+          typeof it.script.hook === 'string' &&
+          typeof it.script.context === 'string' &&
+          typeof it.script.solution === 'string' &&
+          typeof it.script.cta === 'string' &&
+          typeof it.recording_tip === 'string'
+      )
+    ) {
+      const items: RetoMissionItem[] = parsed.items.map((it, i) => ({
+        ...it,
+        type: 'reel' as const,
+        day: input.days[i].day,
+        objective: it.objective || input.objective,
+        category: (it.category as RetoCategory) || 'autoridad',
+        caption: it.caption || '',
+        visual_idea: it.visual_idea || '',
+        hookIdea: it.hookIdea || '',
+        format: it.format || 'Reel 35-45s',
+      }))
+      return {
+        items,
+        summary: typeof parsed.summary === 'string' ? parsed.summary : `${items.length} misiones generadas.`,
+      }
+    }
+  } catch {
+    // fall through to mock
+  }
+  return generateMockMissionBatch(input)
 }

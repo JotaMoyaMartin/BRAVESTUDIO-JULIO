@@ -121,6 +121,30 @@ export interface RetoMissionOutput {
   summary: string
 }
 
+// ── Batch de misiones (varios dias en una sola llamada IA) ───────────
+
+export interface RetoMissionBatchDay {
+  day: number
+  missionTitle: string
+  missionDescription: string
+  missionPromptHint: string
+  phase: number
+  phaseTitle: string
+}
+
+export interface RetoMissionBatchInput {
+  objective: string
+  services: string[]
+  level: string
+  days: RetoMissionBatchDay[]
+  brandContext?: string
+}
+
+export interface RetoMissionBatchOutput {
+  items: RetoMissionItem[]
+  summary: string
+}
+
 // ── Plan de 30 días ───────────────────────────────────────────────────
 
 export type RetoFrequency = 3 | 4 | 5 | 7

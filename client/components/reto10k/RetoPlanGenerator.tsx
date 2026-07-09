@@ -7,7 +7,7 @@ import { Profile, BrandProfile } from '@/types/database'
 import { Reto10kConfig, Reto10kProgress, RetoFrequency } from '@/types/reto10k'
 import { build30DayPlan, resolveStartDate } from '@/lib/reto-plan'
 import { saveRetoPlanDay, updateRetoMissionItem } from '@/lib/content-utils'
-import { generateMissionContent } from '@/lib/ai/prompts/reto10k'
+import { generateMissionBatch } from '@/lib/ai/prompts/reto10k'
 import { buildBrandFullContext, hasBrandContext } from '@/lib/ai/brand-context'
 import { useToast } from '@/components/ui/Toast'
 
@@ -60,42 +60,57 @@ export default function RetoPlanGenerator({ profile, progress, config, brand, de
       const plan = build30DayPlan(config, startDate, frequency)
       setGenProgress({ done: 0, total: plan.length })
 
-      // 1. Guardar 30 placeholders rápido
-      const placeholderIds: string[] = []
-      for (const day of plan) {
-        const id = await saveRetoPlanDay(userId, day, demoMode)
-        placeholderIds.push(id)
-      }
+      // 1. Guardar 30 placeholders en paralelo
+      const placeholderIds = await Promise.all(
+        plan.map(day => saveRetoPlanDay(userId, day, demoMode))
+      )
 
-      // 2. Generar contenido completo en lotes
+      // 2. Generar contenido en lotes (5 misiones por llamada IA)
       const brandContext = hasBrandContext(brand) ? buildBrandFullContext(brand as any) : undefined
 
       for (let i = 0; i < plan.length; i += BATCH_SIZE) {
         const batch = plan.slice(i, i + BATCH_SIZE)
         const batchIds = placeholderIds.slice(i, i + BATCH_SIZE)
 
-        await Promise.all(batch.map(async (day, idx) => {
-          const itemId = batchIds[idx]
-          if (!itemId) return
-          try {
-            const mission = day.mission
-            const output = await generateMissionContent({
-              objective: progress.objective || 'visibilidad',
-              services: progress.services || [],
-              level: progress.level || 'principiante',
-              currentPhase: mission.phase,
-              phaseTitle: phases.find(p => p.order === mission.phase)?.title || '',
-              currentDay: day.day,
-              missionTitle: mission.title,
-              missionDescription: mission.description,
-              missionPromptHint: mission.prompt_hint,
-              brandContext,
+        try {
+          const output = await generateMissionBatch({
+            objective: progress.objective || 'visibilidad',
+            services: progress.services || [],
+            level: progress.level || 'principiante',
+            days: batch.map(day => ({
+              day: day.day,
+              missionTitle: day.mission.title,
+              missionDescription: day.mission.description,
+              missionPromptHint: day.mission.prompt_hint,
+              phase: day.mission.phase,
+              phaseTitle: phases.find(p => p.order === day.mission.phase)?.title || '',
+            })),
+            brandContext,
+          })
+
+          // Actualizar cada placeholder con su contenido
+          await Promise.all(
+            output.items.map((item, idx) => {
+              const itemId = batchIds[idx]
+              if (!itemId) return Promise.resolve()
+              return updateRetoMissionItem(userId, itemId, {
+                type: item.type,
+                title: item.title,
+                service: item.service,
+                objective: item.objective,
+                category: item.category,
+                format: item.format,
+                script: item.script,
+                caption: item.caption,
+                visual_idea: item.visual_idea,
+                recording_tip: item.recording_tip,
+                day: item.day,
+              }, demoMode).catch(() => {})
             })
-            await updateRetoMissionItem(userId, itemId, output.item, demoMode)
-          } catch {
-            // Si falla, el placeholder se queda pendiente — el usuario puede generarlo después
-          }
-        }))
+          )
+        } catch {
+          // Si falla el batch, los placeholders se quedan pendientes
+        }
 
         setGenProgress({ done: Math.min(i + BATCH_SIZE, plan.length), total: plan.length })
       }

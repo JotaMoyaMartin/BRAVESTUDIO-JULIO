@@ -6,6 +6,9 @@ import { Rocket, Flame, Film, TrendingUp, Sparkles, ChevronDown, RefreshCw, Cale
 import { Profile, BrandProfile, ContentItem } from '@/types/database'
 import { Reto10kConfig, Reto10kProgress, RETO_LEVELS, RETO_POINTS } from '@/types/reto10k'
 import { computeCurrentDay } from '@/lib/reto-plan'
+import { generateRetos } from '@/lib/ai/prompts/reto10k'
+import { buildBrandFullContext, hasBrandContext } from '@/lib/ai/brand-context'
+import { saveRetoMissionItem, deleteItem } from '@/lib/content-utils'
 import RetoMissionDay from './RetoMissionDay'
 import RetoContentCard from './RetoContentCard'
 import RetoRoadmap from './RetoRoadmap'
@@ -92,6 +95,41 @@ export default function RetoDashboardView({ profile, progress, config, brand, co
   }, [contentItems])
 
   const xp = profile?.xp_total || 0
+
+  async function handleRegenerate(oldItem: ContentItem) {
+    const phases = config?.phases || []
+    const currentPhaseData = phases.find(p => p.order === progress.current_phase) || phases[0]
+    const brandContext = hasBrandContext(brand) ? buildBrandFullContext(brand as any) : undefined
+    const output = await generateRetos({
+      objective: progress.objective || 'visibilidad',
+      services: progress.services || [],
+      level: progress.level || 'principiante',
+      currentPhase: progress.current_phase || 1,
+      phaseTitle: currentPhaseData?.title || '',
+      currentDay: progress.current_day || 1,
+      postsPerWeek: progress.posts_per_week || 4,
+      brandContext,
+    })
+    const fresh = output.items[0]
+    if (!fresh) return
+    const json = oldItem.content_json as Record<string, unknown>
+    const missionDay = (json?.mission_day as number) || fresh.day
+    const oldScheduledDate = oldItem.scheduled_date
+    await deleteItem(profile?.id || 'demo', oldItem.id, demoMode)
+    await saveRetoMissionItem(profile?.id || 'demo', {
+      type: fresh.type,
+      title: fresh.title,
+      service: fresh.service,
+      objective: fresh.objective,
+      category: fresh.category,
+      format: fresh.format,
+      script: fresh.script || { hook: '', context: '', solution: '', cta: '' },
+      caption: fresh.caption,
+      visual_idea: fresh.visual_idea,
+      recording_tip: '',
+      day: missionDay,
+    }, demoMode, oldScheduledDate || undefined)
+  }
   const level = useMemo(() => {
     let lvl = RETO_LEVELS[0]
     for (const l of RETO_LEVELS) if (xp >= l.minXp) lvl = l
@@ -295,6 +333,7 @@ export default function RetoDashboardView({ profile, progress, config, brand, co
                 demoMode={demoMode}
                 currentXp={xp}
                 onChanged={onChanged}
+                onRegenerate={handleRegenerate}
               />
             </div>
           )}

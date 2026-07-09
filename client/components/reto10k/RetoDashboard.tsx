@@ -68,6 +68,8 @@ export default function RetoDashboard({ profile, progress, config, brand, conten
         <RetoCalendarioView
           profile={profile}
           progress={progress}
+          config={config}
+          brand={brand}
           contentItems={contentItems}
           demoMode={demoMode}
           onChanged={refresh}

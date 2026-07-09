@@ -16,6 +16,7 @@ interface Props {
   demoMode: boolean
   currentXp: number
   onChanged?: () => void
+  onRegenerate?: (item: ContentItem) => Promise<void>
 }
 
 const STATUS_META: Record<RetoCardStatus, { label: string; emoji: string; color: string; bg: string }> = {
@@ -41,13 +42,14 @@ function getScript(item: ContentItem): { hook: string; context: string; solution
   return { hook: s.hook, context: s.context, solution: s.solution, cta: s.cta }
 }
 
-export default function RetoContentCard({ item, userId, demoMode, currentXp, onChanged }: Props) {
+export default function RetoContentCard({ item, userId, demoMode, currentXp, onChanged, onRegenerate }: Props) {
   const toast = useToast()
   const [showSchedule, setShowSchedule] = useState(false)
   const [scheduleDate, setScheduleDate] = useState(item.scheduled_date || '')
   const [showStatusMenu, setShowStatusMenu] = useState(false)
   const [copied, setCopied] = useState(false)
   const [expanded, setExpanded] = useState(false)
+  const [regenerating, setRegenerating] = useState(false)
 
   const retoStatus = (item.reto_status as RetoCardStatus) || 'idea'
   const statusMeta = STATUS_META[retoStatus]
@@ -103,6 +105,20 @@ export default function RetoContentCard({ item, userId, demoMode, currentXp, onC
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
     toast.show('Copiado', 'success')
+  }
+
+  async function handleRegenerate() {
+    if (!onRegenerate) return
+    setRegenerating(true)
+    try {
+      await onRegenerate(item)
+      toast.show('Nueva idea generada', 'success')
+      onChanged?.()
+    } catch {
+      toast.show('No se pudo regenerar. Inténtalo de nuevo.', 'info')
+    } finally {
+      setRegenerating(false)
+    }
   }
 
   return (
@@ -286,6 +302,17 @@ export default function RetoContentCard({ item, userId, demoMode, currentXp, onC
           >
             {copied ? <Check size={12} /> : <Copy size={12} />} Copiar
           </button>
+
+          {onRegenerate && !placeholder && (
+            <button
+              onClick={handleRegenerate}
+              disabled={regenerating}
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-[var(--radius-sm)] text-xs font-semibold transition-all"
+              style={{ background: 'var(--color-warm-gray)', color: 'var(--color-cherry-dark)', minHeight: 32, opacity: regenerating ? 0.5 : 1 }}
+            >
+              <RefreshCw size={12} className={regenerating ? 'animate-spin' : ''} /> {regenerating ? '...' : 'Regenerar'}
+            </button>
+          )}
 
           <button
             onClick={handleDelete}

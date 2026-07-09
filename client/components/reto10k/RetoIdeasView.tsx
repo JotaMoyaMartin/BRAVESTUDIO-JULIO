@@ -6,7 +6,7 @@ import { Profile, ContentItem, BrandProfile } from '@/types/database'
 import { Reto10kProgress, Reto10kConfig } from '@/types/reto10k'
 import { generateRetos } from '@/lib/ai/prompts/reto10k'
 import { buildBrandFullContext, hasBrandContext } from '@/lib/ai/brand-context'
-import { saveRetoMissionItem, addXp } from '@/lib/content-utils'
+import { saveRetoMissionItem, addXp, deleteItem } from '@/lib/content-utils'
 import { useToast } from '@/components/ui/Toast'
 import { RETO_POINTS } from '@/types/reto10k'
 import RetoContentCard from './RetoContentCard'
@@ -49,19 +49,7 @@ export default function RetoIdeasView({ profile, progress, config, brand, conten
   async function handleGenerateMore() {
     setGenerating(true)
     try {
-      const phases = config?.phases || []
-      const currentPhaseData = phases.find(p => p.order === progress.current_phase) || phases[0]
-      const brandContext = hasBrandContext(brand) ? buildBrandFullContext(brand as any) : undefined
-      const output = await generateRetos({
-        objective: progress.objective || 'visibilidad',
-        services: progress.services || [],
-        level: progress.level || 'principiante',
-        currentPhase: progress.current_phase || 1,
-        phaseTitle: currentPhaseData?.title || '',
-        currentDay: progress.current_day || 1,
-        postsPerWeek: progress.posts_per_week || 4,
-        brandContext,
-      })
+      const output = await runGenerate()
       for (const item of output.items) {
         await saveRetoMissionItem(userId, {
           type: item.type,
@@ -87,6 +75,45 @@ export default function RetoIdeasView({ profile, progress, config, brand, conten
     } finally {
       setGenerating(false)
     }
+  }
+
+  async function runGenerate() {
+    const phases = config?.phases || []
+    const currentPhaseData = phases.find(p => p.order === progress.current_phase) || phases[0]
+    const brandContext = hasBrandContext(brand) ? buildBrandFullContext(brand as any) : undefined
+    return generateRetos({
+      objective: progress.objective || 'visibilidad',
+      services: progress.services || [],
+      level: progress.level || 'principiante',
+      currentPhase: progress.current_phase || 1,
+      phaseTitle: currentPhaseData?.title || '',
+      currentDay: progress.current_day || 1,
+      postsPerWeek: progress.posts_per_week || 4,
+      brandContext,
+    })
+  }
+
+  async function handleRegenerate(oldItem: ContentItem) {
+    const output = await runGenerate()
+    const fresh = output.items[0]
+    if (!fresh) return
+    // Conservar el día de misión si la tarjeta original lo tenía
+    const json = oldItem.content_json as Record<string, unknown>
+    const missionDay = (json?.mission_day as number) || fresh.day
+    await deleteItem(userId, oldItem.id, demoMode)
+    await saveRetoMissionItem(userId, {
+      type: fresh.type,
+      title: fresh.title,
+      service: fresh.service,
+      objective: fresh.objective,
+      category: fresh.category,
+      format: fresh.format,
+      script: fresh.script || { hook: '', context: '', solution: '', cta: '' },
+      caption: fresh.caption,
+      visual_idea: fresh.visual_idea,
+      recording_tip: '',
+      day: missionDay,
+    }, demoMode)
   }
 
   return (
@@ -158,6 +185,7 @@ export default function RetoIdeasView({ profile, progress, config, brand, conten
               demoMode={demoMode}
               currentXp={profile?.xp_total || 0}
               onChanged={onChanged}
+              onRegenerate={handleRegenerate}
             />
           ))}
         </div>

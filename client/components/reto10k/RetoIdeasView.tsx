@@ -6,7 +6,7 @@ import { Profile, ContentItem, BrandProfile } from '@/types/database'
 import { Reto10kProgress, Reto10kConfig, RetoCardStatus } from '@/types/reto10k'
 import { generateRetos } from '@/lib/ai/prompts/reto10k'
 import { buildBrandFullContext, hasBrandContext } from '@/lib/ai/brand-context'
-import { saveRetoMissionItem, deleteItem } from '@/lib/content-utils'
+import { saveRetoMissionItem, deleteItem, generateContentForPlaceholder } from '@/lib/content-utils'
 import { useToast } from '@/components/ui/Toast'
 import RetoContentCard from './RetoContentCard'
 
@@ -136,6 +136,10 @@ export default function RetoIdeasView({ profile, progress, config, brand, conten
     }, demoMode)
   }
 
+  async function handleGenerateContent(item: ContentItem) {
+    await generateContentForPlaceholder(userId, item, progress, config, brand, demoMode)
+  }
+
   return (
     <div className="space-y-5">
       {/* Cabecera */}
@@ -239,6 +243,7 @@ export default function RetoIdeasView({ profile, progress, config, brand, conten
               currentXp={profile?.xp_total || 0}
               onChanged={onChanged}
               onRegenerate={handleRegenerate}
+              onGenerateContent={handleGenerateContent}
             />
           ))}
         </div>

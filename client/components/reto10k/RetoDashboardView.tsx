@@ -8,8 +8,7 @@ import { Reto10kConfig, Reto10kProgress, RETO_LEVELS, RETO_POINTS } from '@/type
 import { computeCurrentDay } from '@/lib/reto-plan'
 import { generateRetos } from '@/lib/ai/prompts/reto10k'
 import { buildBrandFullContext, hasBrandContext } from '@/lib/ai/brand-context'
-import { saveRetoMissionItem, deleteItem } from '@/lib/content-utils'
-import RetoMissionDay from './RetoMissionDay'
+import { saveRetoMissionItem, deleteItem, generateContentForPlaceholder } from '@/lib/content-utils'
 import RetoContentCard from './RetoContentCard'
 import RetoRoadmap from './RetoRoadmap'
 import RetoPlanGenerator from './RetoPlanGenerator'
@@ -129,6 +128,10 @@ export default function RetoDashboardView({ profile, progress, config, brand, co
       recording_tip: '',
       day: missionDay,
     }, demoMode, oldScheduledDate || undefined)
+  }
+
+  async function handleGenerateContent(item: ContentItem) {
+    await generateContentForPlaceholder(profile?.id || 'demo', item, progress, config, brand, demoMode)
   }
   const level = useMemo(() => {
     let lvl = RETO_LEVELS[0]
@@ -314,7 +317,7 @@ export default function RetoDashboardView({ profile, progress, config, brand, co
           />
 
           {/* ── Recomendación de hoy ── */}
-          {todayItem && !todayIsPlaceholder && (
+          {todayItem && (
             <div className="space-y-2">
               <div className="flex items-center justify-between px-1">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-cherry opacity-70">
@@ -334,23 +337,9 @@ export default function RetoDashboardView({ profile, progress, config, brand, co
                 currentXp={xp}
                 onChanged={onChanged}
                 onRegenerate={handleRegenerate}
+                onGenerateContent={handleGenerateContent}
               />
             </div>
-          )}
-
-          {todayItem && todayIsPlaceholder && currentMission && (
-            <RetoMissionDay
-              mission={currentMission}
-              phase={currentPhaseData}
-              profile={profile}
-              progress={progress}
-              config={config}
-              brand={brand}
-              demoMode={demoMode}
-              placeholderId={todayItem.id}
-              placeholderScheduledDate={todayItem.scheduled_date}
-              onChanged={onChanged}
-            />
           )}
 
           {!todayItem && nextMission && (

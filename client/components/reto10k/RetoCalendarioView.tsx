@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Calendar as CalendarIcon, List, Layout, Flame, X } from 'lucide-react'
 import { Profile, ContentItem, BrandProfile } from '@/types/database'
 import { Reto10kProgress, Reto10kConfig } from '@/types/reto10k'
-import { scheduleRetoItem, saveRetoMissionItem, deleteItem } from '@/lib/content-utils'
+import { scheduleRetoItem, saveRetoMissionItem, deleteItem, generateContentForPlaceholder } from '@/lib/content-utils'
 import { generateRetos } from '@/lib/ai/prompts/reto10k'
 import { buildBrandFullContext, hasBrandContext } from '@/lib/ai/brand-context'
 import { useToast } from '@/components/ui/Toast'
@@ -90,6 +90,10 @@ export default function RetoCalendarioView({ profile, progress, config, brand, c
     }, demoMode, oldScheduledDate || undefined)
   }
 
+  async function handleGenerateContent(item: ContentItem) {
+    await generateContentForPlaceholder(userId, item, progress, config, brand, demoMode)
+  }
+
   return (
     <div className="space-y-5">
       {/* Cabecera */}
@@ -160,6 +164,7 @@ export default function RetoCalendarioView({ profile, progress, config, brand, c
                     currentXp={profile?.xp_total || 0}
                     onChanged={onChanged}
                     onRegenerate={handleRegenerate}
+                    onGenerateContent={handleGenerateContent}
                   />
                 </div>
               </div>
@@ -213,6 +218,7 @@ export default function RetoCalendarioView({ profile, progress, config, brand, c
                   currentXp={profile?.xp_total || 0}
                   onChanged={onChanged}
                   onRegenerate={handleRegenerate}
+                  onGenerateContent={handleGenerateContent}
                 />
               </div>
             </motion.div>

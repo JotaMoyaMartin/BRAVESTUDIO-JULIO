@@ -65,55 +65,52 @@ export default function RetoPlanGenerator({ profile, progress, config, brand, de
         plan.map(day => saveRetoPlanDay(userId, day, demoMode))
       )
 
-      // 2. Generar contenido en lotes (5 misiones por llamada IA)
+      // 2. Generar contenido solo para las primeras 5 misiones
+      //    El resto se genera on-demand al abrir la tarjeta
       const brandContext = hasBrandContext(brand) ? buildBrandFullContext(brand as any) : undefined
+      const firstBatch = plan.slice(0, BATCH_SIZE)
+      const firstBatchIds = placeholderIds.slice(0, BATCH_SIZE)
 
-      for (let i = 0; i < plan.length; i += BATCH_SIZE) {
-        const batch = plan.slice(i, i + BATCH_SIZE)
-        const batchIds = placeholderIds.slice(i, i + BATCH_SIZE)
+      try {
+        const output = await generateMissionBatch({
+          objective: progress.objective || 'visibilidad',
+          services: progress.services || [],
+          level: progress.level || 'principiante',
+          days: firstBatch.map(day => ({
+            day: day.day,
+            missionTitle: day.mission.title,
+            missionDescription: day.mission.description,
+            missionPromptHint: day.mission.prompt_hint,
+            phase: day.mission.phase,
+            phaseTitle: phases.find(p => p.order === day.mission.phase)?.title || '',
+          })),
+          brandContext,
+        })
 
-        try {
-          const output = await generateMissionBatch({
-            objective: progress.objective || 'visibilidad',
-            services: progress.services || [],
-            level: progress.level || 'principiante',
-            days: batch.map(day => ({
-              day: day.day,
-              missionTitle: day.mission.title,
-              missionDescription: day.mission.description,
-              missionPromptHint: day.mission.prompt_hint,
-              phase: day.mission.phase,
-              phaseTitle: phases.find(p => p.order === day.mission.phase)?.title || '',
-            })),
-            brandContext,
+        await Promise.all(
+          output.items.map((item, idx) => {
+            const itemId = firstBatchIds[idx]
+            if (!itemId) return Promise.resolve()
+            return updateRetoMissionItem(userId, itemId, {
+              type: item.type,
+              title: item.title,
+              service: item.service,
+              objective: item.objective,
+              category: item.category,
+              format: item.format,
+              script: item.script,
+              caption: item.caption,
+              visual_idea: item.visual_idea,
+              recording_tip: item.recording_tip,
+              day: item.day,
+            }, demoMode).catch(() => {})
           })
-
-          // Actualizar cada placeholder con su contenido
-          await Promise.all(
-            output.items.map((item, idx) => {
-              const itemId = batchIds[idx]
-              if (!itemId) return Promise.resolve()
-              return updateRetoMissionItem(userId, itemId, {
-                type: item.type,
-                title: item.title,
-                service: item.service,
-                objective: item.objective,
-                category: item.category,
-                format: item.format,
-                script: item.script,
-                caption: item.caption,
-                visual_idea: item.visual_idea,
-                recording_tip: item.recording_tip,
-                day: item.day,
-              }, demoMode).catch(() => {})
-            })
-          )
-        } catch {
-          // Si falla el batch, los placeholders se quedan pendientes
-        }
-
-        setGenProgress({ done: Math.min(i + BATCH_SIZE, plan.length), total: plan.length })
+        )
+      } catch {
+        // Si falla, todas se quedan como placeholder — se generan al abrir
       }
+
+      setGenProgress({ done: plan.length, total: plan.length })
 
       toast.show('Plan de 30 días creado con contenido completo', 'success')
       onDone()
@@ -251,8 +248,8 @@ export default function RetoPlanGenerator({ profile, progress, config, brand, de
                   </p>
                   <p className="text-xs text-cherry-dark opacity-60 mt-1">
                     {generating
-                      ? `${genProgress.done} / ${genProgress.total} misiones completadas`
-                      : '30 misiones con guion completo listas'}
+                      ? 'Creando tu plan y las primeras 5 misiones...'
+                      : '30 misiones listas · las primeras 5 con guion completo, el resto se generan al abrir la tarjeta'}
                   </p>
                 </div>
 

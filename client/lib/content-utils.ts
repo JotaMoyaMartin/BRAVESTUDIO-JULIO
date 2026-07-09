@@ -1,7 +1,9 @@
 import { createClient } from '@/lib/supabase/client'
 import { demoSavePlan, demoUpdatePlan, demoDeletePlan } from '@/lib/demo-store'
-import { ContentItem } from '@/types/database'
-import { RETO_POINTS, RetoCardStatus } from '@/types/reto10k'
+import { ContentItem, BrandProfile } from '@/types/database'
+import { RETO_POINTS, RetoCardStatus, Reto10kProgress, Reto10kConfig } from '@/types/reto10k'
+import { generateMissionContent } from '@/lib/ai/prompts/reto10k'
+import { buildBrandFullContext, hasBrandContext } from '@/lib/ai/brand-context'
 
 // ── Clipboard ──────────────────────────────────────────────────────
 
@@ -383,4 +385,55 @@ export async function updateRetoMissionItem(
     visual_idea: item.visual_idea || null,
     reto_status: 'idea',
   }).eq('id', itemId)
+}
+
+/**
+ * Genera el contenido completo (guion, copy, idea visual) para un placeholder del plan.
+ * Se usa on-demand cuando el usuario abre una tarjeta que aún no tiene contenido.
+ */
+export async function generateContentForPlaceholder(
+  userId: string,
+  item: ContentItem,
+  progress: Reto10kProgress,
+  config: Reto10kConfig | null,
+  brand: Partial<BrandProfile> | null,
+  isDemoMode: boolean
+): Promise<void> {
+  const json = item.content_json as Record<string, unknown>
+  const missionDay = (json?.mission_day as number) || 1
+  const missionTitle = (json?.mission_title as string) || item.title
+  const missionDescription = (json?.mission_description as string) || ''
+  const missionHint = (json?.mission_hint as string) || ''
+  const phase = (json?.phase as number) || 1
+
+  const phases = config?.phases || []
+  const phaseTitle = phases.find(p => p.order === phase)?.title || ''
+  const brandContext = hasBrandContext(brand) ? buildBrandFullContext(brand as any) : undefined
+
+  const output = await generateMissionContent({
+    objective: progress.objective || 'visibilidad',
+    services: progress.services || [],
+    level: progress.level || 'principiante',
+    currentPhase: phase,
+    phaseTitle,
+    currentDay: missionDay,
+    missionTitle,
+    missionDescription,
+    missionPromptHint: missionHint,
+    brandContext,
+  })
+
+  await updateRetoMissionItem(userId, item.id, {
+    type: output.item.type,
+    title: output.item.title,
+    service: output.item.service,
+    objective: output.item.objective,
+    category: output.item.category,
+    format: output.item.format,
+    script: output.item.script,
+    caption: output.item.caption,
+    visual_idea: output.item.visual_idea,
+    recording_tip: output.item.recording_tip,
+    day: output.item.day,
+  }, isDemoMode)
 }

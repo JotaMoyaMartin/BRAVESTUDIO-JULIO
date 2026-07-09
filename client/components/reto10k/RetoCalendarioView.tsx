@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { motion } from 'framer-motion'
-import { Calendar as CalendarIcon, List, Layout, Flame } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Calendar as CalendarIcon, List, Layout, Flame, X } from 'lucide-react'
 import { Profile, ContentItem } from '@/types/database'
 import { Reto10kProgress } from '@/types/reto10k'
 import { scheduleRetoItem } from '@/lib/content-utils'
@@ -26,6 +26,7 @@ export default function RetoCalendarioView({ profile, progress, contentItems, de
   const toast = useToast()
   const userId = profile?.id || 'demo'
   const [view, setView] = useState<View>('lista')
+  const [selectedItem, setSelectedItem] = useState<ContentItem | null>(null)
 
   const retoItems = useMemo(
     () => contentItems.filter(i => i.tag === 'reto-10k'),
@@ -133,12 +134,50 @@ export default function RetoCalendarioView({ profile, progress, contentItems, de
           <CalendarView
             items={retoItems}
             onItemMove={handleItemMove}
+            onItemClick={(item) => setSelectedItem(item)}
           />
           <p className="text-xs text-cherry-dark opacity-60 text-center">
             Arrastra las tarjetas para cambiar la fecha de publicación
           </p>
         </div>
       )}
+      {/* Modal de ficha al pulsar un item del calendario */}
+      <AnimatePresence>
+        {selectedItem && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <div className="absolute inset-0 bg-black/40" onClick={() => setSelectedItem(null)} />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-[var(--radius-lg)]"
+              style={{ background: 'var(--color-cream)' }}
+            >
+              <button
+                onClick={() => setSelectedItem(null)}
+                className="absolute top-3 right-3 z-10 w-8 h-8 rounded-full flex items-center justify-center"
+                style={{ background: 'white', border: '1.5px solid var(--color-buttermilk)' }}
+              >
+                <X size={16} className="text-cherry" />
+              </button>
+              <div className="p-4">
+                <RetoContentCard
+                  item={selectedItem}
+                  userId={userId}
+                  demoMode={demoMode}
+                  currentXp={profile?.xp_total || 0}
+                  onChanged={onChanged}
+                />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

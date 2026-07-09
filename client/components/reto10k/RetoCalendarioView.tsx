@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Calendar as CalendarIcon, List, Layout, Flame, X } from 'lucide-react'
 import { Profile, ContentItem, BrandProfile } from '@/types/database'
 import { Reto10kProgress, Reto10kConfig } from '@/types/reto10k'
-import { scheduleRetoItem, saveRetoMissionItem, deleteItem, generateContentForPlaceholder } from '@/lib/content-utils'
+import { scheduleRetoItem, updateRetoMissionItem, generateContentForPlaceholder } from '@/lib/content-utils'
 import { generateRetos } from '@/lib/ai/prompts/reto10k'
 import { buildBrandFullContext, hasBrandContext } from '@/lib/ai/brand-context'
 import { useToast } from '@/components/ui/Toast'
@@ -73,9 +73,7 @@ export default function RetoCalendarioView({ profile, progress, config, brand, c
     if (!fresh) return
     const json = oldItem.content_json as Record<string, unknown>
     const missionDay = (json?.mission_day as number) || fresh.day
-    const oldScheduledDate = oldItem.scheduled_date
-    await deleteItem(userId, oldItem.id, demoMode)
-    await saveRetoMissionItem(userId, {
+    await updateRetoMissionItem(userId, oldItem.id, {
       type: fresh.type,
       title: fresh.title,
       service: fresh.service,
@@ -87,7 +85,7 @@ export default function RetoCalendarioView({ profile, progress, config, brand, c
       visual_idea: fresh.visual_idea,
       recording_tip: '',
       day: missionDay,
-    }, demoMode, oldScheduledDate || undefined)
+    }, demoMode)
   }
 
   async function handleGenerateContent(item: ContentItem) {

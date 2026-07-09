@@ -8,7 +8,7 @@ import { Reto10kConfig, Reto10kProgress, RETO_LEVELS, RETO_POINTS } from '@/type
 import { computeCurrentDay } from '@/lib/reto-plan'
 import { generateRetos } from '@/lib/ai/prompts/reto10k'
 import { buildBrandFullContext, hasBrandContext } from '@/lib/ai/brand-context'
-import { saveRetoMissionItem, deleteItem, generateContentForPlaceholder } from '@/lib/content-utils'
+import { saveRetoMissionItem, deleteItem, updateRetoMissionItem, generateContentForPlaceholder } from '@/lib/content-utils'
 import RetoContentCard from './RetoContentCard'
 import RetoRoadmap from './RetoRoadmap'
 import RetoPlanGenerator from './RetoPlanGenerator'
@@ -113,9 +113,7 @@ export default function RetoDashboardView({ profile, progress, config, brand, co
     if (!fresh) return
     const json = oldItem.content_json as Record<string, unknown>
     const missionDay = (json?.mission_day as number) || fresh.day
-    const oldScheduledDate = oldItem.scheduled_date
-    await deleteItem(profile?.id || 'demo', oldItem.id, demoMode)
-    await saveRetoMissionItem(profile?.id || 'demo', {
+    await updateRetoMissionItem(profile?.id || 'demo', oldItem.id, {
       type: fresh.type,
       title: fresh.title,
       service: fresh.service,
@@ -127,7 +125,7 @@ export default function RetoDashboardView({ profile, progress, config, brand, co
       visual_idea: fresh.visual_idea,
       recording_tip: '',
       day: missionDay,
-    }, demoMode, oldScheduledDate || undefined)
+    }, demoMode)
   }
 
   async function handleGenerateContent(item: ContentItem) {

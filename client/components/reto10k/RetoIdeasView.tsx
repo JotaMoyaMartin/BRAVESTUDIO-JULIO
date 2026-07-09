@@ -6,7 +6,7 @@ import { Profile, ContentItem, BrandProfile } from '@/types/database'
 import { Reto10kProgress, Reto10kConfig, RetoCardStatus } from '@/types/reto10k'
 import { generateRetos } from '@/lib/ai/prompts/reto10k'
 import { buildBrandFullContext, hasBrandContext } from '@/lib/ai/brand-context'
-import { saveRetoMissionItem, deleteItem, generateContentForPlaceholder } from '@/lib/content-utils'
+import { saveRetoMissionItem, deleteItem, updateRetoMissionItem, generateContentForPlaceholder } from '@/lib/content-utils'
 import { useToast } from '@/components/ui/Toast'
 import RetoContentCard from './RetoContentCard'
 
@@ -117,11 +117,9 @@ export default function RetoIdeasView({ profile, progress, config, brand, conten
     const output = await runGenerate()
     const fresh = output.items[0]
     if (!fresh) return
-    // Conservar el día de misión si la tarjeta original lo tenía
     const json = oldItem.content_json as Record<string, unknown>
     const missionDay = (json?.mission_day as number) || fresh.day
-    await deleteItem(userId, oldItem.id, demoMode)
-    await saveRetoMissionItem(userId, {
+    await updateRetoMissionItem(userId, oldItem.id, {
       type: fresh.type,
       title: fresh.title,
       service: fresh.service,

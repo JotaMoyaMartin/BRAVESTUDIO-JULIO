@@ -363,12 +363,24 @@ export default function RetoContentCard({ item, userId, demoMode, currentXp, onC
           )
         ) : (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 pt-3">
-            {generatingContent && (
-              <div className="flex items-center justify-center gap-2 py-8 text-cherry-dark opacity-70">
-                <RefreshCw size={16} className="animate-spin" />
-                <p className="text-xs font-semibold">Bravi está creando tu contenido...</p>
+            {(generatingContent || regenerating) && (
+              <div className="flex flex-col items-center justify-center gap-2 py-10 rounded-[var(--radius-sm)]" style={{ background: 'var(--color-warm-light)' }}>
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-lg"
+                  style={{ background: 'var(--color-cherry)' }}
+                >
+                  🧠
+                </motion.div>
+                <p className="text-xs font-semibold text-cherry-dark">
+                  {regenerating ? 'Bravi está pensando la mejor opción...' : 'Bravi está creando tu contenido...'}
+                </p>
+                <p className="text-[10px] text-cherry-dark opacity-50">Un momento, está trabajando en ello</p>
               </div>
             )}
+            {!generatingContent && !regenerating && (
+            <>
             {/* GUION DEL REEL */}
             {script && (
               <div className="rounded-[var(--radius-sm)] p-4 space-y-3" style={{ background: 'var(--color-cream)', border: '2px solid var(--color-cherry)' }}>
@@ -441,9 +453,11 @@ export default function RetoContentCard({ item, userId, demoMode, currentXp, onC
                 </div>
               </div>
             )}
+            </>
+            )}
 
             {/* Acciones rápidas */}
-            {!generatingContent && (
+            {!generatingContent && !regenerating && (
             <div className="flex flex-wrap gap-2 pt-1">
               {showSchedule ? (
                 <div className="flex gap-1 items-center">
@@ -481,7 +495,7 @@ export default function RetoContentCard({ item, userId, demoMode, currentXp, onC
                   className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-[var(--radius-sm)] text-xs font-semibold transition-all"
                   style={{ background: 'var(--color-warm-gray)', color: 'var(--color-cherry-dark)', minHeight: 40, opacity: regenerating ? 0.5 : 1 }}
                 >
-                  <RefreshCw size={14} className={regenerating ? 'animate-spin' : ''} /> {regenerating ? '...' : 'Regenerar'}
+                  <RefreshCw size={14} className={regenerating ? 'animate-spin' : ''} /> {regenerating ? 'Pensando...' : 'Regenerar'}
                 </button>
               )}
 
@@ -504,7 +518,7 @@ export default function RetoContentCard({ item, userId, demoMode, currentXp, onC
             )}
 
             {/* Cerrar ficha */}
-            {!generatingContent && (
+            {!generatingContent && !regenerating && (
             <button
               onClick={() => setExpanded(false)}
               className="w-full inline-flex items-center justify-center gap-1 text-xs font-semibold text-cherry-dark opacity-70 hover:opacity-100 pt-1"

@@ -17,6 +17,7 @@ interface Props {
   currentXp: number
   onChanged?: () => void
   onRegenerate?: (item: ContentItem) => Promise<void>
+  defaultExpanded?: boolean
 }
 
 const STATUS_META: Record<RetoCardStatus, { label: string; emoji: string; color: string; bg: string }> = {
@@ -64,12 +65,12 @@ function getScript(item: ContentItem): { hook: string; context: string; solution
   return { hook: s.hook, context: s.context, solution: s.solution, cta: s.cta }
 }
 
-export default function RetoContentCard({ item, userId, demoMode, currentXp, onChanged, onRegenerate }: Props) {
+export default function RetoContentCard({ item, userId, demoMode, currentXp, onChanged, onRegenerate, defaultExpanded }: Props) {
   const toast = useToast()
   const [showSchedule, setShowSchedule] = useState(false)
   const [scheduleDate, setScheduleDate] = useState(item.scheduled_date || '')
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(defaultExpanded || false)
   const [showFullCopy, setShowFullCopy] = useState(false)
   const [regenerating, setRegenerating] = useState(false)
 

@@ -34,13 +34,12 @@ export default function RetoDashboardView({ profile, progress, config, brand, co
   const progressPct = Math.round((currentDay / 30) * 100)
 
   // Placeholder del plan para la misión de hoy (para actualizarlo al generar contenido)
-  const currentPlaceholderId = useMemo(() => {
-    const ph = contentItems.find(i => {
+  const currentPlaceholder = useMemo(() => {
+    return contentItems.find(i => {
       if (i.tag !== 'reto-10k') return false
       const json = i.content_json as Record<string, unknown>
       return json?.is_plan_placeholder === true && json?.mission_day === currentDay
-    })
-    return ph?.id || null
+    }) || null
   }, [contentItems, currentDay])
 
   const stats = useMemo(() => {
@@ -157,7 +156,9 @@ export default function RetoDashboardView({ profile, progress, config, brand, co
           config={config}
           brand={brand}
           demoMode={demoMode}
-          placeholderId={currentPlaceholderId}
+          placeholderId={currentPlaceholder?.id || null}
+          placeholderScheduledDate={currentPlaceholder?.scheduled_date || null}
+          onChanged={onChanged}
         />
       )}
 

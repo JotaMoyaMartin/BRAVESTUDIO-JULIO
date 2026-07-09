@@ -16,9 +16,11 @@ interface Props {
   brand: Partial<BrandProfile> | null
   demoMode: boolean
   placeholderId?: string | null
+  placeholderScheduledDate?: string | null
+  onChanged?: () => void
 }
 
-export default function RetoMissionDay({ mission, phase, profile, progress, config, brand, demoMode, placeholderId }: Props) {
+export default function RetoMissionDay({ mission, phase, profile, progress, config, brand, demoMode, placeholderId, placeholderScheduledDate, onChanged }: Props) {
   const [open, setOpen] = useState(false)
 
   return (
@@ -72,7 +74,7 @@ export default function RetoMissionDay({ mission, phase, profile, progress, conf
         className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-[var(--radius-sm)] text-sm font-bold text-white transition-all glow-ready"
         style={{ background: 'var(--color-cherry)', minHeight: 44 }}
       >
-        <Sparkles size={16} /> {open ? 'Cerrar generador' : '✨ Crear mi contenido de esta misión'}
+        <Sparkles size={16} /> {open ? 'Cerrar generador' : 'Crear mi contenido de esta misión'}
       </button>
 
       <AnimatePresence>
@@ -87,6 +89,8 @@ export default function RetoMissionDay({ mission, phase, profile, progress, conf
               phaseTitle={phase?.title || ''}
               demoMode={demoMode}
               placeholderId={placeholderId}
+              placeholderScheduledDate={placeholderScheduledDate}
+              onChanged={onChanged}
               onClose={() => setOpen(false)}
             />
           </div>

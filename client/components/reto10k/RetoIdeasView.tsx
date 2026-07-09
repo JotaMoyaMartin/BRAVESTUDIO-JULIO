@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Lightbulb, Sparkles, Film, Layers, Grid, Circle, CircleDot, CircleSlash, Rocket } from 'lucide-react'
+import { Lightbulb, Sparkles, Film, Layers, Grid, Trash2 } from 'lucide-react'
 import { Profile, ContentItem, BrandProfile } from '@/types/database'
 import { Reto10kProgress, Reto10kConfig, RetoCardStatus } from '@/types/reto10k'
 import { generateRetos } from '@/lib/ai/prompts/reto10k'
@@ -105,6 +105,18 @@ export default function RetoIdeasView({ profile, progress, config, brand, conten
     })
   }
 
+  async function handleClearAll() {
+    if (retoItems.length === 0) return
+    if (!confirm(`¿Borrar las ${retoItems.length} ideas del Reto 10K? Esta acción no se puede deshacer.`)) return
+    try {
+      await Promise.all(retoItems.map(item => deleteItem(userId, item.id, demoMode)))
+      toast.show('Todas las ideas eliminadas', 'info')
+      onChanged()
+    } catch {
+      toast.show('Error al borrar', 'info')
+    }
+  }
+
   async function handleRegenerate(oldItem: ContentItem) {
     const output = await runGenerate()
     const fresh = output.items[0]
@@ -139,14 +151,25 @@ export default function RetoIdeasView({ profile, progress, config, brand, conten
           <h1 className="text-xl font-bold text-cherry-dark">Mis ideas</h1>
           <p className="text-sm text-cherry-dark opacity-70">{retoItems.length} ideas guardadas</p>
         </div>
-        <button
-          onClick={handleGenerateMore}
-          disabled={generating}
-          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[var(--radius-sm)] text-xs font-semibold text-white"
-          style={{ background: 'var(--color-cherry)', opacity: generating ? 0.6 : 1, minHeight: 40 }}
-        >
-          <Sparkles size={14} /> {generating ? 'Generando...' : 'Generar más'}
-        </button>
+        <div className="flex items-center gap-2">
+          {retoItems.length > 0 && (
+            <button
+              onClick={handleClearAll}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[var(--radius-sm)] text-xs font-semibold transition-all"
+              style={{ background: 'rgba(192,57,78,0.08)', color: 'var(--color-cherry)', minHeight: 40 }}
+            >
+              <Trash2 size={14} /> Borrar todo
+            </button>
+          )}
+          <button
+            onClick={handleGenerateMore}
+            disabled={generating}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[var(--radius-sm)] text-xs font-semibold text-white"
+            style={{ background: 'var(--color-cherry)', opacity: generating ? 0.6 : 1, minHeight: 40 }}
+          >
+            <Sparkles size={14} /> {generating ? 'Generando...' : 'Generar más'}
+          </button>
+        </div>
       </div>
 
       {/* Filtros por tipo */}

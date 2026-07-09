@@ -11,7 +11,7 @@ export function buildRetosPrompt(input: RetoInput): string {
 
 FASE ACTUAL: ${input.currentPhase} — ${input.phaseTitle}
 DÍA DEL RETO: ${input.currentDay} de 30
-OBJETIVO DE LA USUARIA: ${input.objective === 'recomendado' ? 'Sin objetivo prioritario — aplicar mix equilibrado 40/40/20 (autoridad/resultados/conexión)' : input.objective}
+OBJETIVO DE LA USUARIA: ${input.objective === 'recomendado' ? 'Sin objetivo prioritario — aplicar mix equilibrado entre los 6 pilares (autoridad/viralidad/educación/deseo/dolor/objeción)' : input.objective}
 SERVICIOS ESTRELLA: ${services}
 NIVEL: ${input.level}
 PUBLICACIONES POR SEMANA: ${count}
@@ -46,8 +46,8 @@ DURACIÓN: Gancho 3-5s, Contexto 5-10s, Solución 20-30s, CTA 3-5s = 35-45s tota
 
 - Genera EXACTAMENTE ${count} reels para esta semana. TODOS de tipo "reel" (sin carruseles).
 - Cada reel debe estar conectado a la MISIÓN DEL DÍA y a los SERVICIOS ESTRELLA.
-- Balance 40/40/20: 40% autoridad (educación/consejos/opiniones), 40% resultados (antes/después/transformaciones/testimonios), 20% conexión (historia personal/comunidad/conversación).
-- El campo "category" debe ser "autoridad", "resultados" o "conexion" según corresponda.
+- Varía el pilar de contenido entre los 6 pilares BRÄVE: "autoridad" (educación/consejos/opiniones que demuestran expertise), "viralidad" (ángulo alto impacto/controversia/trending), "educacion" (tutorial/paso a paso/explicar un proceso), "deseo" (aspiracional/antes-después/transformación que genera querer), "dolor" (problema/frustración de la clienta y cómo la resuelves), "objecion" (responder una duda o creencia que frena la reserva).
+- El campo "category" debe ser uno de: "autoridad", "viralidad", "educacion", "deseo", "dolor", "objecion".
 - Títulos atractivos, NO repetidos, coherentes con la misión.
 - "hookIdea" es una idea breve de gancho (un ángulo, no el texto literal).
 - "caption" es el texto de publicación LISTO PARA COPIAR y pegar en Instagram. Debe seguir EXACTAMENTE este formato:
@@ -69,7 +69,7 @@ Devuelve EXACTAMENTE este JSON, sin texto adicional:
       "title": "Título atractivo",
       "service": "Servicio al que pertenece",
       "objective": "autoridad" | "reservas" | "visibilidad",
-      "category": "autoridad" | "resultados" | "conexion",
+      "category": "autoridad" | "viralidad" | "educacion" | "deseo" | "dolor" | "objecion",
       "hookIdea": "Idea de gancho breve",
       "format": "Reel 35-45s",
       "script": { "hook": "...", "context": "...", "solution": "...", "cta": "..." },
@@ -136,7 +136,7 @@ export function generateMockRetos(input: RetoInput): RetoOutput {
       title: `Transformación real de ${secondary} en el salón`,
       service: secondary,
       objective: input.objective,
-      category: 'resultados',
+      category: 'deseo',
       hookIdea: `Antes y después con el proceso explicado`,
       format: 'Reel 35-45s',
       script: {
@@ -154,7 +154,7 @@ export function generateMockRetos(input: RetoInput): RetoOutput {
       title: `El proceso de ${tertiary} paso a paso`,
       service: tertiary,
       objective: input.objective,
-      category: 'resultados',
+      category: 'educacion',
       hookIdea: `Así trabajo un ${tertiary} de verdad`,
       format: 'Reel 35-45s',
       script: {
@@ -172,7 +172,7 @@ export function generateMockRetos(input: RetoInput): RetoOutput {
       title: mTitle ? `Por qué hago lo que hago: ${missionAngle}` : `Mi historia: por qué soy estilista`,
       service: primary,
       objective: input.objective,
-      category: 'conexion',
+      category: 'viralidad',
       hookIdea: `No siempre quise ser estilista. Esto es lo que cambió.`,
       format: 'Reel 35-45s',
       script: {
@@ -190,7 +190,7 @@ export function generateMockRetos(input: RetoInput): RetoOutput {
       title: `Una pregunta para mi comunidad sobre ${primary}`,
       service: primary,
       objective: input.objective,
-      category: 'conexion',
+      category: 'dolor',
       hookIdea: `Quiero leer tu respuesta`,
       format: 'Reel 35-45s',
       script: {
@@ -208,7 +208,7 @@ export function generateMockRetos(input: RetoInput): RetoOutput {
       title: `El antes y después que más me enorgullece de ${tertiary}`,
       service: tertiary,
       objective: input.objective,
-      category: 'resultados',
+      category: 'objecion',
       hookIdea: `El cambio que más me enorgullece`,
       format: 'Reel 35-45s',
       script: {
@@ -255,7 +255,7 @@ export async function generateRetos(input: RetoInput): Promise<RetoOutput> {
         type: 'reel',
         day: input.currentDay,
         objective: it.objective || input.objective,
-        category: it.category || (i % 5 < 2 ? 'autoridad' : i % 5 < 4 ? 'resultados' : 'conexion'),
+        category: it.category || (['autoridad', 'viralidad', 'educacion', 'deseo', 'dolor', 'objecion'][i % 6]),
         caption: it.caption || '',
         visual_idea: it.visual_idea || '',
       }))
@@ -314,7 +314,7 @@ Genera EXACTAMENTE 1 reel dedicado a la misión de hoy. Campos:
 - "title": título atractivo conectado a la misión
 - "service": servicio al que pertenece
 - "objective": "autoridad" | "reservas" | "visibilidad"
-- "category": "autoridad" | "resultados" | "conexion" (según la misión)
+- "category": "autoridad" | "viralidad" | "educacion" | "deseo" | "dolor" | "objecion" (según la misión)
 - "hookIdea": idea breve de gancho (un ángulo)
 - "format": "Reel 35-45s"
 - "script": { "hook": "...", "context": "...", "solution": "...", "cta": "..." } — textos reales y desarrollados, especialmente "solution" largo y detallado
@@ -351,7 +351,7 @@ export function generateMockMissionContent(input: RetoMissionInput): RetoMission
   const mHint = input.missionPromptHint || ''
   const phase = input.currentPhase
 
-  const category = phase === 1 ? 'conexion' : phase === 2 ? 'autoridad' : phase === 3 ? 'resultados' : 'conexion'
+  const category = phase === 1 ? 'dolor' : phase === 2 ? 'autoridad' : phase === 3 ? 'deseo' : 'objecion'
 
   const item: RetoMissionItem = {
     type: 'reel',

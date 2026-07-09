@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { Trophy, Flame, Film, TrendingUp, Check, Target, Zap } from 'lucide-react'
+import { Trophy, Flame, Film, TrendingUp, Check, Target, Zap, Scissors } from 'lucide-react'
 import { Profile, ContentItem } from '@/types/database'
 import { Reto10kConfig, Reto10kProgress, RETO_LEVELS, RETO_POINTS } from '@/types/reto10k'
 import { computeCurrentDay } from '@/lib/reto-plan'
@@ -25,6 +25,7 @@ export default function RetoProgresoView({ profile, progress, config, contentIte
     const creadas = retoItems.length
     const publicadas = retoItems.filter(i => i.reto_status === 'publicado').length
     const grabados = retoItems.filter(i => i.reto_status === 'grabado').length
+    const editados = retoItems.filter(i => i.reto_status === 'editado').length
 
     const dayKeys = new Set(retoItems.filter(i => i.created_at).map(i => new Date(i.created_at).toISOString().split('T')[0]))
     let streak = 0
@@ -33,7 +34,7 @@ export default function RetoProgresoView({ profile, progress, config, contentIte
       streak++
       check.setDate(check.getDate() - 1)
     }
-    return { planificados, creadas, publicadas, grabados, streak }
+    return { planificados, creadas, publicadas, grabados, editados, streak }
   }, [contentItems])
 
   const xp = profile?.xp_total || 0
@@ -98,6 +99,7 @@ export default function RetoProgresoView({ profile, progress, config, contentIte
         <StatBox icon={Film} value={stats.creadas} label="Creados" color="#2c5a78" />
         <StatBox icon={Check} value={stats.publicadas} label="Publicados" color="#2a6a3a" />
         <StatBox icon={Zap} value={stats.grabados} label="Grabados" color="#8a6d00" />
+        <StatBox icon={Scissors} value={stats.editados} label="Editados" color="#2c5a78" />
         <StatBox icon={Flame} value={`${stats.streak} días`} label="Racha" color="var(--color-cherry)" />
         <StatBox icon={TrendingUp} value={phasesCompleted} label="Fases completas" color="var(--color-cherry-dark)" />
       </div>

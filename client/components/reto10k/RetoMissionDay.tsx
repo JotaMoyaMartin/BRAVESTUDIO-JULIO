@@ -15,9 +15,10 @@ interface Props {
   config: Reto10kConfig | null
   brand: Partial<BrandProfile> | null
   demoMode: boolean
+  placeholderId?: string | null
 }
 
-export default function RetoMissionDay({ mission, phase, profile, progress, config, brand, demoMode }: Props) {
+export default function RetoMissionDay({ mission, phase, profile, progress, config, brand, demoMode, placeholderId }: Props) {
   const [open, setOpen] = useState(false)
 
   return (
@@ -85,6 +86,7 @@ export default function RetoMissionDay({ mission, phase, profile, progress, conf
               mission={mission}
               phaseTitle={phase?.title || ''}
               demoMode={demoMode}
+              placeholderId={placeholderId}
               onClose={() => setOpen(false)}
             />
           </div>

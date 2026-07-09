@@ -86,39 +86,39 @@ export function distributePlanDates(startDate: string, frequency: RetoFrequency)
  *  - Fase 4 (días 24-30): mix viral/conexión
  */
 export function assignCategoryForDay(day: number, mission: RetoMission): RetoCategory {
-  // Si la misión ya sugiere una categoría por su naturaleza, respetarla
+  // Si la misión ya sugiere un pilar por su naturaleza, respetarla
   const title = mission.title.toLowerCase()
   const hint = (mission.prompt_hint || '').toLowerCase()
 
   if (mission.phase === 1) {
-    // Presentación, historia, salón → conexión
+    // Presentación, historia, salón → dolor (conectar con la clienta)
     if (/historia|salón|present|profesión|filosof|primera client|única|día en tu vida/.test(title)) {
-      return 'conexion'
+      return 'dolor'
     }
-    return 'conexion'
+    return 'dolor'
   }
   if (mission.phase === 2) {
-    // Consejos, errores, educación, mitos, opinión → autoridad
-    if (/consejo|error|educación|mito|opinión|preguntas frecuentes/.test(title)) {
-      return 'autoridad'
+    // Consejos, errores, educación, mitos, opinión → autoridad / educacion
+    if (/consejo|error|educación|mito|opinión|preguntas frecuentes|tutorial|paso a paso/.test(title)) {
+      return 'educacion'
     }
     return 'autoridad'
   }
   if (mission.phase === 3) {
-    // Antes/después, transformaciones, testimonios → resultados
+    // Antes/después, transformaciones, testimonios → deseo (aspiracional)
     if (/antes y después|transformación|caso real|proceso|testimonio|resultado|resumen/.test(title)) {
-      return 'resultados'
+      return 'deseo'
     }
-    return 'resultados'
+    return 'deseo'
   }
-  // Fase 4: tendencias, viral, opinión, comunidad → mix (conexión + autoridad)
+  // Fase 4: tendencias, viral, opinión, comunidad → mix (viralidad + objecion)
   if (/viral|conversación|comunidad|agradecimiento|celebra/.test(title)) {
-    return 'conexion'
+    return 'viralidad'
   }
   if (/tendencia|opinión|marca personal/.test(title)) {
-    return 'autoridad'
+    return 'objecion'
   }
-  return hint.includes('antes') ? 'resultados' : 'conexion'
+  return hint.includes('antes') ? 'deseo' : 'viralidad'
 }
 
 /**
@@ -147,20 +147,17 @@ export function build30DayPlan(
     plan.push({ date: dates[i], day, mission, category })
   }
 
-  // Verificar balance 40/40/20 y ajustar si se desvía demasiado
-  const counts = { autoridad: 0, resultados: 0, conexion: 0 }
+  // Verificar balance entre los 6 pilares y ajustar si se desvía demasiado
+  const cats: RetoCategory[] = ['autoridad', 'viralidad', 'educacion', 'deseo', 'dolor', 'objecion']
+  const counts: Record<RetoCategory, number> = { autoridad: 0, viralidad: 0, educacion: 0, deseo: 0, dolor: 0, objecion: 0 }
   plan.forEach(p => counts[p.category]++)
   const total = plan.length
-  const target = { autoridad: Math.round(total * 0.4), resultados: Math.round(total * 0.4), conexion: total - Math.round(total * 0.4) * 2 }
+  const perPilar = Math.floor(total / cats.length)
+  const target: Record<RetoCategory, number> = { autoridad: perPilar, viralidad: perPilar, educacion: perPilar, deseo: perPilar, dolor: perPilar, objecion: perPilar }
 
-  // Solo ajustamos si el desvío es >2 en alguna categoría
-  const drift = Math.max(
-    Math.abs(counts.autoridad - target.autoridad),
-    Math.abs(counts.resultados - target.resultados),
-    Math.abs(counts.conexion - target.conexion)
-  )
+  // Solo ajustamos si el desvío es >2 en algún pilar
+  const drift = Math.max(...cats.map(c => Math.abs(counts[c] - target[c])))
   if (drift > 2) {
-    // Reequilibrar: cambiar algunos días de fase 4 (conexion→autoridad) o viceversa
     rebalance(plan, counts, target)
   }
 
@@ -172,9 +169,9 @@ function rebalance(
   counts: Record<RetoCategory, number>,
   target: Record<RetoCategory, number>
 ) {
-  // Para cada categoría con exceso, cambiar días de esa categoría (preferentemente fase 4)
-  // hacia la categoría con déficit
-  const cats: RetoCategory[] = ['autoridad', 'resultados', 'conexion']
+  // Para cada pilar con exceso, cambiar días de ese pilar (preferentemente fase 4)
+  // hacia el pilar con déficit
+  const cats: RetoCategory[] = ['autoridad', 'viralidad', 'educacion', 'deseo', 'dolor', 'objecion']
   let guard = 0
   while (guard++ < 20) {
     const excess = cats.find(c => counts[c] > target[c] + 1)

@@ -185,7 +185,7 @@ export interface Database {
           scheduled_date: string | null
           status: 'library' | 'scheduled' | 'draft' | 'done'
           tag: string | null
-          reto_status: 'idea' | 'grabado' | 'publicado' | null
+          reto_status: 'idea' | 'grabado' | 'editado' | 'publicado' | null
           done_at: string | null
           created_at: string
           updated_at: string
@@ -204,7 +204,7 @@ export interface Database {
           scheduled_date?: string | null
           status?: 'library' | 'scheduled' | 'draft' | 'done'
           tag?: string | null
-          reto_status?: 'idea' | 'grabado' | 'publicado' | null
+          reto_status?: 'idea' | 'grabado' | 'editado' | 'publicado' | null
           done_at?: string | null
           created_at?: string
           updated_at?: string
@@ -221,7 +221,7 @@ export interface Database {
           scheduled_date?: string | null
           status?: 'library' | 'scheduled' | 'draft' | 'done'
           tag?: string | null
-          reto_status?: 'idea' | 'grabado' | 'publicado' | null
+          reto_status?: 'idea' | 'grabado' | 'editado' | 'publicado' | null
           done_at?: string | null
           updated_at?: string
         }

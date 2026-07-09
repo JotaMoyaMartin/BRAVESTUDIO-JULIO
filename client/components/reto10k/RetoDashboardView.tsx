@@ -33,6 +33,16 @@ export default function RetoDashboardView({ profile, progress, config, brand, co
   const currentMission = missions.find(m => m.day === currentDay) || null
   const progressPct = Math.round((currentDay / 30) * 100)
 
+  // Placeholder del plan para la misión de hoy (para actualizarlo al generar contenido)
+  const currentPlaceholderId = useMemo(() => {
+    const ph = contentItems.find(i => {
+      if (i.tag !== 'reto-10k') return false
+      const json = i.content_json as Record<string, unknown>
+      return json?.is_plan_placeholder === true && json?.mission_day === currentDay
+    })
+    return ph?.id || null
+  }, [contentItems, currentDay])
+
   const stats = useMemo(() => {
     const retoItems = contentItems.filter(i => i.tag === 'reto-10k')
     const creadas = retoItems.length
@@ -113,6 +123,20 @@ export default function RetoDashboardView({ profile, progress, config, brand, co
             {levelProgress}% hacia {nextLevel.emoji} {nextLevel.name} · {nextLevel.minXp - xp} puntos
           </p>
         )}
+        {/* Barra de publicadas: se actualiza al marcar Publicado 🚀 */}
+        <div className="flex items-center justify-between text-xs font-semibold text-cherry-dark mt-3 mb-1.5">
+          <span>Publicadas 🚀</span>
+          <span>{stats.publicadas} / {Math.max(30, stats.creadas)}</span>
+        </div>
+        <div className="h-2.5 rounded-full overflow-hidden" style={{ background: 'var(--color-warm-gray)' }}>
+          <motion.div
+            initial={{ width: 0 }}
+            animate={{ width: `${Math.min(100, (stats.publicadas / Math.max(30, stats.creadas)) * 100)}%` }}
+            transition={{ duration: 0.8, ease: 'easeOut' }}
+            className="h-full rounded-full"
+            style={{ background: 'linear-gradient(90deg, #2a6a3a 0%, #3a8a4a 100%)' }}
+          />
+        </div>
       </div>
 
       {/* Roadmap compacto siempre visible */}
@@ -133,6 +157,7 @@ export default function RetoDashboardView({ profile, progress, config, brand, co
           config={config}
           brand={brand}
           demoMode={demoMode}
+          placeholderId={currentPlaceholderId}
         />
       )}
 

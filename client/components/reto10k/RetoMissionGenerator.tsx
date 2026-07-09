@@ -7,7 +7,7 @@ import { Profile, BrandProfile } from '@/types/database'
 import { Reto10kConfig, Reto10kProgress, RetoMission, RetoMissionItem } from '@/types/reto10k'
 import { generateMissionContent } from '@/lib/ai/prompts/reto10k'
 import { buildBrandFullContext, hasBrandContext } from '@/lib/ai/brand-context'
-import { saveRetoMissionItem, addXp } from '@/lib/content-utils'
+import { saveRetoMissionItem, updateRetoMissionItem, addXp } from '@/lib/content-utils'
 import { useToast } from '@/components/ui/Toast'
 import { RETO_POINTS } from '@/types/reto10k'
 
@@ -19,11 +19,12 @@ interface Props {
   mission: RetoMission
   phaseTitle: string
   demoMode: boolean
+  placeholderId?: string | null
   onClose: () => void
 }
 
 export default function RetoMissionGenerator({
-  profile, progress, config, brand, mission, phaseTitle, demoMode, onClose,
+  profile, progress, config, brand, mission, phaseTitle, demoMode, placeholderId, onClose,
 }: Props) {
   const toast = useToast()
   const userId = profile?.id || 'demo'
@@ -69,7 +70,11 @@ export default function RetoMissionGenerator({
   async function handleSave() {
     if (!item) return
     try {
-      await saveRetoMissionItem(userId, item, demoMode)
+      if (placeholderId) {
+        await updateRetoMissionItem(userId, placeholderId, item, demoMode)
+      } else {
+        await saveRetoMissionItem(userId, item, demoMode)
+      }
       if (profile && !demoMode) {
         await addXp(userId, RETO_POINTS.saveIdea, profile.xp_total || 0)
       }
@@ -83,7 +88,14 @@ export default function RetoMissionGenerator({
   async function handleSchedule() {
     if (!item || !scheduleDate) return
     try {
-      await saveRetoMissionItem(userId, item, demoMode, scheduleDate)
+      if (placeholderId) {
+        await updateRetoMissionItem(userId, placeholderId, item, demoMode)
+        // El placeholder ya tiene scheduled_date del plan; reprogramamos a la fecha elegida
+        const { scheduleRetoItem } = await import('@/lib/content-utils')
+        await scheduleRetoItem(userId, placeholderId, scheduleDate, demoMode)
+      } else {
+        await saveRetoMissionItem(userId, item, demoMode, scheduleDate)
+      }
       if (profile && !demoMode) {
         await addXp(userId, RETO_POINTS.saveIdea, profile.xp_total || 0)
       }

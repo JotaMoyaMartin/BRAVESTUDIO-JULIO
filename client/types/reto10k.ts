@@ -78,7 +78,7 @@ export interface RetoMissionInput {
   brandContext?: string
 }
 
-export type RetoCategory = 'autoridad' | 'resultados' | 'conexion'
+export type RetoCategory = 'autoridad' | 'viralidad' | 'educacion' | 'deseo' | 'dolor' | 'objecion'
 
 export interface RetoItem {
   type: 'reel'
@@ -139,7 +139,7 @@ export interface RetoPlanDay {
 
 // ── Estados de tarjetas del reto ──────────────────────────────────────
 
-export type RetoCardStatus = 'idea' | 'grabado' | 'publicado'
+export type RetoCardStatus = 'idea' | 'grabado' | 'editado' | 'publicado'
 
 // ── Niveles de gamificación ───────────────────────────────────────────
 

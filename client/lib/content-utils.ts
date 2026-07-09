@@ -199,8 +199,8 @@ export async function setRetoStatus(
   if (retoStatus === 'publicado') {
     patch.status = 'done'
     patch.done_at = new Date().toISOString()
-  } else if (retoStatus === 'grabado') {
-    // grabado = está siendo trabajado; si no tenía status, lo dejamos en library
+  } else if (retoStatus === 'grabado' || retoStatus === 'editado') {
+    // grabado/editado = está siendo trabajado; si no tenía status, lo dejamos en library
     patch.status = 'library'
   }
   if (isDemoMode) {
@@ -225,7 +225,7 @@ export async function scheduleRetoItem(
   date: string,
   isDemoMode: boolean
 ): Promise<void> {
-  const patch = { scheduled_date: date, status: 'scheduled' as const, reto_status: 'idea' as const }
+  const patch = { scheduled_date: date, status: 'scheduled' as const }
   if (isDemoMode) {
     demoUpdatePlan(itemId, patch)
     return
@@ -324,4 +324,60 @@ export async function saveRetoMissionItem(
   }
   const supabase = createClient()
   await supabase.from('content_items').insert({ user_id: userId, ...payload })
+}
+
+/**
+ * Actualiza el placeholder de un día del plan con el contenido generado para esa misión.
+ * Reemplaza el esqueleto (is_plan_placeholder) por el guion completo, conservando
+ * scheduled_date y tag, así el item se queda en Mi calendario + Mis ideas (no en Biblioteca).
+ */
+export async function updateRetoMissionItem(
+  userId: string,
+  itemId: string,
+  item: {
+    type: 'reel'
+    title: string
+    service: string
+    objective: string
+    category: string
+    format: string
+    script: { hook: string; context: string; solution: string; cta: string }
+    caption: string
+    visual_idea: string
+    recording_tip: string
+    day: number
+  },
+  isDemoMode: boolean
+): Promise<void> {
+  const contentJson = {
+    script: item.script,
+    recording_tip: item.recording_tip,
+    category: item.category,
+    mission_day: item.day,
+    is_plan_placeholder: false,
+  }
+  if (isDemoMode) {
+    demoUpdatePlan(itemId, {
+      title: item.title,
+      service: item.service,
+      objective: item.objective,
+      format: item.format,
+      content_json: contentJson,
+      caption_with_hashtags: item.caption || null,
+      visual_idea: item.visual_idea || null,
+      reto_status: 'idea',
+    })
+    return
+  }
+  const supabase = createClient()
+  await supabase.from('content_items').update({
+    title: item.title,
+    service: item.service,
+    objective: item.objective,
+    format: item.format,
+    content_json: contentJson,
+    caption_with_hashtags: item.caption || null,
+    visual_idea: item.visual_idea || null,
+    reto_status: 'idea',
+  }).eq('id', itemId)
 }

@@ -47,6 +47,7 @@ export default function RetoContentCard({ item, userId, demoMode, currentXp, onC
   const [scheduleDate, setScheduleDate] = useState(item.scheduled_date || '')
   const [showStatusMenu, setShowStatusMenu] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [expanded, setExpanded] = useState(false)
 
   const retoStatus = (item.reto_status as RetoCardStatus) || 'idea'
   const statusMeta = STATUS_META[retoStatus]
@@ -113,45 +114,106 @@ export default function RetoContentCard({ item, userId, demoMode, currentXp, onC
       style={{ background: 'white', border: '1.5px solid var(--color-buttermilk)' }}
     >
       <div className="p-4">
-        {/* Header: tipo + estado */}
-        <div className="flex items-center gap-2 flex-wrap mb-2">
-          <span className="text-xs font-bold uppercase px-2 py-0.5 rounded-full" style={{ background: 'var(--color-cherry)', color: 'white' }}>
-            {item.type === 'reel' ? 'Reel' : item.type === 'carrusel' ? 'Carrusel' : 'Story'}
-          </span>
-          {category && (
-            <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--color-buttermilk)', color: 'var(--color-cherry-dark)' }}>
-              {category}
+        {/* Cabecera clicable: abre/cierra la tarjeta */}
+        <button
+          type="button"
+          onClick={() => !placeholder && setExpanded(e => !e)}
+          className="w-full text-left disabled:cursor-default"
+          aria-expanded={expanded}
+          disabled={placeholder}
+        >
+          {/* Header: tipo + estado */}
+          <div className="flex items-center gap-2 flex-wrap mb-2">
+            <span className="text-xs font-bold uppercase px-2 py-0.5 rounded-full" style={{ background: 'var(--color-cherry)', color: 'white' }}>
+              {item.type === 'reel' ? 'Reel' : item.type === 'carrusel' ? 'Carrusel' : 'Story'}
             </span>
-          )}
-          {missionDay && (
-            <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--color-warm-gray)', color: 'var(--color-cherry-dark)' }}>
-              Día {missionDay}
-            </span>
-          )}
-          {item.scheduled_date && (
-            <span className="text-xs px-2 py-0.5 rounded-full ml-auto" style={{ background: 'rgba(184,216,176,0.2)', color: '#2a6a3a' }}>
-              <CalendarIcon size={10} className="inline mr-1" />{item.scheduled_date}
-            </span>
-          )}
-        </div>
-
-        {/* Título */}
-        <p className="font-semibold text-sm text-cherry-dark mb-1">{item.title}</p>
-
-        {/* Info resumida */}
-        {script ? (
-          <div className="rounded-[var(--radius-sm)] p-2.5 mb-2 space-y-0.5" style={{ background: 'var(--color-warm-light)', border: '1px solid var(--color-buttermilk)' }}>
-            <p className="text-xs text-cherry-dark line-clamp-2"><strong className="text-cherry">Gancho:</strong> {script.hook}</p>
-            <p className="text-xs text-cherry-dark line-clamp-2"><strong className="text-cherry">CTA:</strong> {script.cta}</p>
+            {category && (
+              <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--color-buttermilk)', color: 'var(--color-cherry-dark)' }}>
+                {category}
+              </span>
+            )}
+            {missionDay && (
+              <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--color-warm-gray)', color: 'var(--color-cherry-dark)' }}>
+                Día {missionDay}
+              </span>
+            )}
+            {item.scheduled_date && (
+              <span className="text-xs px-2 py-0.5 rounded-full ml-auto" style={{ background: 'rgba(184,216,176,0.2)', color: '#2a6a3a' }}>
+                <CalendarIcon size={10} className="inline mr-1" />{item.scheduled_date}
+              </span>
+            )}
           </div>
-        ) : placeholder ? (
-          <p className="text-xs text-cherry-dark opacity-60 italic mb-2">
-            Plan pendiente de generar. Usa "Crear contenido" para desarrollar esta misión.
-          </p>
-        ) : null}
 
-        {recordingTip && (
-          <div className="rounded-[var(--radius-sm)] p-2 mb-2 flex items-start gap-1.5" style={{ background: 'rgba(122,24,50,0.06)' }}>
+          {/* Título + chevron */}
+          <div className="flex items-start gap-2 mb-1">
+            <p className="font-semibold text-sm text-cherry-dark flex-1">{item.title}</p>
+            {!placeholder && (
+              <ChevronDown
+                size={16}
+                className="text-cherry flex-shrink-0 mt-0.5 transition-transform"
+                style={{ transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)' }}
+              />
+            )}
+          </div>
+
+          {/* Placeholder: plan pendiente */}
+          {placeholder ? (
+            <p className="text-xs text-cherry-dark opacity-60 italic mb-2">
+              Plan pendiente de generar. Usa "Crear contenido" para desarrollar esta misión.
+            </p>
+          ) : !expanded ? (
+            /* Resumen colapsado: gancho + CTA recortados */
+            script ? (
+              <div className="rounded-[var(--radius-sm)] p-2.5 space-y-0.5" style={{ background: 'var(--color-warm-light)', border: '1px solid var(--color-buttermilk)' }}>
+                <p className="text-xs text-cherry-dark line-clamp-2"><strong className="text-cherry">Gancho:</strong> {script.hook}</p>
+                <p className="text-xs text-cherry-dark line-clamp-2"><strong className="text-cherry">CTA:</strong> {script.cta}</p>
+              </div>
+            ) : null
+          ) : (
+            /* Contenido expandido: guion completo + copy + idea visual + grabación */
+            <div className="space-y-2.5">
+              {script && (
+                <div className="rounded-[var(--radius-sm)] p-3 space-y-2" style={{ background: 'var(--color-warm-light)', border: '1px solid var(--color-buttermilk)' }}>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-cherry opacity-70">Guion</p>
+                  <div className="space-y-1.5">
+                    <p className="text-xs text-cherry-dark"><strong className="text-cherry">Gancho:</strong> {script.hook}</p>
+                    <p className="text-xs text-cherry-dark"><strong className="text-cherry">Contexto:</strong> {script.context}</p>
+                    <p className="text-xs text-cherry-dark"><strong className="text-cherry">Solución:</strong> {script.solution}</p>
+                    <p className="text-xs text-cherry-dark"><strong className="text-cherry">CTA:</strong> {script.cta}</p>
+                  </div>
+                </div>
+              )}
+
+              {item.caption_with_hashtags && (
+                <div className="rounded-[var(--radius-sm)] p-3" style={{ background: 'white', border: '1px solid var(--color-buttermilk)' }}>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-cherry opacity-70 mb-1.5">Copy para el caption</p>
+                  <p className="text-xs text-cherry-dark whitespace-pre-wrap leading-relaxed">{item.caption_with_hashtags}</p>
+                </div>
+              )}
+
+              {item.visual_idea && (
+                <div className="rounded-[var(--radius-sm)] p-3" style={{ background: 'rgba(122,24,50,0.06)' }}>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-cherry opacity-70 mb-1.5">Idea visual</p>
+                  <p className="text-xs text-cherry-dark leading-relaxed">{item.visual_idea}</p>
+                </div>
+              )}
+
+              {recordingTip && (
+                <div className="rounded-[var(--radius-sm)] p-3 flex items-start gap-2" style={{ background: 'rgba(255,241,181,0.4)' }}>
+                  <Video size={13} className="text-cherry mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-cherry opacity-70 mb-1">Tip de grabación</p>
+                    <p className="text-xs text-cherry-dark leading-relaxed">{recordingTip}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </button>
+
+        {/* Resumen de grabación cuando está colapsado */}
+        {recordingTip && !expanded && !placeholder && (
+          <div className="rounded-[var(--radius-sm)] p-2 mt-2 mb-2 flex items-start gap-1.5" style={{ background: 'rgba(122,24,50,0.06)' }}>
             <Video size={12} className="text-cherry mt-0.5 flex-shrink-0" />
             <p className="text-xs text-cherry-dark line-clamp-2">{recordingTip}</p>
           </div>

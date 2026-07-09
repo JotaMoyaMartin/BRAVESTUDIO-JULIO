@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Save, Calendar as CalendarIcon, Trash2, RefreshCw, Check, Film, Copy, Video, ChevronDown, BookOpen, Sparkles } from 'lucide-react'
+import { Save, Calendar as CalendarIcon, Trash2, RefreshCw, Check, Film, Copy, Video, ChevronDown, BookOpen, Sparkles, Rocket } from 'lucide-react'
 import Link from 'next/link'
 import { ContentItem } from '@/types/database'
 import { RetoCardStatus } from '@/types/reto10k'
@@ -27,7 +27,6 @@ const STATUS_META: Record<RetoCardStatus, { label: string; emoji: string; color:
   publicado: { label: 'Publicado', emoji: '🚀', color: '#2a6a3a', bg: 'rgba(184,216,176,0.3)' },
 }
 
-// Mapeo legible de pilares (y fallback para categorías antiguas)
 const PILLAR_LABELS: Record<string, string> = {
   autoridad: 'Autoridad',
   viralidad: 'Viralidad',
@@ -35,12 +34,10 @@ const PILLAR_LABELS: Record<string, string> = {
   deseo: 'Deseo',
   dolor: 'Dolor',
   objecion: 'Objeción',
-  // fallback de categorías antiguas
   resultados: 'Resultados',
   conexion: 'Conexión',
 }
 
-// Tinte de la tarjeta según el estado (borde + fondo) para visualizar de un vistazo
 const CARD_TINT: Record<RetoCardStatus, { border: string; bg: string; bar: string }> = {
   idea: { border: 'var(--color-buttermilk)', bg: 'white', bar: 'var(--color-buttermilk)' },
   grabado: { border: 'rgba(255,193,7,0.55)', bg: 'rgba(255,247,224,0.35)', bar: '#e6b800' },
@@ -73,6 +70,8 @@ export default function RetoContentCard({ item, userId, demoMode, currentXp, onC
   const [expanded, setExpanded] = useState(defaultExpanded || false)
   const [showFullCopy, setShowFullCopy] = useState(false)
   const [regenerating, setRegenerating] = useState(false)
+  const [showStatusMenu, setShowStatusMenu] = useState(false)
+  const statusRef = useRef<HTMLDivElement>(null)
 
   const retoStatus = (item.reto_status as RetoCardStatus) || 'idea'
   const tint = CARD_TINT[retoStatus]
@@ -83,6 +82,18 @@ export default function RetoContentCard({ item, userId, demoMode, currentXp, onC
   const category = (json?.category as string) || ''
   const missionDay = (json?.mission_day as number) || null
   const pilarLabel = PILLAR_LABELS[category] || category
+  const statusMeta = STATUS_META[retoStatus]
+
+  // Cerrar el dropdown al hacer click fuera
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (statusRef.current && !statusRef.current.contains(e.target as Node)) {
+        setShowStatusMenu(false)
+      }
+    }
+    if (showStatusMenu) document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showStatusMenu])
 
   function flashCopied(key: string) {
     setCopiedKey(key)
@@ -91,16 +102,28 @@ export default function RetoContentCard({ item, userId, demoMode, currentXp, onC
 
   async function handleStatusChange(newStatus: RetoCardStatus) {
     if (newStatus === retoStatus) return
+    setShowStatusMenu(false)
     try {
       await setRetoStatus(userId, item.id, newStatus, demoMode, currentXp)
-      if (newStatus === 'publicado' && !demoMode) {
+      if (newStatus === 'publicado') {
         toast.show(`¡Publicado! +${RETO_POINTS.publishReel} XP`, 'success')
       } else {
-        toast.show(`Estado: ${STATUS_META[newStatus].label}`, 'success')
+        toast.show(`Estado: ${STATUS_META[newStatus].label}`, 'info')
       }
       onChanged?.()
     } catch {
       toast.show('Error al actualizar', 'info')
+    }
+  }
+
+  async function handlePublish() {
+    if (retoStatus === 'publicado') return
+    try {
+      await setRetoStatus(userId, item.id, 'publicado', demoMode, currentXp)
+      toast.show(`¡Publicado! +${RETO_POINTS.publishReel} XP`, 'success')
+      onChanged?.()
+    } catch {
+      toast.show('Error al publicar', 'info')
     }
   }
 
@@ -118,7 +141,6 @@ export default function RetoContentCard({ item, userId, demoMode, currentXp, onC
 
   async function handleSaveToLibrary() {
     try {
-      // Mover a biblioteca general manteniendo tag del reto
       const { createClient } = await import('@/lib/supabase/client')
       if (demoMode) {
         const { demoUpdatePlan } = await import('@/lib/demo-store')
@@ -174,36 +196,7 @@ export default function RetoContentCard({ item, userId, demoMode, currentXp, onC
   const typeLabel = item.type === 'reel' ? 'Reel' : item.type === 'carrusel' ? 'Carrusel' : 'Story'
   const captionText = item.caption_with_hashtags || ''
   const copyFirstParagraph = captionText.split('\n\n')[0] || captionText
-
-  // ── Selector de estado: control segmentado visual (4 estados) ─────
-  function StatusSelector() {
-    const statuses: RetoCardStatus[] = ['idea', 'grabado', 'editado', 'publicado']
-    return (
-      <div className="flex gap-1 rounded-[var(--radius-sm)] p-1 w-full" style={{ background: 'var(--color-warm-gray)' }}>
-        {statuses.map(s => {
-          const meta = STATUS_META[s]
-          const active = s === retoStatus
-          return (
-            <button
-              key={s}
-              onClick={() => handleStatusChange(s)}
-              className="flex-1 inline-flex flex-col items-center justify-center gap-0.5 px-1 py-1.5 rounded-[var(--radius-xs)] text-[10px] font-bold transition-all"
-              style={{
-                background: active ? 'white' : 'transparent',
-                color: active ? meta.color : 'var(--color-cherry-dark)',
-                opacity: active ? 1 : 0.55,
-                minHeight: 40,
-                boxShadow: active ? '0 1px 3px rgba(89,20,39,0.12)' : 'none',
-              }}
-            >
-              <span className="text-sm leading-none">{meta.emoji}</span>
-              <span className="leading-none">{meta.label}</span>
-            </button>
-          )
-        })}
-      </div>
-    )
-  }
+  const isPublished = retoStatus === 'publicado'
 
   // ── Bloque de guion con copia individual ─────────────────────────
   function ScriptBlock({ label, text, copyKey }: { label: string; text: string; copyKey: string }) {
@@ -234,11 +227,12 @@ export default function RetoContentCard({ item, userId, demoMode, currentXp, onC
     >
       {/* Barra de color superior según el estado */}
       <div className="absolute top-0 left-0 right-0 h-1" style={{ background: tint.bar }} />
+
       {/* Cabecera siempre visible */}
       <div className="p-4">
-        <div className="flex items-start gap-2 mb-2">
+        {/* Badges + dropdown de estado */}
+        <div className="flex items-start justify-between gap-2 mb-2">
           <div className="flex-1 min-w-0">
-            {/* Badges */}
             <div className="flex items-center gap-1.5 flex-wrap mb-2">
               <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full" style={{ background: 'var(--color-cherry)', color: 'white' }}>
                 {typeLabel}
@@ -259,13 +253,69 @@ export default function RetoContentCard({ item, userId, demoMode, currentXp, onC
                 </span>
               )}
             </div>
-            {/* Título */}
-            <p className="font-semibold text-sm text-cherry-dark leading-snug mb-3">{item.title}</p>
+            <p className="font-semibold text-sm text-cherry-dark leading-snug">{item.title}</p>
+          </div>
+
+          {/* Dropdown de estado compacto */}
+          <div ref={statusRef} className="relative flex-shrink-0">
+            <button
+              onClick={() => setShowStatusMenu(s => !s)}
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-bold transition-all"
+              style={{
+                background: statusMeta.bg,
+                color: statusMeta.color,
+                border: `1px solid ${tint.border}`,
+                minHeight: 28,
+              }}
+            >
+              <span className="text-xs leading-none">{statusMeta.emoji}</span>
+              {statusMeta.label}
+              <ChevronDown size={10} style={{ transform: showStatusMenu ? 'rotate(180deg)' : 'none' }} />
+            </button>
+            {showStatusMenu && (
+              <div
+                className="absolute right-0 top-full mt-1 rounded-[var(--radius-sm)] py-1 z-20 min-w-[140px]"
+                style={{ background: 'white', border: '1.5px solid var(--color-buttermilk)', boxShadow: '0 4px 12px rgba(89,20,39,0.15)' }}
+              >
+                {(['idea', 'grabado', 'editado', 'publicado'] as RetoCardStatus[]).map(s => {
+                  const meta = STATUS_META[s]
+                  const active = s === retoStatus
+                  return (
+                    <button
+                      key={s}
+                      onClick={() => handleStatusChange(s)}
+                      className="w-full inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold transition-all text-left"
+                      style={{ background: active ? 'var(--color-warm-gray)' : 'transparent', color: active ? meta.color : 'var(--color-cherry-dark)' }}
+                    >
+                      <span className="text-sm leading-none">{meta.emoji}</span>
+                      {meta.label}
+                      {active && <Check size={12} className="ml-auto" />}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Estado: control segmentado visible siempre */}
-        <StatusSelector />
+        {/* Botón Publicar destacado (si no está publicado) */}
+        {!isPublished && !placeholder && (
+          <button
+            onClick={handlePublish}
+            className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-[var(--radius-sm)] text-sm font-bold text-white transition-all mt-2"
+            style={{ background: 'linear-gradient(135deg, #2a6a3a 0%, #3a8a4a 100%)', minHeight: 42 }}
+          >
+            <Rocket size={16} /> Marcar como publicado
+          </button>
+        )}
+        {isPublished && (
+          <div
+            className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-[var(--radius-sm)] text-sm font-bold mt-2"
+            style={{ background: 'rgba(184,216,176,0.2)', color: '#2a6a3a', minHeight: 38 }}
+          >
+            <Check size={16} /> Publicado · +{RETO_POINTS.publishReel} XP
+          </div>
+        )}
 
         {!expanded ? (
           placeholder ? (
@@ -283,8 +333,8 @@ export default function RetoContentCard({ item, userId, demoMode, currentXp, onC
             </button>
           )
         ) : (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 pt-1">
-            {/* ── GUION DEL REEL (protagonista) ── */}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 pt-3">
+            {/* GUION DEL REEL */}
             {script && (
               <div className="rounded-[var(--radius-sm)] p-4 space-y-3" style={{ background: 'var(--color-cream)', border: '2px solid var(--color-cherry)' }}>
                 <div className="flex items-center justify-between">
@@ -306,7 +356,7 @@ export default function RetoContentCard({ item, userId, demoMode, currentXp, onC
               </div>
             )}
 
-            {/* ── COPY PARA INSTAGRAM (compacto) ── */}
+            {/* COPY PARA INSTAGRAM */}
             {captionText && (
               <div className="rounded-[var(--radius-sm)] p-3.5" style={{ background: 'white', border: '1px solid var(--color-buttermilk)' }}>
                 <div className="flex items-center justify-between mb-2">
@@ -336,7 +386,7 @@ export default function RetoContentCard({ item, userId, demoMode, currentXp, onC
               </div>
             )}
 
-            {/* ── IDEA VISUAL (secundaria) ── */}
+            {/* IDEA VISUAL */}
             {item.visual_idea && (
               <div className="rounded-[var(--radius-sm)] p-3" style={{ background: 'rgba(122,24,50,0.05)' }}>
                 <p className="text-[10px] font-bold uppercase tracking-wider text-cherry opacity-70 mb-1 flex items-center gap-1.5">
@@ -357,7 +407,7 @@ export default function RetoContentCard({ item, userId, demoMode, currentXp, onC
               </div>
             )}
 
-            {/* ── Acciones rápidas (el estado se cambia con el control segmentado de la cabecera) ── */}
+            {/* Acciones rápidas */}
             <div className="flex flex-wrap gap-2 pt-1">
               {showSchedule ? (
                 <div className="flex gap-1 items-center">

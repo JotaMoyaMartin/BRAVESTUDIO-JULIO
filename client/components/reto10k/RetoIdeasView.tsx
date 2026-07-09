@@ -6,9 +6,8 @@ import { Profile, ContentItem, BrandProfile } from '@/types/database'
 import { Reto10kProgress, Reto10kConfig, RetoCardStatus } from '@/types/reto10k'
 import { generateRetos } from '@/lib/ai/prompts/reto10k'
 import { buildBrandFullContext, hasBrandContext } from '@/lib/ai/brand-context'
-import { saveRetoMissionItem, addXp, deleteItem } from '@/lib/content-utils'
+import { saveRetoMissionItem, deleteItem } from '@/lib/content-utils'
 import { useToast } from '@/components/ui/Toast'
-import { RETO_POINTS } from '@/types/reto10k'
 import RetoContentCard from './RetoContentCard'
 
 interface Props {
@@ -76,9 +75,6 @@ export default function RetoIdeasView({ profile, progress, config, brand, conten
           recording_tip: '',
           day: item.day,
         }, demoMode)
-      }
-      if (profile && !demoMode) {
-        await addXp(userId, RETO_POINTS.saveIdea, profile.xp_total || 0)
       }
       toast.show(`${output.items.length} ideas añadidas a tu banco`, 'success')
       onChanged()

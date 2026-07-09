@@ -7,9 +7,8 @@ import { Profile, BrandProfile, ContentItem } from '@/types/database'
 import { Reto10kConfig, Reto10kProgress, RetoMission, RetoMissionItem } from '@/types/reto10k'
 import { generateMissionContent } from '@/lib/ai/prompts/reto10k'
 import { buildBrandFullContext, hasBrandContext } from '@/lib/ai/brand-context'
-import { saveRetoMissionItem, updateRetoMissionItem, addXp, deleteItem } from '@/lib/content-utils'
+import { saveRetoMissionItem, updateRetoMissionItem, deleteItem } from '@/lib/content-utils'
 import { useToast } from '@/components/ui/Toast'
-import { RETO_POINTS } from '@/types/reto10k'
 import RetoContentCard from './RetoContentCard'
 
 interface Props {
@@ -101,10 +100,6 @@ export default function RetoMissionGenerator({
         savedId = await saveRetoMissionItem(userId, missionItem, demoMode)
       }
 
-      if (profile && !demoMode) {
-        await addXp(userId, RETO_POINTS.saveIdea, profile.xp_total || 0)
-      }
-
       const contentItem = buildContentItem(
         savedId,
         userId,
@@ -113,7 +108,7 @@ export default function RetoMissionGenerator({
       )
       setSavedItem(contentItem)
       onChanged?.()
-      toast.show(`Contenido creado y guardado +${RETO_POINTS.saveIdea} XP`, 'success')
+      toast.show('Contenido creado y guardado en Mis ideas', 'success')
     } catch {
       toast.show('No se pudo generar. Inténtalo de nuevo.', 'info')
     } finally {

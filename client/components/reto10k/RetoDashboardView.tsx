@@ -1,10 +1,10 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { motion } from 'framer-motion'
-import { Rocket, Flame, Film, TrendingUp, Sparkles } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Rocket, Flame, Film, TrendingUp, Sparkles, ChevronDown, Calendar, PenSquare, Clapperboard, Check } from 'lucide-react'
 import { Profile, BrandProfile, ContentItem } from '@/types/database'
-import { Reto10kConfig, Reto10kProgress, RETO_LEVELS } from '@/types/reto10k'
+import { Reto10kConfig, Reto10kProgress, RETO_LEVELS, RETO_POINTS } from '@/types/reto10k'
 import { computeCurrentDay } from '@/lib/reto-plan'
 import RetoMissionDay from './RetoMissionDay'
 import RetoRoadmap from './RetoRoadmap'
@@ -22,8 +22,21 @@ interface Props {
   onChanged: () => void
 }
 
+const GUIDE_STEPS = [
+  { emoji: '📅', icon: Calendar, title: 'Genera tu plan de 30 días', text: 'Crea tu calendario con una misión estratégica para cada día. El plan se distribuye solito según tu frecuencia de publicación.' },
+  { emoji: '✨', icon: Sparkles, title: 'Crea el contenido del día', text: 'Abre la misión de hoy y genera el reel completo: guion (gancho, contexto, solución, CTA), copy para Instagram e idea visual.' },
+  { emoji: '🎬', icon: Clapperboard, title: 'Graba y edita tu reel', text: 'Usa el guion para grabar. Copia el texto bloque a bloque. Marca como "Grabado" o "Editado" si quieres llevar control.' },
+  { emoji: '🚀', icon: Rocket, title: 'Publica y márcalo como publicado', text: `Sube tu reel a Instagram y pulsa "Marcar como publicado". Solo esto suma ${RETO_POINTS.publishReel} XP y cuenta para tu progreso del Reto.` },
+]
+
 export default function RetoDashboardView({ profile, progress, config, brand, contentItems, demoMode, onGoToTab, onChanged }: Props) {
   const [showPlan, setShowPlan] = useState(false)
+  const [guideOpen, setGuideOpen] = useState(() => {
+    // Auto-colapsar si ya tiene publicadas o va avanzado en el reto
+    const publicadas = contentItems.filter(i => i.tag === 'reto-10k' && i.reto_status === 'publicado').length
+    const day = progress.started_at ? computeCurrentDay(progress.started_at) : 1
+    return publicadas < 2 && day <= 5
+  })
 
   const currentDay = computeCurrentDay(progress.started_at)
   const currentPhase = progress.current_phase || 1
@@ -33,7 +46,6 @@ export default function RetoDashboardView({ profile, progress, config, brand, co
   const currentMission = missions.find(m => m.day === currentDay) || null
   const progressPct = Math.round((currentDay / 30) * 100)
 
-  // Placeholder del plan para la misión de hoy (para actualizarlo al generar contenido)
   const currentPlaceholder = useMemo(() => {
     return contentItems.find(i => {
       if (i.tag !== 'reto-10k') return false
@@ -48,7 +60,6 @@ export default function RetoDashboardView({ profile, progress, config, brand, co
     const publicadas = retoItems.filter(i => i.reto_status === 'publicado').length
     const ideas = retoItems.filter(i => (i.reto_status || 'idea') === 'idea').length
 
-    // Racha: días consecutivos con al menos un item creado
     const dayKeys = new Set(retoItems.filter(i => i.created_at).map(i => new Date(i.created_at).toISOString().split('T')[0]))
     let streak = 0
     const check = new Date()
@@ -94,6 +105,67 @@ export default function RetoDashboardView({ profile, progress, config, brand, co
         </div>
       </div>
 
+      {/* Guía visual del proceso (colapsable) */}
+      <div className="rounded-[var(--radius-md)] overflow-hidden" style={{ background: 'white', border: '1.5px solid var(--color-buttermilk)' }}>
+        <button
+          onClick={() => setGuideOpen(o => !o)}
+          className="w-full flex items-center justify-between p-4"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-lg">🗺️</span>
+            <span className="text-sm font-bold text-cherry-dark">Cómo funciona el Reto 10K</span>
+          </div>
+          <ChevronDown
+            size={18}
+            className="text-cherry opacity-60 transition-transform"
+            style={{ transform: guideOpen ? 'rotate(180deg)' : 'none' }}
+          />
+        </button>
+        <AnimatePresence>
+          {guideOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              className="overflow-hidden"
+            >
+              <div className="px-4 pb-4 space-y-3">
+                {GUIDE_STEPS.map((step, i) => (
+                  <div
+                    key={i}
+                    className="flex gap-3 items-start rounded-[var(--radius-sm)] p-3"
+                    style={{ background: 'var(--color-warm-light)', border: '1px solid var(--color-buttermilk)' }}
+                  >
+                    <div
+                      className="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold"
+                      style={{ background: 'var(--color-cherry)', color: 'white' }}
+                    >
+                      {i + 1}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-bold text-cherry-dark flex items-center gap-1.5">
+                        <span>{step.emoji}</span> {step.title}
+                      </p>
+                      <p className="text-xs text-cherry-dark opacity-70 leading-relaxed mt-0.5">{step.text}</p>
+                    </div>
+                  </div>
+                ))}
+                <div
+                  className="rounded-[var(--radius-sm)] p-3 flex items-center gap-2"
+                  style={{ background: 'rgba(184,216,176,0.15)', border: '1px solid rgba(42,106,58,0.25)' }}
+                >
+                  <Rocket size={16} className="text-cherry flex-shrink-0" />
+                  <p className="text-xs text-cherry-dark">
+                    <strong>Solo publicar cuenta para el reto.</strong> Ni grabar, ni editar, ni guardar ideas suman puntos. Tu avance se mide por los reels que publicas en Instagram y marcas como publicados aquí.
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
       {/* Stats principales */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <BigStat icon={Flame} value={`${stats.streak} días`} label="Racha creando" emoji="🔥" />
@@ -122,7 +194,7 @@ export default function RetoDashboardView({ profile, progress, config, brand, co
             {levelProgress}% hacia {nextLevel.emoji} {nextLevel.name} · {nextLevel.minXp - xp} puntos
           </p>
         )}
-        {/* Barra de publicadas: se actualiza al marcar Publicado 🚀 */}
+        {/* Barra de publicadas */}
         <div className="flex items-center justify-between text-xs font-semibold text-cherry-dark mt-3 mb-1.5">
           <span>Publicadas 🚀</span>
           <span>{stats.publicadas} / {Math.max(30, stats.creadas)}</span>

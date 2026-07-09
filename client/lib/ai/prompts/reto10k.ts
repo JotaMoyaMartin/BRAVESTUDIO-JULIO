@@ -348,35 +348,126 @@ Devuelve EXACTAMENTE este JSON, sin texto adicional:
 }`
 }
 
+// ── Mock data coherente por fase ─────────────────────────────────────
+
+interface MockInput {
+  mTitle: string
+  mHint: string
+  mDesc: string
+  primary: string
+  services: string[]
+  day: number
+  phase: number
+  objective: string
+}
+
+function buildMockItem(input: MockInput): RetoMissionItem {
+  const { mTitle, mHint, mDesc, primary, services, day, phase, objective } = input
+  const secondary = services[services.length > 1 ? 1 : 0]
+  const tert = services[services.length > 2 ? 2 : 0]
+  const tag = primary.replace(/\s/g, '').toLowerCase()
+
+  // Fase 1: Autenticidad — presentacion personal, historia, salon
+  if (phase === 1) {
+    return {
+      type: 'reel',
+      title: mTitle,
+      service: primary,
+      objective,
+      category: 'autoridad',
+      hookIdea: mHint || `Tu historia, tu autenticidad`,
+      format: 'Reel 35-45s',
+      script: {
+        hook: `Si te tengo que contar algo sobre ${mTitle.toLowerCase()}, es esto: nadie va a conectar contigo si no te muestras real.`,
+        context: `${mDesc || 'Muchas estilistas esconden su historia detrás del trabajo.'} Lo que la gente quiere ver no es perfección, quiere ver persona. Tu trayectoria, tus dudas, lo que te llevó hasta aquí.`,
+        solution: `Por eso hoy te cuento esto sin filtros. ${mHint || 'Te cuento mi historia y por qué hago lo que hago.'} Llevo años en esto, he cometido errores de los que he aprendido, y cada clienta que se sienta en mi silla me enseña algo nuevo. Mi forma de trabajar nace de todo eso: no es solo técnica, es criterio. Y ese criterio es lo que me hace diferente, porque nadie ha vivido lo mismo que yo ni ha aprendido las mismas lecciones. Cuando una clienta viene a verme, no viene solo por un servicio, viene por la forma en que yo lo hago.`,
+        cta: `Si todavía no me conoces, escríbeme por Instagram y te cuento más sobre cómo trabajo.`,
+      },
+      caption: `✨ ${mTitle}\n\n${mDesc || 'Hoy quiero mostrarte quién soy y por qué hago lo que hago.'} Lo que la gente quiere ver no es perfección, quiere ver persona.\n\n${mHint || 'Mi historia, mi trayectoria y lo que me hace diferente.'} Cada clienta me enseña algo nuevo y eso se nota en cómo trabajo.\n\nSi todavía no me conoces, escríbeme por Instagram y te cuento más.\n\n#${tag} #estilista #mihistoria #bravestudio`,
+      visual_idea: `Plano medio en tu salón, hablando a cámara con naturalidad. Sin poses, sin guion rígido. Muestra tu espacio de fondo para dar contexto.`,
+      recording_tip: `Plano frontal a altura de ojos, luz natural de ventana. Habla como si le estuvieras contando algo a una amiga. Empieza con energía (3-5s), baja el ritmo en contexto (5-10s), habla desde el corazón en la solución (20-30s), cierra con cercanía en el CTA (3-5s). Vertical 9:16.`,
+      day,
+    }
+  }
+
+  // Fase 2: Autoridad — consejos, errores, educacion, mitos
+  if (phase === 2) {
+    return {
+      type: 'reel',
+      title: mTitle,
+      service: primary,
+      objective,
+      category: 'autoridad',
+      hookIdea: mHint || `Conocimiento que solo un pro tiene`,
+      format: 'Reel 35-45s',
+      script: {
+        hook: `Lo que voy a contarte sobre ${mTitle.toLowerCase()} es algo que solo aprendes después de años haciéndolo.`,
+        context: `${mDesc || 'Hay cosas que las clientas no saben y que les cambiarían la relación con su pelo.'} El problema es que hay mucha información falsa dando vueltas, y eso confunde más de lo que ayuda.`,
+        solution: `Como profesional, mi trabajo no es solo hacer el servicio, es educar. ${mHint || 'Te comparto lo que he aprendido en años de experiencia.'} Cuando una clienta entiende por qué pasa lo que pasa con su pelo, toma mejores decisiones. Y cuando toma mejores decisiones, el resultado dura más y se ve mejor. Por eso me tomo tiempo en cada cita para explicar lo que hago, por qué lo hago y qué puede esperar. No es tiempo perdido, es inversión en confianza.`,
+        cta: `¿Tienes una duda sobre ${primary.toLowerCase()}? Escríbeme y te respondo sin compromiso.`,
+      },
+      caption: `💡 ${mTitle}\n\n${mDesc || 'Hay cosas que solo aprendes después de años haciéndolo.'} Hay mucha información falsa dando vueltas y eso confunde más de lo que ayuda.\n\nComo profesional, mi trabajo no es solo hacer el servicio, es educar. Te explico lo que hago, por qué lo hago y qué puedes esperar. No es tiempo perdido, es inversión en confianza.\n\n¿Tienes una duda? Escríbeme y te respondo sin compromiso.\n\n#${tag} #consejopro #cuidadodelcabello #bravestudio`,
+      visual_idea: `Primer plano hablando a cámara, mostrando quizás un utensilio o producto relacionado. Tono didáctico pero cercano, no de clase magistral.`,
+      recording_tip: `Plano frontal, buena luz. Usa las manos para enfatizar puntos clave. Empieza fuerte con el gancho (3-5s), contextualiza el problema (5-10s), explica la solución con detalle (20-30s), invita a escribir (3-5s). Vertical 9:16.`,
+      day,
+    }
+  }
+
+  // Fase 3: Deseo — transformaciones, antes/después, casos reales
+  if (phase === 3) {
+    return {
+      type: 'reel',
+      title: mTitle,
+      service: primary,
+      objective,
+      category: 'deseo',
+      hookIdea: mHint || `Transformacion que impacta`,
+      format: 'Reel 35-45s',
+      script: {
+        hook: `Esto es lo que pasa cuando haces ${mTitle.toLowerCase()} como debe hacerse.`,
+        context: `${mDesc || 'La clienta llegaba con un resultado que no le encajaba y miedo a volver a intentarlo.'} No necesitaba más color, necesitaba un plan y alguien que supiera ejecutarlo.`,
+        solution: `Empecé por un diagnóstico honesto: le dije qué se podía salvar y qué no. Después monté un plan de ${primary.toLowerCase()} respetando la fibra, trabajando por capas finas y controlando tiempos de exposición. Usé ${secondary.toLowerCase()} como soporte y sellé con tratamiento reconstructivo. El proceso tardó horas, pero el resultado fue un color limpio, sano y con brillo real. ${mHint || 'Cada paso tenía un porqué y la clienta lo vio todo.'}`,
+        cta: `Si quieres un ${primary.toLowerCase()} como este, reserva tu diagnóstico y lo hacemos a medida.`,
+      },
+      caption: `✨ ${mTitle}\n\nLa clienta llegaba con un resultado que no le encajaba y miedo a volver a intentarlo. No necesitaba más color, necesitaba un plan.\n\nDiagnóstico honesto, ${primary.toLowerCase()} respetando la fibra, tiempos controlados y tratamiento reconstructivo. Horas de proceso, brillo real al final.\n\nSi quieres un ${primary.toLowerCase()} como este, reserva tu diagnóstico y lo hacemos a medida.\n\n#${tag} #antesydespues #${secondary.replace(/\s/g, '').toLowerCase()} #bravestudio`,
+      visual_idea: `Montaje antes → proceso → después, con cortes limpios y música emocional. Muestra el detalle del trabajo durante el proceso.`,
+      recording_tip: `Graba clips cortos de cada fase: antes, durante el trabajo (manos, producto, herramienta), y resultado final. Une con cortes al ritmo de la música. El antes y después debe ser el mismo ángulo y misma luz. Vertical 9:16.`,
+      day,
+    }
+  }
+
+  // Fase 4: Comunidad — tendencia, viral, opinion, marca personal
+  return {
+    type: 'reel',
+    title: mTitle,
+    service: primary,
+    objective,
+    category: 'viralidad',
+    hookIdea: mHint || `Tu vision del sector`,
+    format: 'Reel 35-45s',
+    script: {
+      hook: `Llevo tiempo pensando en ${mTitle.toLowerCase()} y tengo algo que decir al respecto.`,
+      context: `${mDesc || 'El sector está cambiando y a veces da la sensación de que lo importante es otra cosa.'} Se habla mucho de seguidores y poco de oficio, de viralidad y poco de técnica.`,
+      solution: `Mi visión es clara: el contenido es la puerta, pero el trabajo es la casa. ${mHint || 'Creo en la honestidad por encima de la tendencia.'} Un reel puede traerte visitas, pero lo que hace que una clienta vuelva es cómo la tratas y cómo trabajas. Por eso sigo apostando por hacer las cosas bien, por formarme, por no saltarme pasos. Y por eso comparto mi día a día: para que se vea que detrás de cada publicación hay horas de oficio real. Esa es mi marca personal y es lo que me diferencia.`,
+      cta: `Cuéntame en comentarios qué piensas tú sobre esto, de verdad quiero leerte.`,
+    },
+    caption: `💭 ${mTitle}\n\nEl sector está cambiando y a veces da la sensación de que lo importante es otra cosa. Se habla de seguidores y poco de oficio.\n\nMi visión: el contenido es la puerta, pero el trabajo es la casa. Un reel trae visitas, lo que hace volver a una clienta es cómo la tratas y cómo trabajas.\n\nCuéntame en comentarios qué piensas tú, de verdad quiero leerte.\n\n#${tag} #opinion #estilista #bravestudio`,
+    visual_idea: `Tú en el salón, hablando a cámara de forma reflexiva. Tono íntimo, como si estuvieras pensando en voz alta. Fondo del salón con movimiento suave.`,
+    recording_tip: `Plano medio, luz cálida. Tono reflexivo y pausado, no rushes. Empieza con una declaración contundente (3-5s), contextualiza (5-10s), desarrolla tu opinión con calma (20-30s), pregunta a la comunidad (3-5s). Vertical 9:16.`,
+    day,
+  }
+}
+
 export function generateMockMissionContent(input: RetoMissionInput): RetoMissionOutput {
   const services = input.services.length > 0 ? input.services : ['Balayage', 'Color', 'Corte']
   const primary = services[0]
   const day = input.currentDay
-  const mTitle = input.missionTitle || `tu próxima publicación sobre ${primary}`
+  const mTitle = input.missionTitle || `tu próxima publicación`
   const mHint = input.missionPromptHint || ''
   const phase = input.currentPhase
+  const mDesc = input.missionDescription || ''
 
-  const category = phase === 1 ? 'dolor' : phase === 2 ? 'autoridad' : phase === 3 ? 'deseo' : 'objecion'
-
-  const item: RetoMissionItem = {
-    type: 'reel',
-    title: mTitle,
-    service: primary,
-    objective: input.objective || 'visibilidad',
-    category,
-    hookIdea: mHint || `Conecta con tu audiencia desde ${mTitle.toLowerCase()}`,
-    format: 'Reel 35-45s',
-    script: {
-      hook: `Si te tengo que contar algo sobre ${mTitle.toLowerCase()}, es esto.`,
-      context: `Muchas clientas llegan al salón con una idea sobre ${mTitle.toLowerCase()} que no se ajusta a la realidad. El problema no es el servicio, es la falta de información antes de empezar.`,
-      solution: `Por eso, antes de tocar el color o las tijeras, hago un diagnóstico completo: analizo el estado de la fibra, el historial químico y las expectativas reales de cada clienta. Después explico qué se puede lograr y qué no, qué técnica uso y por qué, y cuánto mantenimiento va a necesitar en casa. Así la clienta decide con criterio, no por impulso, y el resultado se sostiene en el tiempo. Mi forma de trabajar se basa en respeto al cabello y transparencia total.`,
-      cta: `Si tienes dudas sobre ${mTitle.toLowerCase()}, escríbeme y te ayudo a aclararlo antes de reservar.`,
-    },
-    caption: `✨ Lo que me gustaría que supieras sobre ${mTitle.toLowerCase()}.\n\nMuchas clientas llegan al salón con una idea que no se ajusta a la realidad, y eso acaba en decepción. El problema no es el servicio, es la falta de información antes de empezar.\n\nPor eso hago un diagnóstico completo: estado de la fibra, historial químico y expectativas reales. Te explico qué se puede lograr y qué no, y cuánto mantenimiento necesitarás en casa.\n\nSi tienes dudas sobre ${mTitle.toLowerCase()}, escríbeme y te ayudo a aclararlo antes de reservar.\n\n#${primary.replace(/\s/g, '')} #cuidadodelcabello #diagnosticocapilar #bravestudio`,
-    visual_idea: `Plano medio tuyo hablando a cámara en el salón, con el material del servicio de fondo. Tono cercano y seguro.`,
-    recording_tip: `Plano frontal a la altura de los ojos, luz natural de ventana al lado. Empieza con energía en el gancho (3-5s), baja el ritmo en contexto (5-10s), habla pausado y claro en la solución (20-30s), cierra mirando a cámara con cercanía en el CTA (3-5s). Música suave de fondo, volumen bajo. Graba en 4K vertical 9:16.`,
-    day,
-  }
+  const item = buildMockItem({ mTitle, mHint, mDesc, primary, services, day, phase, objective: input.objective || 'visibilidad' })
 
   return {
     item,
@@ -498,30 +589,19 @@ IMPORTANTE: El array "items" debe tener EXACTAMENTE ${input.days.length} element
 
 export function generateMockMissionBatch(input: RetoMissionBatchInput): RetoMissionBatchOutput {
   const services = input.services.length > 0 ? input.services : ['Balayage', 'Color', 'Corte']
-  const categories: RetoCategory[] = ['dolor', 'autoridad', 'educacion', 'deseo', 'viralidad', 'objecion']
 
-  const items: RetoMissionItem[] = input.days.map((d, i) => {
-    const primary = services[i % services.length] || services[0]
-    const category = categories[i % categories.length]
-    return {
-      type: 'reel' as const,
-      title: d.missionTitle,
-      service: primary,
-      objective: input.objective || 'visibilidad',
-      category,
-      hookIdea: d.missionPromptHint || `Conecta con tu audiencia desde ${d.missionTitle.toLowerCase()}`,
-      format: 'Reel 35-45s',
-      script: {
-        hook: `Si te tengo que contar algo sobre ${d.missionTitle.toLowerCase()}, es esto.`,
-        context: `Muchas clientas llegan al salón con una idea sobre ${d.missionTitle.toLowerCase()} que no se ajusta a la realidad. El problema no es el servicio, es la falta de información antes de empezar.`,
-        solution: `Por eso, antes de tocar el color o las tijeras, hago un diagnóstico completo: analizo el estado de la fibra, el historial químico y las expectativas reales de cada clienta. Después explico qué se puede lograr y qué no, qué técnica uso y por qué, y cuánto mantenimiento va a necesitar en casa. Así la clienta decide con criterio, no por impulso, y el resultado se sostiene en el tiempo.`,
-        cta: `Si tienes dudas sobre ${d.missionTitle.toLowerCase()}, escríbeme y te ayudo a aclararlo antes de reservar.`,
-      },
-      caption: `✨ Lo que me gustaría que supieras sobre ${d.missionTitle.toLowerCase()}.\n\nMuchas clientas llegan al salón con una idea que no se ajusta a la realidad, y eso acaba en decepción.\n\nPor eso hago un diagnóstico completo: estado de la fibra, historial químico y expectativas reales.\n\nSi tienes dudas, escríbeme y te ayudo a aclararlo antes de reservar.\n\n#${primary.replace(/\s/g, '')} #cuidadodelcabello #diagnosticocapilar #bravestudio`,
-      visual_idea: `Plano medio tuyo hablando a cámara en el salón, con el material del servicio de fondo. Tono cercano y seguro.`,
-      recording_tip: `Plano frontal a la altura de los ojos, luz natural de ventana al lado. Empieza con energía en el gancho (3-5s), baja el ritmo en contexto (5-10s), habla pausado y claro en la solución (20-30s), cierra mirando a cámara con cercanía en el CTA (3-5s). Música suave de fondo. Graba en 4K vertical 9:16.`,
+  const items: RetoMissionItem[] = input.days.map((d) => {
+    const primary = services[d.day % services.length] || services[0]
+    return buildMockItem({
+      mTitle: d.missionTitle,
+      mHint: d.missionPromptHint,
+      mDesc: d.missionDescription,
+      primary,
+      services,
       day: d.day,
-    }
+      phase: d.phase,
+      objective: input.objective || 'visibilidad',
+    })
   })
 
   return {

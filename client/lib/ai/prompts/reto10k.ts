@@ -1,9 +1,9 @@
 import { generateAIContent, extractJSON } from '../client'
-import { RetoInput, RetoOutput, RetoItem } from '@/types/reto10k'
+import { RetoInput, RetoOutput, RetoItem, RetoMissionInput, RetoMissionOutput, RetoMissionItem } from '@/types/reto10k'
 
 export function buildRetosPrompt(input: RetoInput): string {
   const services = input.services.length > 0 ? input.services.join(', ') : 'servicios generales de peluquería'
-  const count = Math.max(3, Math.min(7, input.postsPerWeek || 4))
+  const count = input.count ?? Math.max(3, Math.min(7, input.postsPerWeek || 4))
   const missionBlock = input.missionTitle
     ? `\nMISIÓN DEL DÍA (OBLIGATORIA — todo el contenido debe orbitar esta misión):\n- Título: ${input.missionTitle}\n- Descripción: ${input.missionDescription || ''}\n- Pista: ${input.missionPromptHint || ''}\nCada reel debe estar claramente conectado a esta misión. Si la misión es sobre un tema concreto, NO generes reels de temas no relacionados.`
     : `\nMISIÓN DEL DÍA: No hay misión específica — genera contenido coherente con la fase actual.`
@@ -86,7 +86,7 @@ export function generateMockRetos(input: RetoInput): RetoOutput {
   const services = input.services.length > 0 ? input.services : ['Balayage', 'Color', 'Corte']
   const day = input.currentDay
   const phaseTitle = input.phaseTitle || 'Tu fase actual'
-  const count = Math.max(3, Math.min(7, input.postsPerWeek || 4))
+  const count = input.count ?? Math.max(3, Math.min(7, input.postsPerWeek || 4))
   const mTitle = input.missionTitle || ''
   const mHint = input.missionPromptHint || ''
   const primary = services[0]
@@ -268,4 +268,149 @@ export async function generateRetos(input: RetoInput): Promise<RetoOutput> {
     // fall through to mock
   }
   return generateMockRetos(input)
+}
+
+// ── Generación de item único para la misión del día ───────────────────
+
+export function buildMissionPrompt(input: RetoMissionInput): string {
+  const services = input.services.length > 0 ? input.services.join(', ') : 'servicios generales de peluquería'
+  return `Eres un guionista profesional para estilistas en Instagram, especializado en el Reto 10K BRÄVE. Sigues el MANUAL OFICIAL DE GUIONES BRÄVE al pie de la letra.
+
+MISIÓN DEL DÍA (OBLIGATORIA — el reel debe estar 100% dedicado a esta misión):
+- Título: ${input.missionTitle}
+- Descripción: ${input.missionDescription || ''}
+- Pista: ${input.missionPromptHint || ''}
+Fase actual: ${input.currentPhase} — ${input.phaseTitle}
+Día del reto: ${input.currentDay} de 30
+Servicios estrella: ${services}
+Nivel: ${input.level}
+${input.brandContext ? `Contexto del salón: ${input.brandContext}` : ''}
+
+=== MANUAL DE GUIONES BRÄVE (OBLIGATORIO) ===
+
+Filosofía: no vendemos servicios, vendemos confianza. La meta es que la clienta pase de "No te conozco" a "Quiero que me atiendas tú".
+
+El reel es de AUTORIDAD (35-45s) con esta estructura INALTERABLE:
+
+1. GANCHO (3-5s): detener el scroll. Claro, directo, basado en dolor / error / falsa creencia / deseo.
+   - VÁLIDO: "Si tu rubio dura pocas semanas, algo está fallando."
+   - PROHIBIDO: "No vas a creer esto", "El secreto mejor guardado", "Tienes que ver esto".
+
+2. CONTEXTO (5-10s): generar identificación. El problema, el error habitual. NO expliques la solución todavía.
+
+3. SOLUCIÓN (20-30s) — LA PARTE MÁS IMPORTANTE: demostrar autoridad, educar.
+   - QUÉ haces, CÓMO lo haces, POR QUÉ lo haces.
+   - Debe ser largo, detallado y rico. El proceso vende.
+
+4. CTA (3-5s): conversacional. NUNCA palabras clave ni automatizaciones.
+   - VÁLIDO: "Si estás pensando en hacerte este servicio, escríbeme y te ayudo."
+   - PROHIBIDO: "Comenta BALAYAGE", "Escribe INFO".
+
+=== ENTREGABLE ===
+
+Genera EXACTAMENTE 1 reel dedicado a la misión de hoy. Campos:
+
+- "type": "reel"
+- "title": título atractivo conectado a la misión
+- "service": servicio al que pertenece
+- "objective": "autoridad" | "reservas" | "visibilidad"
+- "category": "autoridad" | "resultados" | "conexion" (según la misión)
+- "hookIdea": idea breve de gancho (un ángulo)
+- "format": "Reel 35-45s"
+- "script": { "hook": "...", "context": "...", "solution": "...", "cta": "..." } — textos reales y desarrollados, especialmente "solution" largo y detallado
+- "caption": texto LISTO PARA COPIAR y pegar en Instagram. Varios párrafos separados por \\n\\n. UN SOLO emoji temático al inicio del primer párrafo. Penúltimo párrafo = CTA conversacional. Último párrafo = máx 4 hashtags relevantes.
+- "visual_idea": cómo grabar (plano, luz, acción, música)
+- "recording_tip": recomendación práctica de grabación: plano recomendado, duración de cada bloque, luz, música, expresión, ángulo. Texto concreto y accionable.
+- "day": ${input.currentDay}
+
+Devuelve EXACTAMENTE este JSON, sin texto adicional:
+{
+  "item": {
+    "type": "reel",
+    "title": "...",
+    "service": "...",
+    "objective": "...",
+    "category": "...",
+    "hookIdea": "...",
+    "format": "Reel 35-45s",
+    "script": { "hook": "...", "context": "...", "solution": "...", "cta": "..." },
+    "caption": "...",
+    "visual_idea": "...",
+    "recording_tip": "...",
+    "day": ${input.currentDay}
+  },
+  "summary": "Resumen breve"
+}`
+}
+
+export function generateMockMissionContent(input: RetoMissionInput): RetoMissionOutput {
+  const services = input.services.length > 0 ? input.services : ['Balayage', 'Color', 'Corte']
+  const primary = services[0]
+  const day = input.currentDay
+  const mTitle = input.missionTitle || `tu próxima publicación sobre ${primary}`
+  const mHint = input.missionPromptHint || ''
+  const phase = input.currentPhase
+
+  const category = phase === 1 ? 'conexion' : phase === 2 ? 'autoridad' : phase === 3 ? 'resultados' : 'conexion'
+
+  const item: RetoMissionItem = {
+    type: 'reel',
+    title: mTitle,
+    service: primary,
+    objective: input.objective || 'visibilidad',
+    category,
+    hookIdea: mHint || `Conecta con tu audiencia desde ${mTitle.toLowerCase()}`,
+    format: 'Reel 35-45s',
+    script: {
+      hook: `Si te tengo que contar algo sobre ${mTitle.toLowerCase()}, es esto.`,
+      context: `Muchas clientas llegan al salón con una idea sobre ${mTitle.toLowerCase()} que no se ajusta a la realidad. El problema no es el servicio, es la falta de información antes de empezar.`,
+      solution: `Por eso, antes de tocar el color o las tijeras, hago un diagnóstico completo: analizo el estado de la fibra, el historial químico y las expectativas reales de cada clienta. Después explico qué se puede lograr y qué no, qué técnica uso y por qué, y cuánto mantenimiento va a necesitar en casa. Así la clienta decide con criterio, no por impulso, y el resultado se sostiene en el tiempo. Mi forma de trabajar se basa en respeto al cabello y transparencia total.`,
+      cta: `Si tienes dudas sobre ${mTitle.toLowerCase()}, escríbeme y te ayudo a aclararlo antes de reservar.`,
+    },
+    caption: `✨ Lo que me gustaría que supieras sobre ${mTitle.toLowerCase()}.\n\nMuchas clientas llegan al salón con una idea que no se ajusta a la realidad, y eso acaba en decepción. El problema no es el servicio, es la falta de información antes de empezar.\n\nPor eso hago un diagnóstico completo: estado de la fibra, historial químico y expectativas reales. Te explico qué se puede lograr y qué no, y cuánto mantenimiento necesitarás en casa.\n\nSi tienes dudas sobre ${mTitle.toLowerCase()}, escríbeme y te ayudo a aclararlo antes de reservar.\n\n#${primary.replace(/\s/g, '')} #cuidadodelcabello #diagnosticocapilar #bravestudio`,
+    visual_idea: `Plano medio tuyo hablando a cámara en el salón, con el material del servicio de fondo. Tono cercano y seguro.`,
+    recording_tip: `Plano frontal a la altura de los ojos, luz natural de ventana al lado. Empieza con energía en el gancho (3-5s), baja el ritmo en contexto (5-10s), habla pausado y claro en la solución (20-30s), cierra mirando a cámara con cercanía en el CTA (3-5s). Música suave de fondo, volumen bajo. Graba en 4K vertical 9:16.`,
+    day,
+  }
+
+  return {
+    item,
+    summary: `Reel dedicado a la misión "${mTitle}" · día ${day}.`,
+  }
+}
+
+export async function generateMissionContent(input: RetoMissionInput): Promise<RetoMissionOutput> {
+  try {
+    const raw = await generateAIContent(buildMissionPrompt(input))
+    const parsed = extractJSON<{ item: Omit<RetoMissionItem, 'day'>; summary: string }>(raw)
+    if (
+      parsed &&
+      parsed.item &&
+      parsed.item.type === 'reel' &&
+      typeof parsed.item.title === 'string' &&
+      typeof parsed.item.service === 'string' &&
+      parsed.item.script &&
+      typeof parsed.item.script.hook === 'string' &&
+      typeof parsed.item.recording_tip === 'string'
+    ) {
+      const item: RetoMissionItem = {
+        ...parsed.item,
+        type: 'reel',
+        day: input.currentDay,
+        objective: parsed.item.objective || input.objective,
+        category: parsed.item.category || 'autoridad',
+        caption: parsed.item.caption || '',
+        visual_idea: parsed.item.visual_idea || '',
+        hookIdea: parsed.item.hookIdea || '',
+        format: parsed.item.format || 'Reel 35-45s',
+      }
+      return {
+        item,
+        summary: typeof parsed.summary === 'string' ? parsed.summary : 'Reel generado para tu misión.',
+      }
+    }
+  } catch {
+    // fall through to mock
+  }
+  return generateMockMissionContent(input)
 }

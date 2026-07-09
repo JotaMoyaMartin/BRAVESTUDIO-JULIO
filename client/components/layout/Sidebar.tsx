@@ -80,6 +80,7 @@ export default function Sidebar({ profile }: { profile: Profile }) {
         )}
         {navItems.map(({ href, label, icon: Icon, badge, highlight }) => {
           const active = pathname === href || pathname.startsWith(href + '/')
+          const isReto = href === '/reto-10k'
           return (
             <Link
               key={href}
@@ -90,7 +91,9 @@ export default function Sidebar({ profile }: { profile: Profile }) {
                 color: active ? 'white' : 'var(--color-cherry-dark)',
               }}
             >
-              <Icon size={18} />
+              <span className={isReto && !active ? 'reto-glow rounded-full' : ''} style={{ display: 'inline-flex' }}>
+                <Icon size={18} />
+              </span>
               {label}
               {badge && (
                 <span
@@ -241,6 +244,7 @@ export default function Sidebar({ profile }: { profile: Profile }) {
         <nav className="px-4 py-3 space-y-1">
           {navItems.map(({ href, label, icon: Icon, badge, highlight }) => {
             const active = pathname === href || pathname.startsWith(href + '/')
+            const isReto = href === '/reto-10k'
             return (
               <Link
                 key={href}
@@ -251,7 +255,9 @@ export default function Sidebar({ profile }: { profile: Profile }) {
                   color: active ? 'white' : 'var(--color-cherry-dark)',
                 }}
               >
-                <Icon size={18} />
+                <span className={isReto && !active ? 'reto-glow rounded-full' : ''} style={{ display: 'inline-flex' }}>
+                  <Icon size={18} />
+                </span>
                 {label}
                 {badge && (
                   <span

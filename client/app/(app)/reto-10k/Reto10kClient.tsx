@@ -2,7 +2,6 @@
 
 import { Profile, BrandProfile, ContentItem } from '@/types/database'
 import { Reto10kConfig, Reto10kProgress } from '@/types/reto10k'
-import { useSessionState } from '@/lib/session-store'
 import RetoLanding from '@/components/reto10k/RetoLanding'
 import RetoOnboarding from '@/components/reto10k/RetoOnboarding'
 import RetoDashboard from '@/components/reto10k/RetoDashboard'
@@ -18,7 +17,6 @@ interface Props {
 
 export default function Reto10kClient({ profile, progress, config, brand, contentItems, demoMode }: Props) {
   const userId = profile?.id || 'demo'
-  const [generating] = useSessionState(`u:${userId}:reto10k:generating`, false)
 
   // Determinar vista
   if (!progress || progress.status === 'not_started') {

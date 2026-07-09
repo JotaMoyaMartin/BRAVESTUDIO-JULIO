@@ -1,12 +1,31 @@
 import { createClient } from '@/lib/supabase/client'
 import { demoSavePlan, demoUpdatePlan, demoDeletePlan } from '@/lib/demo-store'
 import { ContentItem } from '@/types/database'
+import { RETO_POINTS, RetoCardStatus } from '@/types/reto10k'
 
 // ── Clipboard ──────────────────────────────────────────────────────
 
 export function copyToClipboard(text: string): void {
   if (typeof navigator !== 'undefined' && navigator.clipboard) {
     navigator.clipboard.writeText(text)
+  }
+}
+
+// ── XP helper ──────────────────────────────────────────────────────
+
+/**
+ * Suma XP al perfil de la usuaria (patrón inline existente, ahora unificado).
+ * No-op en demo mode. Devuelve el nuevo total de XP.
+ */
+export async function addXp(userId: string, amount: number, currentXp: number): Promise<number> {
+  if (userId === 'demo') return currentXp
+  try {
+    const supabase = createClient()
+    const newTotal = (currentXp || 0) + amount
+    await supabase.from('profiles').update({ xp_total: newTotal }).eq('id', userId)
+    return newTotal
+  } catch {
+    return currentXp
   }
 }
 
@@ -149,4 +168,160 @@ export async function duplicateToLibrary(
   }
   const supabase = createClient()
   await supabase.from('content_items').insert(payload)
+}
+
+// ── Reto 10K helpers ────────────────────────────────────────────────
+
+/**
+ * Guarda una idea generada dentro del Reto 10K con tag='reto-10k' y
+ * reto_status='idea'. Reutiliza saveToLibrary.
+ */
+export async function saveRetoIdea(
+  userId: string,
+  payload: Record<string, unknown>,
+  isDemoMode: boolean
+): Promise<void> {
+  await saveToLibrary(userId, { ...payload, tag: 'reto-10k', reto_status: 'idea' }, isDemoMode)
+}
+
+/**
+ * Actualiza el semáforo del reto (idea / grabado / publicado).
+ * Si 'publicado', suma +10 XP al perfil.
+ */
+export async function setRetoStatus(
+  userId: string,
+  itemId: string,
+  retoStatus: RetoCardStatus,
+  isDemoMode: boolean,
+  currentXp: number
+): Promise<number> {
+  const patch: Record<string, unknown> = { reto_status: retoStatus }
+  if (retoStatus === 'publicado') {
+    patch.status = 'done'
+    patch.done_at = new Date().toISOString()
+  } else if (retoStatus === 'grabado') {
+    // grabado = está siendo trabajado; si no tenía status, lo dejamos en library
+    patch.status = 'library'
+  }
+  if (isDemoMode) {
+    demoUpdatePlan(itemId, patch)
+    return retoStatus === 'publicado' ? currentXp + RETO_POINTS.publishReel : currentXp
+  }
+  const supabase = createClient()
+  await supabase.from('content_items').update(patch).eq('id', itemId)
+  if (retoStatus === 'publicado') {
+    return addXp(userId, RETO_POINTS.publishReel, currentXp)
+  }
+  return currentXp
+}
+
+/**
+ * Programar una idea del reto para una fecha concreta.
+ * Reutiliza scheduleItem pero mantiene reto_status.
+ */
+export async function scheduleRetoItem(
+  userId: string,
+  itemId: string,
+  date: string,
+  isDemoMode: boolean
+): Promise<void> {
+  const patch = { scheduled_date: date, status: 'scheduled' as const, reto_status: 'idea' as const }
+  if (isDemoMode) {
+    demoUpdatePlan(itemId, patch)
+    return
+  }
+  const supabase = createClient()
+  await supabase.from('content_items').update(patch).eq('id', itemId)
+}
+
+/**
+ * Guarda un día del plan de 30 días como content_item del reto.
+ * Crea un item "esqueleto" con la misión referenciada, sin guion todavía.
+ */
+export async function saveRetoPlanDay(
+  userId: string,
+  day: {
+    date: string
+    day: number
+    mission: { title: string; description: string; prompt_hint: string; phase: number }
+    category: string
+  },
+  isDemoMode: boolean
+): Promise<void> {
+  const payload = {
+    type: 'reel' as const,
+    title: day.mission.title,
+    service: null,
+    objective: null,
+    format: 'Reel 35-45s',
+    content_json: {
+      mission_day: day.day,
+      mission_title: day.mission.title,
+      mission_description: day.mission.description,
+      mission_hint: day.mission.prompt_hint,
+      phase: day.mission.phase,
+      category: day.category,
+      is_plan_placeholder: true,
+    },
+    caption_with_hashtags: null,
+    visual_idea: null,
+    scheduled_date: day.date,
+    status: 'library' as const,
+    tag: 'reto-10k',
+    reto_status: 'idea' as const,
+  }
+  if (isDemoMode) {
+    demoSavePlan(payload as Record<string, unknown>)
+    return
+  }
+  const supabase = createClient()
+  await supabase.from('content_items').insert({ user_id: userId, ...payload })
+}
+
+/**
+ * Guarda el item generado para una misión concreta (item único con guion completo).
+ */
+export async function saveRetoMissionItem(
+  userId: string,
+  item: {
+    type: 'reel'
+    title: string
+    service: string
+    objective: string
+    category: string
+    format: string
+    script: { hook: string; context: string; solution: string; cta: string }
+    caption: string
+    visual_idea: string
+    recording_tip: string
+    day: number
+  },
+  isDemoMode: boolean,
+  scheduledDate?: string
+): Promise<void> {
+  const payload = {
+    type: item.type,
+    title: item.title,
+    service: item.service,
+    objective: item.objective,
+    format: item.format,
+    content_json: {
+      script: item.script,
+      recording_tip: item.recording_tip,
+      category: item.category,
+      mission_day: item.day,
+    },
+    caption_with_hashtags: item.caption || null,
+    visual_idea: item.visual_idea || null,
+    scheduled_date: scheduledDate || null,
+    status: (scheduledDate ? 'scheduled' : 'library') as 'scheduled' | 'library',
+    tag: 'reto-10k',
+    reto_status: 'idea' as const,
+  }
+  if (isDemoMode) {
+    demoSavePlan(payload as Record<string, unknown>)
+    return
+  }
+  const supabase = createClient()
+  await supabase.from('content_items').insert({ user_id: userId, ...payload })
 }

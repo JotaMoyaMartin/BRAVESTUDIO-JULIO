@@ -1,16 +1,25 @@
 'use client'
 
-import { motion } from 'framer-motion'
-import { Sparkles } from 'lucide-react'
-import { RetoPhase, RetoMission } from '@/types/reto10k'
+import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Sparkles, Target, Lightbulb } from 'lucide-react'
+import { Profile, BrandProfile } from '@/types/database'
+import { Reto10kConfig, Reto10kProgress, RetoPhase, RetoMission } from '@/types/reto10k'
+import RetoMissionGenerator from './RetoMissionGenerator'
 
 interface Props {
   mission: RetoMission
   phase: RetoPhase | undefined
-  onGenerate: () => void
+  profile: Profile | null
+  progress: Reto10kProgress
+  config: Reto10kConfig | null
+  brand: Partial<BrandProfile> | null
+  demoMode: boolean
 }
 
-export default function RetoMissionDay({ mission, phase, onGenerate }: Props) {
+export default function RetoMissionDay({ mission, phase, profile, progress, config, brand, demoMode }: Props) {
+  const [open, setOpen] = useState(false)
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -31,30 +40,56 @@ export default function RetoMissionDay({ mission, phase, onGenerate }: Props) {
         </div>
         <div className="flex-1">
           <p className="text-[10px] font-bold uppercase tracking-wider text-cherry opacity-70 mb-0.5">
-            Tu misión de hoy · Día {mission.day}
+            Misión de hoy · Día {mission.day}
           </p>
           <h3 className="font-bold text-base text-cherry-dark">{mission.title}</h3>
         </div>
       </div>
 
-      <p className="text-sm text-cherry-dark opacity-80 leading-relaxed mb-2">{mission.description}</p>
+      {/* Objetivo */}
+      <div className="rounded-[var(--radius-sm)] p-3 mb-2 flex items-start gap-2" style={{ background: 'rgba(255,255,255,0.6)', border: '1px solid rgba(122,24,50,0.1)' }}>
+        <Target size={14} className="text-cherry mt-0.5 flex-shrink-0" />
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-cherry opacity-70">Objetivo</p>
+          <p className="text-sm text-cherry-dark opacity-90">{mission.description}</p>
+        </div>
+      </div>
 
+      {/* Inspiración */}
       {mission.prompt_hint && (
-        <div
-          className="rounded-[var(--radius-sm)] p-3 mb-3"
-          style={{ background: 'rgba(255,255,255,0.6)', border: '1px solid rgba(122,24,50,0.1)' }}
-        >
-          <p className="text-xs text-cherry-dark opacity-70 italic">{mission.prompt_hint}</p>
+        <div className="rounded-[var(--radius-sm)] p-3 mb-3 flex items-start gap-2" style={{ background: 'rgba(255,255,255,0.6)', border: '1px solid rgba(122,24,50,0.1)' }}>
+          <Lightbulb size={14} className="text-cherry mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-cherry opacity-70">Inspiración</p>
+            <p className="text-xs text-cherry-dark opacity-80 italic">{mission.prompt_hint}</p>
+          </div>
         </div>
       )}
 
       <button
-        onClick={onGenerate}
-        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius-sm)] text-sm font-semibold text-white transition-all"
-        style={{ background: 'var(--color-cherry)' }}
+        onClick={() => setOpen(o => !o)}
+        className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-[var(--radius-sm)] text-sm font-bold text-white transition-all glow-ready"
+        style={{ background: 'var(--color-cherry)', minHeight: 44 }}
       >
-        <Sparkles size={15} /> Generar contenido para esta misión
+        <Sparkles size={16} /> {open ? 'Cerrar generador' : '✨ Crear mi contenido de esta misión'}
       </button>
+
+      <AnimatePresence>
+        {open && (
+          <div className="mt-3">
+            <RetoMissionGenerator
+              profile={profile}
+              progress={progress}
+              config={config}
+              brand={brand}
+              mission={mission}
+              phaseTitle={phase?.title || ''}
+              demoMode={demoMode}
+              onClose={() => setOpen(false)}
+            />
+          </div>
+        )}
+      </AnimatePresence>
     </motion.div>
   )
 }

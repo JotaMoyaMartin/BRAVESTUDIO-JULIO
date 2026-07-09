@@ -232,6 +232,8 @@ function StoriesCreator({ userId, brandFull }: { userId: string; brandFull: Bran
       scheduled_date: null,
       status: 'library' as const,
       tag: null as string | null,
+      reto_status: null,
+      done_at: null,
       created_at: '',
       updated_at: '',
     }

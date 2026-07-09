@@ -39,6 +39,14 @@ const PILLAR_LABELS: Record<string, string> = {
   conexion: 'Conexión',
 }
 
+// Tinte de la tarjeta según el estado (borde + fondo) para visualizar de un vistazo
+const CARD_TINT: Record<RetoCardStatus, { border: string; bg: string; bar: string }> = {
+  idea: { border: 'var(--color-buttermilk)', bg: 'white', bar: 'var(--color-buttermilk)' },
+  grabado: { border: 'rgba(255,193,7,0.55)', bg: 'rgba(255,247,224,0.35)', bar: '#e6b800' },
+  editado: { border: 'rgba(44,90,120,0.45)', bg: 'rgba(44,90,120,0.04)', bar: '#2c5a78' },
+  publicado: { border: 'rgba(42,106,58,0.5)', bg: 'rgba(184,216,176,0.12)', bar: '#2a6a3a' },
+}
+
 function isPlanPlaceholder(item: ContentItem): boolean {
   const json = item.content_json as Record<string, unknown>
   return Boolean(json?.is_plan_placeholder)
@@ -60,14 +68,13 @@ export default function RetoContentCard({ item, userId, demoMode, currentXp, onC
   const toast = useToast()
   const [showSchedule, setShowSchedule] = useState(false)
   const [scheduleDate, setScheduleDate] = useState(item.scheduled_date || '')
-  const [showStatusMenu, setShowStatusMenu] = useState(false)
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
   const [expanded, setExpanded] = useState(false)
   const [showFullCopy, setShowFullCopy] = useState(false)
   const [regenerating, setRegenerating] = useState(false)
 
   const retoStatus = (item.reto_status as RetoCardStatus) || 'idea'
-  const statusMeta = STATUS_META[retoStatus]
+  const tint = CARD_TINT[retoStatus]
   const script = getScript(item)
   const recordingTip = getRecordingTip(item)
   const placeholder = isPlanPlaceholder(item)
@@ -82,7 +89,6 @@ export default function RetoContentCard({ item, userId, demoMode, currentXp, onC
   }
 
   async function handleStatusChange(newStatus: RetoCardStatus) {
-    setShowStatusMenu(false)
     if (newStatus === retoStatus) return
     try {
       await setRetoStatus(userId, item.id, newStatus, demoMode, currentXp)
@@ -168,73 +174,32 @@ export default function RetoContentCard({ item, userId, demoMode, currentXp, onC
   const captionText = item.caption_with_hashtags || ''
   const copyFirstParagraph = captionText.split('\n\n')[0] || captionText
 
-  // ── Vista reducida (colapsada) ───────────────────────────────────
-  function CollapsedHeader() {
-    return (
-      <button
-        type="button"
-        onClick={() => !placeholder && setExpanded(true)}
-        disabled={placeholder}
-        className="w-full text-left disabled:cursor-default"
-      >
-        <div className="flex items-center gap-1.5 flex-wrap mb-2">
-          <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full" style={{ background: 'var(--color-cherry)', color: 'white' }}>
-            {typeLabel}
-          </span>
-          {pilarLabel && (
-            <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: 'var(--color-buttermilk)', color: 'var(--color-cherry-dark)' }}>
-              {pilarLabel}
-            </span>
-          )}
-          {missionDay && (
-            <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: 'var(--color-warm-gray)', color: 'var(--color-cherry-dark)' }}>
-              Día {missionDay}
-            </span>
-          )}
-          {item.scheduled_date && (
-            <span className="text-[10px] px-2 py-0.5 rounded-full ml-auto inline-flex items-center gap-1" style={{ background: 'rgba(184,216,176,0.2)', color: '#2a6a3a' }}>
-              <CalendarIcon size={9} />{item.scheduled_date}
-            </span>
-          )}
-        </div>
-        <p className="font-semibold text-sm text-cherry-dark mb-2 leading-snug">{item.title}</p>
-        {!placeholder ? (
-          <span className="inline-flex items-center gap-1 text-xs font-semibold text-cherry" style={{ minHeight: 32 }}>
-            <BookOpen size={13} /> Ver guion
-          </span>
-        ) : (
-          <p className="text-xs text-cherry-dark opacity-60 italic">Plan pendiente · usa "Crear contenido" para desarrollarlo</p>
-        )}
-      </button>
-    )
-  }
-
-  // ── Selector de estado (4 estados) ───────────────────────────────
+  // ── Selector de estado: control segmentado visual (4 estados) ─────
   function StatusSelector() {
+    const statuses: RetoCardStatus[] = ['idea', 'grabado', 'editado', 'publicado']
     return (
-      <div className="relative">
-        <button
-          onClick={() => setShowStatusMenu(s => !s)}
-          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-semibold transition-all"
-          style={{ background: statusMeta.bg, color: statusMeta.color, minHeight: 32 }}
-        >
-          <span>{statusMeta.emoji}</span> {statusMeta.label}
-          <ChevronDown size={11} />
-        </button>
-        {showStatusMenu && (
-          <div className="absolute top-full left-0 mt-1 z-20 rounded-[var(--radius-sm)] py-1 min-w-[140px]" style={{ background: 'white', border: '1.5px solid var(--color-buttermilk)', boxShadow: '0 4px 12px rgba(89,20,39,0.12)' }}>
-            {(Object.keys(STATUS_META) as RetoCardStatus[]).map(s => (
-              <button
-                key={s}
-                onClick={() => handleStatusChange(s)}
-                className="w-full text-left px-3 py-2 text-xs hover:bg-[rgba(122,24,50,0.05)] flex items-center gap-2"
-              >
-                <span>{STATUS_META[s].emoji}</span> {STATUS_META[s].label}
-                {s === retoStatus && <Check size={12} className="ml-auto text-cherry" />}
-              </button>
-            ))}
-          </div>
-        )}
+      <div className="flex gap-1 rounded-[var(--radius-sm)] p-1 w-full" style={{ background: 'var(--color-warm-gray)' }}>
+        {statuses.map(s => {
+          const meta = STATUS_META[s]
+          const active = s === retoStatus
+          return (
+            <button
+              key={s}
+              onClick={() => handleStatusChange(s)}
+              className="flex-1 inline-flex flex-col items-center justify-center gap-0.5 px-1 py-1.5 rounded-[var(--radius-xs)] text-[10px] font-bold transition-all"
+              style={{
+                background: active ? 'white' : 'transparent',
+                color: active ? meta.color : 'var(--color-cherry-dark)',
+                opacity: active ? 1 : 0.55,
+                minHeight: 40,
+                boxShadow: active ? '0 1px 3px rgba(89,20,39,0.12)' : 'none',
+              }}
+            >
+              <span className="text-sm leading-none">{meta.emoji}</span>
+              <span className="leading-none">{meta.label}</span>
+            </button>
+          )
+        })}
       </div>
     )
   }
@@ -263,9 +228,11 @@ export default function RetoContentCard({ item, userId, demoMode, currentXp, onC
       layout
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-[var(--radius-md)] overflow-hidden"
-      style={{ background: 'white', border: '1.5px solid var(--color-buttermilk)' }}
+      className="rounded-[var(--radius-md)] overflow-hidden relative"
+      style={{ background: tint.bg, border: `1.5px solid ${tint.border}` }}
     >
+      {/* Barra de color superior según el estado */}
+      <div className="absolute top-0 left-0 right-0 h-1" style={{ background: tint.bar }} />
       {/* Cabecera siempre visible */}
       <div className="p-4">
         <div className="flex items-start gap-2 mb-2">
@@ -291,21 +258,28 @@ export default function RetoContentCard({ item, userId, demoMode, currentXp, onC
                 </span>
               )}
             </div>
-            {/* Título + estado */}
-            <div className="flex items-start justify-between gap-2">
-              <p className="font-semibold text-sm text-cherry-dark leading-snug flex-1">{item.title}</p>
-              <StatusSelector />
-            </div>
+            {/* Título */}
+            <p className="font-semibold text-sm text-cherry-dark leading-snug mb-3">{item.title}</p>
           </div>
         </div>
 
+        {/* Estado: control segmentado visible siempre */}
+        <StatusSelector />
+
         {!expanded ? (
           placeholder ? (
-            <p className="text-xs text-cherry-dark opacity-60 italic">
+            <p className="text-xs text-cherry-dark opacity-60 italic mt-3">
               Plan pendiente de generar. Usa "Crear contenido" para desarrollar esta misión.
             </p>
           ) : (
-            <CollapsedHeader />
+            <button
+              type="button"
+              onClick={() => setExpanded(true)}
+              className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-[var(--radius-sm)] text-xs font-semibold text-cherry transition-all mt-3"
+              style={{ background: 'var(--color-warm-gray)', minHeight: 40 }}
+            >
+              <BookOpen size={14} /> Ver guion
+            </button>
           )
         ) : (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 pt-1">
@@ -382,31 +356,8 @@ export default function RetoContentCard({ item, userId, demoMode, currentXp, onC
               </div>
             )}
 
-            {/* ── Acciones rápidas ── */}
+            {/* ── Acciones rápidas (el estado se cambia con el control segmentado de la cabecera) ── */}
             <div className="flex flex-wrap gap-2 pt-1">
-              {/* Transiciones de estado rápidas */}
-              {retoStatus !== 'grabado' && (
-                <button
-                  onClick={() => handleStatusChange('grabado')}
-                  className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-[var(--radius-sm)] text-xs font-semibold transition-all"
-                  style={{ background: 'rgba(255,241,181,0.5)', color: '#8a6d00', minHeight: 40 }}
-                >✅ Grabado</button>
-              )}
-              {retoStatus !== 'editado' && (
-                <button
-                  onClick={() => handleStatusChange('editado')}
-                  className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-[var(--radius-sm)] text-xs font-semibold transition-all"
-                  style={{ background: 'rgba(44,90,120,0.12)', color: '#2c5a78', minHeight: 40 }}
-                >🔵 Editado</button>
-              )}
-              {retoStatus !== 'publicado' && (
-                <button
-                  onClick={() => handleStatusChange('publicado')}
-                  className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-[var(--radius-sm)] text-xs font-semibold text-white transition-all"
-                  style={{ background: 'linear-gradient(135deg, #2a6a3a 0%, #3a8a4a 100%)', minHeight: 40 }}
-                >🚀 Publicar</button>
-              )}
-
               {showSchedule ? (
                 <div className="flex gap-1 items-center">
                   <input

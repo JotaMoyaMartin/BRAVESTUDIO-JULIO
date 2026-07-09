@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Lightbulb, Sparkles, Film, Layers, Grid } from 'lucide-react'
+import { Lightbulb, Sparkles, Film, Layers, Grid, Circle, CircleDot, CircleSlash, Rocket } from 'lucide-react'
 import { Profile, ContentItem, BrandProfile } from '@/types/database'
-import { Reto10kProgress, Reto10kConfig } from '@/types/reto10k'
+import { Reto10kProgress, Reto10kConfig, RetoCardStatus } from '@/types/reto10k'
 import { generateRetos } from '@/lib/ai/prompts/reto10k'
 import { buildBrandFullContext, hasBrandContext } from '@/lib/ai/brand-context'
 import { saveRetoMissionItem, addXp, deleteItem } from '@/lib/content-utils'
@@ -22,6 +22,7 @@ interface Props {
 }
 
 type Filter = 'todas' | 'reel' | 'story' | 'carrusel'
+type StatusFilter = 'all' | RetoCardStatus
 
 const FILTERS: { id: Filter; label: string; icon: typeof Film }[] = [
   { id: 'todas', label: 'Todas', icon: Grid },
@@ -30,10 +31,19 @@ const FILTERS: { id: Filter; label: string; icon: typeof Film }[] = [
   { id: 'carrusel', label: 'Carruseles', icon: Sparkles },
 ]
 
+const STATUS_FILTERS: { id: StatusFilter; label: string; emoji: string }[] = [
+  { id: 'all', label: 'Todos', emoji: '📋' },
+  { id: 'idea', label: 'Pendiente', emoji: '⚪' },
+  { id: 'grabado', label: 'Grabado', emoji: '🟡' },
+  { id: 'editado', label: 'Editado', emoji: '🔵' },
+  { id: 'publicado', label: 'Publicado', emoji: '🚀' },
+]
+
 export default function RetoIdeasView({ profile, progress, config, brand, contentItems, demoMode, onChanged }: Props) {
   const toast = useToast()
   const userId = profile?.id || 'demo'
   const [filter, setFilter] = useState<Filter>('todas')
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [generating, setGenerating] = useState(false)
 
   const retoItems = useMemo(
@@ -42,9 +52,11 @@ export default function RetoIdeasView({ profile, progress, config, brand, conten
   )
 
   const filtered = useMemo(() => {
-    if (filter === 'todas') return retoItems
-    return retoItems.filter(i => i.type === filter)
-  }, [retoItems, filter])
+    let result = retoItems
+    if (filter !== 'todas') result = result.filter(i => i.type === filter)
+    if (statusFilter !== 'all') result = result.filter(i => (i.reto_status || 'idea') === statusFilter)
+    return result
+  }, [retoItems, filter, statusFilter])
 
   async function handleGenerateMore() {
     setGenerating(true)
@@ -137,7 +149,7 @@ export default function RetoIdeasView({ profile, progress, config, brand, conten
         </button>
       </div>
 
-      {/* Filtros */}
+      {/* Filtros por tipo */}
       <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
         {FILTERS.map(({ id, label, icon: Icon }) => {
           const count = id === 'todas' ? retoItems.length : retoItems.filter(i => i.type === id).length
@@ -153,6 +165,28 @@ export default function RetoIdeasView({ profile, progress, config, brand, conten
               }}
             >
               <Icon size={13} /> {label} <span className="opacity-60">({count})</span>
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Filtros por estado */}
+      <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
+        {STATUS_FILTERS.map(({ id, label, emoji }) => {
+          const count = id === 'all' ? retoItems.length : retoItems.filter(i => (i.reto_status || 'idea') === id).length
+          const active = statusFilter === id
+          return (
+            <button
+              key={id}
+              onClick={() => setStatusFilter(id)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all"
+              style={{
+                background: active ? 'var(--color-cherry)' : 'white',
+                color: active ? 'white' : 'var(--color-cherry-dark)',
+                border: `1.5px solid ${active ? 'var(--color-cherry)' : 'var(--color-buttermilk)'}`,
+              }}
+            >
+              <span className="text-sm leading-none">{emoji}</span> {label} <span className="opacity-60">({count})</span>
             </button>
           )
         })}

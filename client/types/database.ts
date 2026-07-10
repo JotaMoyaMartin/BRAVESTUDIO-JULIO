@@ -437,6 +437,21 @@ export interface Database {
           status?: 'active' | 'hidden'
         }
       }
+      saved_transitions: {
+        Row: {
+          user_id: string
+          transition_id: string
+          saved_at: string
+        }
+        Insert: {
+          user_id: string
+          transition_id: string
+          saved_at?: string
+        }
+        Update: {
+          saved_at?: string
+        }
+      }
       user_activity_log: {
         Row: {
           id: string
@@ -557,6 +572,7 @@ export type PlanPriceHistory = Database['public']['Tables']['plan_price_history'
 export type ReelInspiration = Database['public']['Tables']['reel_inspirations']['Row']
 export type ReelTransition = Database['public']['Tables']['reel_transitions']['Row']
 export type SavedInspiration = Database['public']['Tables']['saved_inspirations']['Row']
+export type SavedTransition = Database['public']['Tables']['saved_transitions']['Row']
 export type UserActivityLog = Database['public']['Tables']['user_activity_log']['Row']
 export type PromoRedemption = Database['public']['Tables']['promo_redemptions']['Row']
 export type Reto10kProgressRow = Database['public']['Tables']['reto_10k_progress']['Row']

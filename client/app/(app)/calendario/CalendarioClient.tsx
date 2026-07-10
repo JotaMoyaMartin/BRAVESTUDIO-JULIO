@@ -255,7 +255,7 @@ export default function CalendarioClient({ userId, items: initialItems }: Props)
           className="rounded-[var(--radius-md)] p-5 flex items-start gap-4"
           style={{ background: 'var(--color-buttermilk)', border: '1.5px solid rgba(122,24,50,0.12)' }}
         >
-          <BraviMascot size={52} showMessage={false} className="flex-shrink-0" />
+          <BraviMascot size={72} showMessage={false} className="flex-shrink-0" />
           <div className="flex-1">
             <p className="text-sm font-semibold text-cherry-dark">
               Todavía no tienes contenido programado.

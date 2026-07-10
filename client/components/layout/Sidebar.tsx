@@ -133,7 +133,7 @@ export default function Sidebar({ profile }: { profile: Profile }) {
       {/* Bravi tip */}
       <div className="mx-3 mb-3 p-3 rounded-[var(--radius-md)] bg-buttermilk">
         <div className="flex items-center gap-2">
-          <BraviMascot size={36} showMessage={false} />
+          <BraviMascot size={56} showMessage={false} />
           <p className="text-xs text-cherry-dark" style={{ lineHeight: 1.5 }}>
             "No busques hacerlo perfecto. Busca hacerlo constante."
           </p>

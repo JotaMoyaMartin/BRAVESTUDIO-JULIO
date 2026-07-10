@@ -1,19 +1,19 @@
 import { createClient } from '@/lib/supabase/server'
 import BibliotecaClient from './BibliotecaClient'
 import PageTransition from '@/components/ui/PageTransition'
-import { BrandProfile, ContentItem, ReelInspiration } from '@/types/database'
+import { BrandProfile, ContentItem, ReelInspiration, ReelTransition } from '@/types/database'
 
 const IS_CONFIGURED = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').startsWith('http')
 
 export default async function BibliotecaPage() {
   if (!IS_CONFIGURED) {
-    return <PageTransition><BibliotecaClient userId="demo" items={[]} brandContext={null} savedInspirations={[]} /></PageTransition>
+    return <PageTransition><BibliotecaClient userId="demo" items={[]} brandContext={null} savedInspirations={[]} savedTransitions={[]} /></PageTransition>
   }
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const [{ data: brand }, { data: items }, { data: savedRows }] = await Promise.all([
+  const [{ data: brand }, { data: items }, { data: savedRows }, { data: savedTransitionRows }] = await Promise.all([
     supabase
       .from('brand_profiles')
       .select('optimized_summary, salon_name, main_services, service_to_promote')
@@ -29,11 +29,20 @@ export default async function BibliotecaPage() {
       .select('inspiration_id, reel_inspirations(*)')
       .eq('user_id', user!.id)
       .order('saved_at', { ascending: false }),
+    supabase
+      .from('saved_transitions')
+      .select('transition_id, reel_transitions(*)')
+      .eq('user_id', user!.id)
+      .order('saved_at', { ascending: false }),
   ])
 
   const savedInspirations: ReelInspiration[] = ((savedRows as unknown as { reel_inspirations: ReelInspiration }[]) || [])
     .map(r => r.reel_inspirations)
     .filter((x): x is ReelInspiration => !!x)
+
+  const savedTransitions: ReelTransition[] = ((savedTransitionRows as unknown as { reel_transitions: ReelTransition }[]) || [])
+    .map(r => r.reel_transitions)
+    .filter((x): x is ReelTransition => !!x)
 
   return (
     <PageTransition>
@@ -42,6 +51,7 @@ export default async function BibliotecaPage() {
         items={(items as ContentItem[]) || []}
         brandContext={brand as Pick<BrandProfile, 'optimized_summary' | 'salon_name' | 'main_services' | 'service_to_promote'> | null}
         savedInspirations={savedInspirations}
+        savedTransitions={savedTransitions}
       />
     </PageTransition>
   )

@@ -1,17 +1,17 @@
 'use client'
 import { useState, useMemo } from 'react'
-import { Search, Filter, Check, Copy, BookOpen, X, Film, LayoutGrid, MessageSquare, Clapperboard, Trash2, ArrowRight, Rocket } from 'lucide-react'
+import { Search, Filter, Check, Copy, BookOpen, X, Film, LayoutGrid, MessageSquare, Clapperboard, Trash2, ArrowRight, Rocket, Wand2 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { ContentItem, BrandProfile, ReelInspiration } from '@/types/database'
+import { ContentItem, BrandProfile, ReelInspiration, ReelTransition } from '@/types/database'
 import ContentCard from '@/components/content/ContentCard'
 import BraviMascot from '@/components/bravi/BraviMascot'
 import { formatMultipleForCopy, copyToClipboard } from '@/lib/content-utils'
 
 type PartialBrand = Pick<BrandProfile, 'optimized_summary' | 'salon_name' | 'main_services' | 'service_to_promote'> | null
 
-type FilterType = 'all' | 'reel' | 'carrusel' | 'story' | 'inspiraciones' | 'reto-10k'
+type FilterType = 'all' | 'reel' | 'carrusel' | 'story' | 'inspiraciones' | 'transiciones' | 'reto-10k'
 
 const FILTER_OPTIONS: { id: FilterType; label: string; icon: typeof Film | null }[] = [
   { id: 'all', label: 'Todos', icon: null },
@@ -20,9 +20,10 @@ const FILTER_OPTIONS: { id: FilterType; label: string; icon: typeof Film | null 
   { id: 'story', label: 'Stories', icon: MessageSquare },
   { id: 'reto-10k', label: 'Reto 10K', icon: Rocket },
   { id: 'inspiraciones', label: 'Inspiraciones', icon: Clapperboard },
+  { id: 'transiciones', label: 'Transiciones', icon: Wand2 },
 ]
 
-export default function BibliotecaClient({ userId, items, brandContext, savedInspirations }: { userId: string; items: ContentItem[]; brandContext: PartialBrand; savedInspirations: ReelInspiration[] }) {
+export default function BibliotecaClient({ userId, items, brandContext, savedInspirations, savedTransitions }: { userId: string; items: ContentItem[]; brandContext: PartialBrand; savedInspirations: ReelInspiration[]; savedTransitions: ReelTransition[] }) {
   const isDemoMode = userId === 'demo'
   const router = useRouter()
   const [filter, setFilter] = useState<FilterType>('all')
@@ -31,12 +32,13 @@ export default function BibliotecaClient({ userId, items, brandContext, savedIns
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [refreshKey, setRefreshKey] = useState(0)
   const [inspirations, setInspirations] = useState<ReelInspiration[]>(savedInspirations)
+  const [transitions, setTransitions] = useState<ReelTransition[]>(savedTransitions)
   const [confirmingClear, setConfirmingClear] = useState(false)
   const [clearing, setClearing] = useState(false)
 
   const filtered = useMemo(() => {
     let result = items
-    if (filter !== 'all' && filter !== 'inspiraciones' && filter !== 'reto-10k') {
+    if (filter !== 'all' && filter !== 'inspiraciones' && filter !== 'transiciones' && filter !== 'reto-10k') {
       result = result.filter(i => i.type === filter)
     }
     if (filter === 'reto-10k') {
@@ -85,6 +87,14 @@ export default function BibliotecaClient({ userId, items, brandContext, savedIns
     }
   }
 
+  async function removeSavedTransition(id: string) {
+    const supabase = createClient()
+    const { error } = await supabase.from('saved_transitions').delete().eq('user_id', userId).eq('transition_id', id)
+    if (!error) {
+      setTransitions(prev => prev.filter(i => i.id !== id))
+    }
+  }
+
   async function handleClearAll() {
     setClearing(true)
     try {
@@ -95,7 +105,11 @@ export default function BibliotecaClient({ userId, items, brandContext, savedIns
       // Borrar también las inspiraciones guardadas para dejar todo a cero
       const { error: iErr } = await supabase.from('saved_inspirations').delete().eq('user_id', userId)
       if (iErr) throw iErr
+      // Borrar también las transiciones guardadas
+      const { error: tErr } = await supabase.from('saved_transitions').delete().eq('user_id', userId)
+      if (tErr) throw tErr
       setInspirations([])
+      setTransitions([])
       setConfirmingClear(false)
       setRefreshKey(k => k + 1)
       router.refresh()
@@ -106,7 +120,7 @@ export default function BibliotecaClient({ userId, items, brandContext, savedIns
     }
   }
 
-  if (items.length === 0 && inspirations.length === 0) {
+  if (items.length === 0 && inspirations.length === 0 && transitions.length === 0) {
     return (
       <div className="space-y-6">
         <div>
@@ -141,11 +155,14 @@ export default function BibliotecaClient({ userId, items, brandContext, savedIns
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold" style={{ color: '#1a1a1a' }}>Biblioteca</h1>
-          <p className="mt-1 text-sm" style={{ color: '#591427', opacity: 0.8 }}>
-            Todo tu contenido guardado en un solo lugar
-          </p>
+        <div className="flex items-center gap-3">
+          <BraviMascot size={56} showMessage={false} />
+          <div>
+            <h1 className="text-2xl font-bold" style={{ color: '#1a1a1a' }}>Biblioteca</h1>
+            <p className="mt-1 text-sm" style={{ color: '#591427', opacity: 0.8 }}>
+              Todo tu contenido guardado en un solo lugar
+            </p>
+          </div>
         </div>
         {!multiSelect && items.length > 0 && (
           <div className="flex items-center gap-2">
@@ -238,9 +255,11 @@ export default function BibliotecaClient({ userId, items, brandContext, savedIns
               ? items.length
               : opt.id === 'inspiraciones'
                 ? inspirations.length
-                : opt.id === 'reto-10k'
-                  ? items.filter(i => i.tag === 'reto-10k').length
-                  : items.filter(i => i.type === opt.id).length
+                : opt.id === 'transiciones'
+                  ? transitions.length
+                  : opt.id === 'reto-10k'
+                    ? items.filter(i => i.tag === 'reto-10k').length
+                    : items.filter(i => i.type === opt.id).length
             return (
               <button
                 key={opt.id}
@@ -316,6 +335,53 @@ export default function BibliotecaClient({ userId, items, brandContext, savedIns
                     </button>
                     <button
                       onClick={() => removeSavedInspiration(insp.id)}
+                      className="px-2.5 py-2 rounded-[var(--radius-sm)] text-xs font-semibold transition-all"
+                      style={{ background: 'var(--color-warm-gray)', color: 'var(--color-cherry)' }}
+                      title="Quitar"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      ) : filter === 'transiciones' ? (
+        transitions.length === 0 ? (
+          <div className="rounded-3xl p-12 text-center" style={{ background: 'white', border: '1.5px solid rgba(255,241,181,0.8)' }}>
+            <Wand2 size={40} style={{ color: '#591427', opacity: 0.3, margin: '0 auto' }} />
+            <p className="font-semibold mt-4" style={{ color: '#1a1a1a' }}>Aún no tienes transiciones guardadas</p>
+            <p className="text-sm mt-1" style={{ color: '#591427', opacity: 0.7 }}>
+              Explora la galería y guarda las transiciones que quieras usar.
+            </p>
+            <Link href="/transiciones-reels" className="btn-primary text-sm py-2.5 px-5 inline-flex mt-5">
+              <Wand2 size={16} /> Explorar transiciones
+            </Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-5 md:gap-6">
+            {transitions.map(tr => (
+              <div
+                key={tr.id}
+                className="rounded-[var(--radius-md)] overflow-hidden bg-white flex flex-col"
+                style={{ border: '1.5px solid var(--color-buttermilk)', boxShadow: 'var(--shadow-soft)' }}
+              >
+                <div className="relative aspect-[9/16] overflow-hidden bg-cream">
+                  <img src={tr.cover_image} alt={tr.title} className="w-full h-full object-cover" />
+                </div>
+                <div className="p-3 md:p-4 flex flex-col gap-2 flex-1">
+                  <p className="font-semibold text-sm text-cherry-dark" style={{ lineHeight: 1.35 }}>{tr.title}</p>
+                  <p className="text-xs text-ink opacity-70" style={{ lineHeight: 1.4 }}>{tr.short_description}</p>
+                  <div className="flex flex-wrap gap-1.5 mt-auto pt-2">
+                    <button
+                      onClick={() => router.push('/transiciones-reels')}
+                      className="flex-1 min-w-0 px-2.5 py-2 rounded-[var(--radius-sm)] text-xs font-semibold btn-secondary flex items-center justify-center gap-1"
+                    >
+                      Ver <ArrowRight size={12} />
+                    </button>
+                    <button
+                      onClick={() => removeSavedTransition(tr.id)}
                       className="px-2.5 py-2 rounded-[var(--radius-sm)] text-xs font-semibold transition-all"
                       style={{ background: 'var(--color-warm-gray)', color: 'var(--color-cherry)' }}
                       title="Quitar"

@@ -1,15 +1,45 @@
 'use client'
 import { useState } from 'react'
+import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Wand2, ExternalLink, ArrowRight } from 'lucide-react'
+import { X, Wand2, ExternalLink, ArrowRight, Star } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
+import { useToast } from '@/components/ui/Toast'
 import { ReelTransition } from '@/types/database'
+import BraviMascot from '@/components/bravi/BraviMascot'
 
 interface Props {
+  userId: string
   transitions: ReelTransition[]
+  savedIds: string[]
 }
 
-export default function TransicionesReelsClient({ transitions }: Props) {
+export default function TransicionesReelsClient({ userId, transitions, savedIds: initialSavedIds }: Props) {
+  const toast = useToast()
+  const [savedIds, setSavedIds] = useState<string[]>(initialSavedIds)
   const [selected, setSelected] = useState<ReelTransition | null>(null)
+  const [toggling, setToggling] = useState<string | null>(null)
+
+  async function toggleSaved(id: string) {
+    if (toggling) return
+    setToggling(id)
+    const supabase = createClient()
+    const isSaved = savedIds.includes(id)
+    if (isSaved) {
+      const { error } = await supabase.from('saved_transitions').delete().eq('user_id', userId).eq('transition_id', id)
+      if (!error) {
+        setSavedIds(prev => prev.filter(x => x !== id))
+        toast.show('Eliminada de tu biblioteca', 'info')
+      }
+    } else {
+      const { error } = await supabase.from('saved_transitions').insert({ user_id: userId, transition_id: id })
+      if (!error) {
+        setSavedIds(prev => [...prev, id])
+        toast.show('Guardada en tu biblioteca')
+      }
+    }
+    setToggling(null)
+  }
 
   if (transitions.length === 0) {
     return (
@@ -28,44 +58,66 @@ export default function TransicionesReelsClient({ transitions }: Props) {
       <SectionHeader />
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
-        {transitions.map((item) => (
-          <div
-            key={item.id}
-            className="rounded-[var(--radius-md)] overflow-hidden bg-white flex flex-col"
-            style={{ border: '1.5px solid var(--color-buttermilk)', boxShadow: 'var(--shadow-soft)' }}
-          >
-            <div className="relative aspect-[9/16] overflow-hidden bg-cream">
-              <img
-                src={item.cover_image}
-                alt={item.title}
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <div className="p-3 md:p-4 flex flex-col gap-2 flex-1">
-              <p className="font-semibold text-sm text-cherry-dark" style={{ lineHeight: 1.35 }}>{item.title}</p>
-              <p className="text-xs text-ink opacity-70" style={{ lineHeight: 1.4 }}>{item.short_description}</p>
-              <div className="flex flex-wrap gap-1.5 mt-auto pt-2">
-                <button
-                  onClick={() => setSelected(item)}
-                  className="flex-1 min-w-0 px-2.5 py-2 rounded-[var(--radius-sm)] text-xs font-semibold btn-secondary"
-                >
-                  Ver idea
-                </button>
-                {item.instagram_url && (
-                  <a
-                    href={item.instagram_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-2.5 py-2 rounded-[var(--radius-sm)] text-xs font-semibold btn-ghost"
-                    title="Ver en Instagram"
+        {transitions.map((item) => {
+          const isSaved = savedIds.includes(item.id)
+          return (
+            <div
+              key={item.id}
+              className="idea-card rounded-[var(--radius-md)] overflow-hidden bg-white flex flex-col"
+              style={{ border: '1.5px solid var(--color-buttermilk)', boxShadow: 'var(--shadow-soft)' }}
+              onClick={() => setSelected(item)}
+            >
+              <div className="relative aspect-[9/16] overflow-hidden bg-cream">
+                <img
+                  src={item.cover_image}
+                  alt={item.title}
+                  className="w-full h-full object-cover"
+                />
+                {isSaved && (
+                  <span
+                    className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-xs font-bold flex items-center gap-1"
+                    style={{ background: 'var(--color-pastel-green)', color: 'var(--color-cherry-dark)' }}
                   >
-                    <ExternalLink size={14} />
-                  </a>
+                    <Star size={10} fill="currentColor" /> Guardada
+                  </span>
                 )}
               </div>
+              <div className="p-3 md:p-4 flex flex-col gap-2 flex-1">
+                <p className="font-semibold text-sm text-cherry-dark" style={{ lineHeight: 1.35 }}>{item.title}</p>
+                <p className="text-xs text-ink opacity-70" style={{ lineHeight: 1.4 }}>{item.short_description}</p>
+                <div className="flex flex-wrap gap-1.5 mt-auto pt-2">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); toggleSaved(item.id) }}
+                    disabled={toggling === item.id}
+                    className="flex-1 min-w-0 px-2.5 py-2 rounded-[var(--radius-sm)] text-xs font-semibold transition-all flex items-center justify-center gap-1.5"
+                    style={{
+                      background: isSaved ? 'rgba(255, 200, 0, 0.18)' : 'var(--color-buttermilk)',
+                      color: 'var(--color-cherry-dark)',
+                      opacity: toggling === item.id ? 0.5 : 1,
+                      border: '1.5px solid rgba(122,24,50,0.15)',
+                    }}
+                    title={isSaved ? 'Quitar de favoritos' : 'Guardar en favoritos'}
+                  >
+                    {isSaved ? <Star size={13} fill="currentColor" style={{ color: '#e8a800' }} /> : <Star size={13} />}
+                    {isSaved ? 'Guardada' : 'Guardar'}
+                  </button>
+                  {item.instagram_url && (
+                    <a
+                      href={item.instagram_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="px-2.5 py-2 rounded-[var(--radius-sm)] text-xs font-semibold btn-ghost"
+                      title="Ver en Instagram"
+                    >
+                      <ExternalLink size={14} />
+                    </a>
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       {/* Panel lateral / modal */}
@@ -90,6 +142,8 @@ export default function TransicionesReelsClient({ transitions }: Props) {
             >
               <PanelContent
                 item={selected}
+                isSaved={savedIds.includes(selected.id)}
+                onToggleSaved={() => toggleSaved(selected.id)}
                 onClose={() => setSelected(null)}
               />
             </motion.div>
@@ -102,19 +156,24 @@ export default function TransicionesReelsClient({ transitions }: Props) {
 
 function SectionHeader() {
   return (
-    <div>
-      <h1 className="text-2xl md:text-3xl font-bold text-cherry-dark">
-        Transiciones para tus Reels
-      </h1>
-      <p className="mt-2 text-sm text-ink opacity-75">
-        Ideas de transiciones para crear contenido que enganche.
-      </p>
+    <div className="flex items-center gap-4">
+      <BraviMascot size={72} message="¡Estas transiciones harán que tus reels enganchen! Guarda las que quieras probar ⭐" showMessage />
+      <div className="flex-1">
+        <h1 className="text-2xl md:text-3xl font-bold text-cherry-dark">
+          Transiciones para tus Reels
+        </h1>
+        <p className="mt-2 text-sm text-ink opacity-75">
+          Pulsa cualquier tarjeta para ver la idea completa. Guarda tus favoritas con la estrella.
+        </p>
+      </div>
     </div>
   )
 }
 
-function PanelContent({ item, onClose }: {
+function PanelContent({ item, isSaved, onToggleSaved, onClose }: {
   item: ReelTransition
+  isSaved: boolean
+  onToggleSaved: () => void
   onClose: () => void
 }) {
   return (
@@ -147,16 +206,26 @@ function PanelContent({ item, onClose }: {
         )}
 
         <div className="flex flex-col gap-2 pt-2">
+          <button
+            onClick={onToggleSaved}
+            className="btn-secondary w-full justify-center py-3"
+          >
+            {isSaved ? <Star size={16} fill="currentColor" style={{ color: '#e8a800' }} /> : <Star size={16} />}
+            {isSaved ? 'Guardada en favoritos' : 'Guardar en favoritos'}
+          </button>
           {item.instagram_url && (
             <a
               href={item.instagram_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="btn-primary w-full justify-center py-3"
+              className="btn-ghost w-full justify-center py-3"
             >
               <ExternalLink size={16} /> Ver Reel en Instagram
             </a>
           )}
+          <Link href="/biblioteca" className="text-xs text-center text-cherry opacity-60 hover:opacity-100 mt-1 flex items-center justify-center gap-1">
+            Ver mi biblioteca <ArrowRight size={12} />
+          </Link>
         </div>
       </div>
     </div>

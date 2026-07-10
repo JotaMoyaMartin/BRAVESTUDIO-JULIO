@@ -3,10 +3,11 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Sparkles, Bookmark, ExternalLink, ArrowRight, Check } from 'lucide-react'
+import { X, Sparkles, Star, ExternalLink, ArrowRight, Check } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useToast } from '@/components/ui/Toast'
 import { ReelInspiration } from '@/types/database'
+import BraviMascot from '@/components/bravi/BraviMascot'
 
 interface Props {
   userId: string
@@ -45,7 +46,7 @@ export default function InspiracionReelsClient({ userId, inspirations, savedIds:
   function crearMiVersion(insp: ReelInspiration) {
     const params = new URLSearchParams({
       type: 'reel',
-      tema: insp.title,
+      tem: insp.title,
       contexto: insp.short_description,
     })
     router.push(`/crear-contenido?${params.toString()}`)
@@ -73,8 +74,9 @@ export default function InspiracionReelsClient({ userId, inspirations, savedIds:
           return (
             <div
               key={insp.id}
-              className="rounded-[var(--radius-md)] overflow-hidden bg-white flex flex-col"
+              className="idea-card rounded-[var(--radius-md)] overflow-hidden bg-white flex flex-col"
               style={{ border: '1.5px solid var(--color-buttermilk)', boxShadow: 'var(--shadow-soft)' }}
+              onClick={() => setSelected(insp)}
             >
               <div className="relative aspect-[9/16] overflow-hidden bg-cream">
                 <img
@@ -87,7 +89,7 @@ export default function InspiracionReelsClient({ userId, inspirations, savedIds:
                     className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-xs font-bold flex items-center gap-1"
                     style={{ background: 'var(--color-pastel-green)', color: 'var(--color-cherry-dark)' }}
                   >
-                    <Check size={10} /> Guardada
+                    <Star size={10} fill="currentColor" /> Guardada
                   </span>
                 )}
               </div>
@@ -96,29 +98,26 @@ export default function InspiracionReelsClient({ userId, inspirations, savedIds:
                 <p className="text-xs text-ink opacity-70" style={{ lineHeight: 1.4 }}>{insp.short_description}</p>
                 <div className="flex flex-wrap gap-1.5 mt-auto pt-2">
                   <button
-                    onClick={() => setSelected(insp)}
-                    className="flex-1 min-w-0 px-2.5 py-2 rounded-[var(--radius-sm)] text-xs font-semibold btn-secondary"
-                  >
-                    ✨ Ver idea
-                  </button>
-                  <button
-                    onClick={() => toggleSaved(insp.id)}
+                    onClick={(e) => { e.stopPropagation(); toggleSaved(insp.id) }}
                     disabled={toggling === insp.id}
-                    className="px-2.5 py-2 rounded-[var(--radius-sm)] text-xs font-semibold transition-all"
+                    className="flex-1 min-w-0 px-2.5 py-2 rounded-[var(--radius-sm)] text-xs font-semibold transition-all flex items-center justify-center gap-1.5"
                     style={{
-                      background: isSaved ? 'var(--color-pastel-green)' : 'var(--color-warm-gray)',
+                      background: isSaved ? 'rgba(255, 200, 0, 0.18)' : 'var(--color-buttermilk)',
                       color: 'var(--color-cherry-dark)',
                       opacity: toggling === insp.id ? 0.5 : 1,
+                      border: '1.5px solid rgba(122,24,50,0.15)',
                     }}
-                    title={isSaved ? 'Quitar de guardadas' : 'Guardar'}
+                    title={isSaved ? 'Quitar de favoritos' : 'Guardar en favoritos'}
                   >
-                    {isSaved ? <Check size={14} /> : <Bookmark size={14} />}
+                    {isSaved ? <Star size={13} fill="currentColor" style={{ color: '#e8a800' }} /> : <Star size={13} />}
+                    {isSaved ? 'Guardada' : 'Guardar'}
                   </button>
                   {insp.instagram_url && (
                     <a
                       href={insp.instagram_url}
                       target="_blank"
                       rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
                       className="px-2.5 py-2 rounded-[var(--radius-sm)] text-xs font-semibold btn-ghost"
                       title="Ver en Instagram"
                     >
@@ -169,13 +168,16 @@ export default function InspiracionReelsClient({ userId, inspirations, savedIds:
 
 function SectionHeader() {
   return (
-    <div>
-      <h1 className="text-2xl md:text-3xl font-bold text-cherry-dark">
-        Encuentra inspiración para tu próximo Reel ✨
-      </h1>
-      <p className="mt-2 text-sm text-ink opacity-75">
-        Ideas reales para crear contenido que conecta con tus clientas.
-      </p>
+    <div className="flex items-center gap-4">
+      <BraviMascot size={72} message="¡Encuentra tu próxima idea! Guarda las que te gusten con la estrella ⭐" showMessage />
+      <div className="flex-1">
+        <h1 className="text-2xl md:text-3xl font-bold text-cherry-dark">
+          Encuentra inspiración para tu próximo Reel ✨
+        </h1>
+        <p className="mt-2 text-sm text-ink opacity-75">
+          Pulsa cualquier tarjeta para ver la idea completa. Guarda tus favoritas con la estrella.
+        </p>
+      </div>
     </div>
   )
 }
@@ -227,8 +229,8 @@ function PanelContent({ insp, isSaved, onToggleSaved, onCrear, onClose }: {
             onClick={onToggleSaved}
             className="btn-secondary w-full justify-center py-3"
           >
-            {isSaved ? <Check size={16} /> : <Bookmark size={16} />}
-            {isSaved ? 'Guardada en Biblioteca' : 'Guardar en Biblioteca'}
+            {isSaved ? <Star size={16} fill="currentColor" style={{ color: '#e8a800' }} /> : <Star size={16} />}
+            {isSaved ? 'Guardada en favoritos' : 'Guardar en favoritos'}
           </button>
           {insp.instagram_url && (
             <a

@@ -3,6 +3,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { Profile } from '@/types/database'
 import BraviMascot from '@/components/bravi/BraviMascot'
+import BraviGuide from '@/components/bravi/BraviGuide'
 import SupportButton from '@/components/SupportButton'
 import { Loader2, Check, Edit3, X, AlertTriangle } from 'lucide-react'
 
@@ -223,7 +224,7 @@ export default function AccountClient({ profile, subscription, demoMode }: Props
     <div className="max-w-2xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
-        <BraviMascot size={72} showMessage={false} />
+        <BraviGuide section="account" size={72} />
         <div>
           <h1 className="text-2xl font-bold" style={{ color: '#591427' }}>Mi cuenta</h1>
           <p className="text-sm" style={{ color: '#7A1832', opacity: 0.7 }}>

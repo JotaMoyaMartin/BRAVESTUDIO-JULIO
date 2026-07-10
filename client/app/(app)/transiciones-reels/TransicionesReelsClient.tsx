@@ -6,7 +6,7 @@ import { X, Wand2, ExternalLink, ArrowRight, Star } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useToast } from '@/components/ui/Toast'
 import { ReelTransition } from '@/types/database'
-import BraviMascot from '@/components/bravi/BraviMascot'
+import BraviGuide from '@/components/bravi/BraviGuide'
 
 interface Props {
   userId: string
@@ -157,7 +157,7 @@ export default function TransicionesReelsClient({ userId, transitions, savedIds:
 function SectionHeader() {
   return (
     <div className="flex items-center gap-4">
-      <BraviMascot size={72} message="¡Estas transiciones harán que tus reels enganchen! Guarda las que quieras probar ⭐" showMessage />
+      <BraviGuide section="transiciones-reels" size={72} />
       <div className="flex-1">
         <h1 className="text-2xl md:text-3xl font-bold text-cherry-dark">
           Transiciones para tus Reels

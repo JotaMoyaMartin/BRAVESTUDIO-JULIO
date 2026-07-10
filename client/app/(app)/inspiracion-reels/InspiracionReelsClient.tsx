@@ -7,7 +7,7 @@ import { X, Sparkles, Star, ExternalLink, ArrowRight, Check } from 'lucide-react
 import { createClient } from '@/lib/supabase/client'
 import { useToast } from '@/components/ui/Toast'
 import { ReelInspiration } from '@/types/database'
-import BraviMascot from '@/components/bravi/BraviMascot'
+import BraviGuide from '@/components/bravi/BraviGuide'
 
 interface Props {
   userId: string
@@ -169,7 +169,7 @@ export default function InspiracionReelsClient({ userId, inspirations, savedIds:
 function SectionHeader() {
   return (
     <div className="flex items-center gap-4">
-      <BraviMascot size={72} message="¡Encuentra tu próxima idea! Guarda las que te gusten con la estrella ⭐" showMessage />
+      <BraviGuide section="inspiracion-reels" size={72} />
       <div className="flex-1">
         <h1 className="text-2xl md:text-3xl font-bold text-cherry-dark">
           Encuentra inspiración para tu próximo Reel ✨

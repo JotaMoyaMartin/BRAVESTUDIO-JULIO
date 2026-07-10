@@ -7,7 +7,7 @@ import { ContentItem } from '@/types/database'
 import { createClient } from '@/lib/supabase/client'
 import { demoGetPlan, demoUpdatePlan, demoDeletePlan } from '@/lib/demo-store'
 import CalendarView, { MONTHS } from '@/components/content/CalendarView'
-import BraviMascot from '@/components/bravi/BraviMascot'
+import BraviGuide from '@/components/bravi/BraviGuide'
 import { useToast } from '@/components/ui/Toast'
 import {
   copyToClipboard,
@@ -255,7 +255,7 @@ export default function CalendarioClient({ userId, items: initialItems }: Props)
           className="rounded-[var(--radius-md)] p-5 flex items-start gap-4"
           style={{ background: 'var(--color-buttermilk)', border: '1.5px solid rgba(122,24,50,0.12)' }}
         >
-          <BraviMascot size={72} showMessage={false} className="flex-shrink-0" />
+          <BraviGuide section="calendario" size={72} className="flex-shrink-0" />
           <div className="flex-1">
             <p className="text-sm font-semibold text-cherry-dark">
               Todavía no tienes contenido programado.

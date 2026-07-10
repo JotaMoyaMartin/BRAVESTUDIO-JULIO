@@ -7,6 +7,7 @@ import { generateCarousel, CarouselOutput } from '@/lib/ai/prompts/carousels'
 import { useSessionState, clearSectionState } from '@/lib/session-store'
 import { buildBrandFullContext, hasBrandContext, BrandFullContextInput } from '@/lib/ai/brand-context'
 import UsarMiMarcaToggle from '@/components/ui/UsarMiMarcaToggle'
+import BraviGuide from '@/components/bravi/BraviGuide'
 import { Film, LayoutGrid, Copy, BookOpen, Calendar, RefreshCw, Trash2, Check, ArrowRight } from 'lucide-react'
 
 const SERVICES = ['Balayage', 'Rubios', 'Canas', 'Alisados', 'Tratamientos', 'Corte', 'Color', 'General']
@@ -143,9 +144,12 @@ export default function CrearContenidoClient({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold" style={{ color: '#1a1a1a' }}>Crear Contenido</h1>
-        <p className="mt-1 text-sm" style={{ color: '#591427', opacity: 0.8 }}>Reels y carruseles listos para publicar</p>
+      <div className="flex items-center gap-4">
+        <BraviGuide section="crear-contenido" size={64} />
+        <div>
+          <h1 className="text-2xl font-bold" style={{ color: '#1a1a1a' }}>Crear Contenido</h1>
+          <p className="mt-1 text-sm" style={{ color: '#591427', opacity: 0.8 }}>Reels y carruseles listos para publicar</p>
+        </div>
       </div>
 
       {step !== 'result' && (

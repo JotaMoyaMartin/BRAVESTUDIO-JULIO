@@ -7,6 +7,7 @@ import { generateReel, ReelOutput } from '@/lib/ai/prompts/reels'
 import { generateCarousel, CarouselOutput } from '@/lib/ai/prompts/carousels'
 import { buildBrandFullContext, hasBrandContext, BrandFullContextInput } from '@/lib/ai/brand-context'
 import UsarMiMarcaToggle from '@/components/ui/UsarMiMarcaToggle'
+import BraviGuide from '@/components/bravi/BraviGuide'
 import { ContentItem } from '@/types/database'
 import { useSessionState, clearSectionState } from '@/lib/session-store'
 import {
@@ -32,11 +33,14 @@ export default function PlanificarClient({ userId, brand, initialItems, initialT
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold" style={{ color: '#1a1a1a' }}>Planificación</h1>
+        <div className="flex items-center gap-4">
+          <BraviGuide section="planificar" size={64} />
+          <div>
+            <h1 className="text-2xl font-bold" style={{ color: '#1a1a1a' }}>Planificación</h1>
           <p className="mt-1 text-sm" style={{ color: '#591427', opacity: 0.8 }}>
             Genera, organiza y guarda todo tu contenido en un solo lugar
           </p>
+          </div>
         </div>
         <Link href="/biblioteca" className="btn-ghost text-sm py-2 px-4">
           <BookOpen size={15} /> Ir a Biblioteca →

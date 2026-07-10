@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { ContentItem, BrandProfile, ReelInspiration, ReelTransition } from '@/types/database'
 import ContentCard from '@/components/content/ContentCard'
 import BraviMascot from '@/components/bravi/BraviMascot'
+import BraviGuide from '@/components/bravi/BraviGuide'
 import { formatMultipleForCopy, copyToClipboard } from '@/lib/content-utils'
 
 type PartialBrand = Pick<BrandProfile, 'optimized_summary' | 'salon_name' | 'main_services' | 'service_to_promote'> | null
@@ -156,7 +157,7 @@ export default function BibliotecaClient({ userId, items, brandContext, savedIns
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3">
-          <BraviMascot size={56} showMessage={false} />
+          <BraviGuide section="biblioteca" size={56} />
           <div>
             <h1 className="text-2xl font-bold" style={{ color: '#1a1a1a' }}>Biblioteca</h1>
             <p className="mt-1 text-sm" style={{ color: '#591427', opacity: 0.8 }}>

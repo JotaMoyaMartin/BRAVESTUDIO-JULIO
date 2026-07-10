@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import Sidebar from '@/components/layout/Sidebar'
+import SectionTracker from '@/components/layout/SectionTracker'
 import { Profile } from '@/types/database'
 import { hasActiveAccess, ACCESS_REDIRECT } from '@/lib/access'
 import { ToastProvider } from '@/components/ui/Toast'
@@ -76,6 +77,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <Sidebar profile={typedProfile} />
       <main className="flex-1 overflow-y-auto">
         <div className="max-w-4xl mx-auto px-5 sm:px-6 pt-20 pb-8 md:pt-8 md:py-8">
+          <SectionTracker />
           <ToastProvider>{children}</ToastProvider>
         </div>
       </main>

@@ -7,6 +7,7 @@ import { Profile, PromoCode } from '@/types/database'
 import { UserStats, DashboardMetrics } from './page'
 import AdminTabs, { TabKey } from '@/components/admin/AdminTabs'
 import DashboardTab from '@/components/admin/DashboardTab'
+import AnalyticsTab from '@/components/admin/AnalyticsTab'
 import UsersTab from '@/components/admin/UsersTab'
 import CodesTab from '@/components/admin/CodesTab'
 import PlansTab from '@/components/admin/PlansTab'
@@ -87,6 +88,7 @@ export default function AdminClient({
         {/* Tab content */}
         <div>
           {activeTab === 'dashboard' && <DashboardTab metrics={metrics} users={users} />}
+          {activeTab === 'analitica' && <AnalyticsTab users={users} onUserUpdate={handleUserUpdate} />}
           {activeTab === 'usuarios' && (
             <UsersTab
               users={users}

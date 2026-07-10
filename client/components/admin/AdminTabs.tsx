@@ -2,7 +2,7 @@
 
 import { ReactNode } from 'react'
 
-export type TabKey = 'dashboard' | 'usuarios' | 'codigos' | 'planes' | 'suscripciones' | 'soporte' | 'inspiracion' | 'transiciones' | 'reto10k'
+export type TabKey = 'dashboard' | 'analitica' | 'usuarios' | 'codigos' | 'planes' | 'suscripciones' | 'soporte' | 'inspiracion' | 'transiciones' | 'reto10k'
 
 interface AdminTabsProps {
   active: TabKey
@@ -12,6 +12,7 @@ interface AdminTabsProps {
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'dashboard', label: 'Dashboard' },
+  { key: 'analitica', label: 'Analítica' },
   { key: 'usuarios', label: 'Usuarios' },
   { key: 'codigos', label: 'Códigos' },
   { key: 'planes', label: 'Planes' },

@@ -1,6 +1,5 @@
 'use client'
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Sparkles, Star, ExternalLink, ArrowRight, Check } from 'lucide-react'
@@ -16,7 +15,6 @@ interface Props {
 }
 
 export default function InspiracionReelsClient({ userId, inspirations, savedIds: initialSavedIds }: Props) {
-  const router = useRouter()
   const toast = useToast()
   const [savedIds, setSavedIds] = useState<string[]>(initialSavedIds)
   const [selected, setSelected] = useState<ReelInspiration | null>(null)
@@ -41,15 +39,6 @@ export default function InspiracionReelsClient({ userId, inspirations, savedIds:
       }
     }
     setToggling(null)
-  }
-
-  function crearMiVersion(insp: ReelInspiration) {
-    const params = new URLSearchParams({
-      type: 'reel',
-      tem: insp.title,
-      contexto: insp.short_description,
-    })
-    router.push(`/crear-contenido?${params.toString()}`)
   }
 
   if (inspirations.length === 0) {
@@ -171,7 +160,6 @@ export default function InspiracionReelsClient({ userId, inspirations, savedIds:
                 insp={selected}
                 isSaved={savedIds.includes(selected.id)}
                 onToggleSaved={() => toggleSaved(selected.id)}
-                onCrear={() => crearMiVersion(selected)}
                 onClose={() => setSelected(null)}
               />
             </motion.div>
@@ -198,11 +186,10 @@ function SectionHeader() {
   )
 }
 
-function PanelContent({ insp, isSaved, onToggleSaved, onCrear, onClose }: {
+function PanelContent({ insp, isSaved, onToggleSaved, onClose }: {
   insp: ReelInspiration
   isSaved: boolean
   onToggleSaved: () => void
-  onCrear: () => void
   onClose: () => void
 }) {
   return (
@@ -235,12 +222,6 @@ function PanelContent({ insp, isSaved, onToggleSaved, onCrear, onClose }: {
         )}
 
         <div className="flex flex-col gap-2 pt-2">
-          <button
-            onClick={onCrear}
-            className="btn-primary w-full justify-center py-3"
-          >
-            <Sparkles size={16} /> Crear mi versión
-          </button>
           <button
             onClick={onToggleSaved}
             className="btn-secondary w-full justify-center py-3"

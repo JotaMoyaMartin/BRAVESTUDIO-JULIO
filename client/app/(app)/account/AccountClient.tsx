@@ -113,7 +113,7 @@ export default function AccountClient({ profile, subscription, demoMode }: Props
           className="rounded-3xl p-8 text-center"
           style={{ background: 'white', border: '1.5px solid rgba(122,24,50,0.1)' }}
         >
-          <BraviMascot size={80} className="mb-4 mx-auto" />
+          <BraviGuide section="account" size={80} className="mb-4 mx-auto" />
           <p className="text-sm" style={{ color: '#591427', opacity: 0.7 }}>
             Modo demo. La gestión de suscripción no está disponible en este entorno.
           </p>

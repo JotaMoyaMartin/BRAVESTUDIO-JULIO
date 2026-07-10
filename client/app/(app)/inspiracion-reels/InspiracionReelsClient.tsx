@@ -68,6 +68,22 @@ export default function InspiracionReelsClient({ userId, inspirations, savedIds:
     <div className="space-y-6">
       <SectionHeader />
 
+      {/* Consejo de audio */}
+      <div
+        className="rounded-[var(--radius-md)] p-4 flex items-start gap-3"
+        style={{ background: 'rgba(193,219,232,0.25)', border: '1.5px solid rgba(74,122,138,0.2)' }}
+      >
+        <div className="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-base" style={{ background: 'var(--color-pastel-blue)' }}>
+          🎵
+        </div>
+        <div className="flex-1">
+          <p className="text-sm font-bold text-cherry-dark mb-0.5">Consejo Bravi</p>
+          <p className="text-sm text-cherry-dark opacity-80 leading-relaxed">
+            El audio es tan importante como la imagen. <strong>Compagina los golpes de música con los cortes de tu reel</strong> para que todo fluya al ritmo correcto.
+          </p>
+        </div>
+      </div>
+
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
         {inspirations.map(insp => {
           const isSaved = savedIds.includes(insp.id)

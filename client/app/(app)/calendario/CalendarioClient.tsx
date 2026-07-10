@@ -195,11 +195,14 @@ export default function CalendarioClient({ userId, items: initialItems }: Props)
     <div className="space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold text-ink">Calendario</h1>
-          <p className="text-sm text-cherry-dark opacity-70">
-            {sorted.length} {sorted.length === 1 ? 'contenido programado' : 'contenidos programados'}
-          </p>
+        <div className="flex items-center gap-4">
+          <BraviGuide section="calendario" size={56} />
+          <div>
+            <h1 className="text-2xl font-bold text-ink">Calendario</h1>
+            <p className="text-sm text-cherry-dark opacity-70">
+              {sorted.length} {sorted.length === 1 ? 'contenido programado' : 'contenidos programados'}
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center gap-2">

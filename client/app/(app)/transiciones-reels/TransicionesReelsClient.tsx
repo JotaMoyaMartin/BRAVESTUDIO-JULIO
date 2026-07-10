@@ -57,6 +57,22 @@ export default function TransicionesReelsClient({ userId, transitions, savedIds:
     <div className="space-y-6">
       <SectionHeader />
 
+      {/* Consejo de audio */}
+      <div
+        className="rounded-[var(--radius-md)] p-4 flex items-start gap-3"
+        style={{ background: 'rgba(193,219,232,0.25)', border: '1.5px solid rgba(74,122,138,0.2)' }}
+      >
+        <div className="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-base" style={{ background: 'var(--color-pastel-blue)' }}>
+          🎵
+        </div>
+        <div className="flex-1">
+          <p className="text-sm font-bold text-cherry-dark mb-0.5">Consejo Bravi</p>
+          <p className="text-sm text-cherry-dark opacity-80 leading-relaxed">
+            Presta atención a los audios de cada reel. Muchas veces es clave <strong>compaginar los golpes de música con los cortes de la transición</strong> para que el cambio se sienta natural y fluido.
+          </p>
+        </div>
+      </div>
+
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
         {transitions.map((item) => {
           const isSaved = savedIds.includes(item.id)

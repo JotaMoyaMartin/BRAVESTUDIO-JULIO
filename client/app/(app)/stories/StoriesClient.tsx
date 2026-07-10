@@ -250,9 +250,12 @@ ${stickerLabel ? `Sticker: ${stickerLabel}` : ''}
 Visual: ${s.visualIdea}`
     }).join('\n\n---\n\n')
     return (
-      <div className="space-y-5">
+      <div className="space-y-7">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="font-bold text-lg" style={{ color: '#1a1a1a' }}>Tus Stories están listas ✨</h2>
+          <div className="flex items-center gap-4">
+            <BraviGuide section="stories" size={56} />
+            <h2 className="font-bold text-lg" style={{ color: '#1a1a1a' }}>Tus Stories están listas ✨</h2>
+          </div>
           <div className="flex gap-2">
             {/* View toggle */}
             <button
@@ -272,8 +275,8 @@ Visual: ${s.visualIdea}`
         {/* Result view */}
         {viewMode === 'mockup' ? (
           <div
-            className="flex flex-col sm:flex-row gap-5 sm:gap-6 justify-center items-center sm:items-start py-4 rounded-2xl"
-            style={{ background: 'linear-gradient(180deg, #F5F0E8 0%, #FFFDF5 100%)', padding: '20px 12px' }}
+            className="flex flex-col sm:flex-row gap-6 sm:gap-8 justify-center items-center sm:items-start py-6 rounded-[var(--radius-md)]"
+            style={{ background: 'linear-gradient(180deg, #F5F0E8 0%, #FFFDF5 100%)', padding: '24px 16px' }}
           >
             {result.stories.map(story => (
               <StoryMockup key={story.number} story={story} index={story.number}>
@@ -299,22 +302,27 @@ Visual: ${s.visualIdea}`
           <div className="space-y-4">
             {/* Visual formatted text for entire sequence */}
             <div
-              className="rounded-2xl p-6 whitespace-pre-wrap text-sm leading-relaxed"
+              className="rounded-[var(--radius-md)] p-6 whitespace-pre-wrap text-sm leading-relaxed"
               style={{ background: '#FFFDF5', border: '1.5px solid rgba(255,241,181,0.8)', color: '#1a1a1a' }}
             >
               {buildVisualText()}
             </div>
-            {/* Per-story actions */}
+            {/* Per-story cards with clean layout */}
             {result.stories.map(story => {
               const roleColors = ['#7A1832', '#2a5a6a', '#7a6000']
+              const roleEmojis = ['🔴', '🔵', '🟡']
               const color = roleColors[(story.number - 1) % roleColors.length]
+              const emoji = roleEmojis[(story.number - 1) % roleEmojis.length]
               return (
-                <div key={story.number} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: 'white', border: '1.5px solid rgba(255,241,181,0.8)' }}>
-                  <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0" style={{ background: color }}>
-                    {story.number}
+                <div key={story.number} className="p-4 rounded-[var(--radius-md)]" style={{ background: 'white', border: '1.5px solid rgba(255,241,181,0.8)' }}>
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0" style={{ background: color }}>
+                      {story.number}
+                    </div>
+                    <span className="font-bold text-sm" style={{ color }}>{emoji} {story.role}</span>
                   </div>
-                  <span className="font-semibold text-sm flex-1 truncate" style={{ color }}>{story.role}</span>
-                  <div className="flex gap-2 flex-shrink-0">
+                  <p className="text-sm leading-relaxed mb-3" style={{ color: '#1a1a1a' }}>{story.text}</p>
+                  <div className="flex gap-2">
                     <button
                       onClick={() => handleCopy(story.text, `story-text-${story.number}`)}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
@@ -338,37 +346,43 @@ Visual: ${s.visualIdea}`
         )}
 
         {/* Methodology banner */}
-        <div className="p-4 rounded-2xl" style={{ background: '#FFF1B5' }}>
-          <p className="text-xs font-bold uppercase tracking-wider mb-1" style={{ color: '#7A1832', opacity: 0.6 }}>METODOLOGÍA BRÄVE</p>
-          <p className="text-xs" style={{ color: '#591427' }}>3 Stories: Problema → Autoridad → Resultado + Acción. Esta secuencia lleva a la clienta desde la identificación hasta la reserva.</p>
+        <div className="p-5 rounded-[var(--radius-md)]" style={{ background: '#FFF1B5' }}>
+          <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: '#7A1832', opacity: 0.6 }}>METODOLOGÍA BRÄVE</p>
+          <p className="text-sm leading-relaxed" style={{ color: '#591427' }}>
+            <span className="font-bold">🔴 Problema</span> → <span className="font-bold">🔵 Autoridad</span> → <span className="font-bold">🟡 Resultado + Acción</span>
+            <br />
+            Esta secuencia lleva a la clienta desde la identificación hasta la reserva.
+          </p>
         </div>
 
-        {/* General buttons */}
+        {/* General buttons — Guardar y Programar destacados */}
+        <div className="flex flex-col sm:flex-row flex-wrap gap-3">
+          <button
+            onClick={handleSaveLibrary}
+            disabled={saving || savedLib}
+            className="btn-primary text-sm flex-1 justify-center py-3.5"
+          >
+            <BookOpen size={16} /> {saving ? 'Guardando...' : savedLib ? '✓ Guardado en biblioteca' : 'Guardar en biblioteca'}
+          </button>
+          <button
+            onClick={() => setShowSchedule(!showSchedule)}
+            className="btn-secondary text-sm flex-1 justify-center py-3.5"
+          >
+            <Calendar size={16} /> Programar
+          </button>
+        </div>
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => handleCopy(fullSequence, 'full')}
-            className="btn-secondary text-sm"
+            className="btn-ghost text-sm"
           >
             {copied === 'full' ? <Check size={15} /> : <Copy size={15} />}
             {copied === 'full' ? '¡Copiado!' : 'Copiar secuencia completa'}
           </button>
           <button
-            onClick={handleSaveLibrary}
-            disabled={saving || savedLib}
-            className="btn-primary text-sm"
-          >
-            <BookOpen size={15} /> {saving ? 'Guardando...' : savedLib ? '✓ Guardado' : 'Guardar en biblioteca'}
-          </button>
-          <button
-            onClick={() => setShowSchedule(!showSchedule)}
-            className="btn-secondary text-sm"
-          >
-            <Calendar size={15} /> Programar
-          </button>
-          <button
             onClick={regenerateAll}
             disabled={generating}
-            className="btn-secondary text-sm"
+            className="btn-ghost text-sm"
           >
             <RefreshCw size={15} className={generating ? 'animate-spin' : ''} /> Regenerar todo
           </button>
@@ -382,18 +396,18 @@ Visual: ${s.visualIdea}`
 
         {/* Schedule inline */}
         {showSchedule && (
-          <div className="flex gap-2 p-4 rounded-2xl" style={{ background: '#FFF8E7', border: '1.5px solid rgba(255,241,181,0.8)' }}>
+          <div className="flex flex-col sm:flex-row gap-3 p-5 rounded-[var(--radius-md)]" style={{ background: '#FFF8E7', border: '1.5px solid rgba(255,241,181,0.8)' }}>
             <input
               type="date"
               value={scheduleDate}
               onChange={e => setScheduleDate(e.target.value)}
-              className="flex-1 px-3 py-2 rounded-xl text-sm outline-none"
+              className="flex-1 px-3 py-2.5 rounded-xl text-sm outline-none"
               style={{ border: '1.5px solid rgba(122,24,50,0.2)', background: 'white' }}
             />
             <button
               onClick={handleSchedule}
               disabled={!scheduleDate || saving}
-              className="px-4 py-2 rounded-xl text-sm font-semibold text-white"
+              className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all"
               style={{ background: '#7A1832', opacity: !scheduleDate || saving ? 0.5 : 1 }}
             >
               {saving ? 'Programando...' : 'Confirmar'}

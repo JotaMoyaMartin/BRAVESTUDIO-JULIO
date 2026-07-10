@@ -412,11 +412,14 @@ export default function MiMarcaClient({ userId, brand }: { userId: string; brand
   // ── Hoja de Ruta arriba para sentir progreso; estrategia debajo ──
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold title-shine">Mi Marca BRÄVE</h1>
-        <p className="mt-1 text-sm text-cherry-dark opacity-80">
-          Tu documento estratégico completo. La IA analiza tu salón y construye un plan profesional.
-        </p>
+      <div className="flex items-center gap-4">
+        <BraviGuide section="mi-marca" size={64} />
+        <div>
+          <h1 className="text-2xl font-bold title-shine">Mi Marca BRÄVE</h1>
+          <p className="mt-1 text-sm text-cherry-dark opacity-80">
+            Tu documento estratégico completo. La IA analiza tu salón y construye un plan profesional.
+          </p>
+        </div>
       </div>
 
       {/* ── Hoja de Ruta BRÄVE (parte alta, lo más atractivo) ── */}

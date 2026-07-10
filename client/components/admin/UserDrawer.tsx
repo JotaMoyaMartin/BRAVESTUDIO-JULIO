@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, CheckCircle, XCircle, Clock, ShieldAlert, History, Mail, Crown } from 'lucide-react'
+import { X, CheckCircle, XCircle, Clock, ShieldAlert, History, Mail, Crown, Activity } from 'lucide-react'
 import { Profile, UserActivityLog, PromoRedemption } from '@/types/database'
 import { hasActiveAccess } from '@/lib/access'
 import { SOURCE_LABELS, SIGNUP_LABELS, EVENT_LABELS } from '@/lib/admin-labels'
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
 import PremiumManagement from './PremiumManagement'
+import UserUsageDetail from './UserUsageDetail'
 
 interface UserDrawerProps {
   user: Profile | null
@@ -196,24 +197,15 @@ export default function UserDrawer({ user, onClose, onUpdate, stats }: UserDrawe
                 </div>
               </section>
 
-              {/* Uso */}
-              {stats && (
-                <section>
-                  <h4 className="text-xs uppercase tracking-wide text-cherry-dark opacity-60 mb-2">Uso</h4>
-                  <div className="rounded-[var(--radius-md)] bg-white p-4 border border-soft space-y-2">
-                    <Row label="Contenidos" value={String(stats.contentCount)} />
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-cherry-dark opacity-70">Marca</span>
-                      {stats.brandComplete ? (
-                        <Badge tone="green">Completa</Badge>
-                      ) : (
-                        <Badge tone="buttermilk">Pendiente</Badge>
-                      )}
-                    </div>
-                    <Row label="Últ. actividad" value={fmtDate(stats.lastActivity)} />
-                  </div>
-                </section>
-              )}
+              {/* Uso detallado de la app */}
+              <section>
+                <h4 className="text-xs uppercase tracking-wide text-cherry-dark opacity-60 mb-2 flex items-center gap-1.5">
+                  <Activity size={12} /> Uso de la app
+                </h4>
+                <div className="rounded-[var(--radius-md)] bg-white p-4 border border-soft">
+                  <UserUsageDetail userId={user.id} />
+                </div>
+              </section>
 
               {/* Gestión Premium — solo para usuarios premium */}
               {user.role === 'premium' && (

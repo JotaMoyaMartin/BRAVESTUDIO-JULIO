@@ -53,6 +53,7 @@ IMPORTANTE: No construyas la historia alrededor del servicio. Constrúyela alred
 Las ideas visuales deben ser NATURALES: selfie, espejo, resultado en movimiento, mano tocando cabello, etc.
 
 STICKERS/ENCUESTAS: NO pongas stickers en todas las Stories. Solo en algunas, preferiblemente al inicio (Story 1 para generar interacción) o al final (Story 3 para invitar a responder). La Story 2 (autoridad) normalmente NO lleva sticker. Si solo hay 1 Story, puede llevar sticker. De forma aleatoria natural, algunas secuencias pueden no tener ningún sticker.
+TIPOS DE STICKER PERMITIDOS: Solo "poll" (encuesta con respuestas prefijadas en "options", siempre 2 opciones). NUNCA uses "question" (caja de preguntas) — las cajas de preguntas requieren que la clienta escriba y participan menos. Las encuestas con respuestas prefijadas son mucho más fáciles de contestar y generan más interacción. Opcionalmente puedes usar "emoji-slider", "mention", "hashtag" o "location" si encajan naturalmente, pero prioriza "poll".
 
 PRINCIPIOS BRÄVE: No vendemos servicios, vendemos confianza. No vendemos color, vendemos seguridad. El proceso vende. El resultado atrae. El proceso convence.
 
@@ -65,7 +66,7 @@ Devuelve EXACTAMENTE este JSON:
       "text": "Texto de la story",
       "stickerSuggestion": "Sticker recomendado (encuesta, pregunta, emoji, etc.)",
       "sticker": {
-        "type": "poll" | "question" | "emoji-slider" | "mention" | "hashtag" | "location",
+        "type": "poll" | "emoji-slider" | "mention" | "hashtag" | "location",
         "label": "Texto del sticker",
         "options": ["opción1", "opción2"],
         "emoji": "😍"
@@ -75,7 +76,7 @@ Devuelve EXACTAMENTE este JSON:
   ]
 }
 
-El campo "sticker" es OPCIONAL — no lo incluyas en todas las Stories. "stickerSuggestion" puede ser un string vacío "" si esa Story no lleva interacción. "options" solo para tipo "poll". "emoji" solo para tipo "emoji-slider". Para "question" solo "label". Para "mention"/"hashtag"/"location" solo "label" con el prefijo correspondiente (@/#/📍).`
+El campo "sticker" es OPCIONAL — no lo incluyas en todas las Stories. "stickerSuggestion" puede ser un string vacío "" si esa Story no lleva interacción. Prioriza siempre tipo "poll" con 2 opciones en "options". "emoji" solo para tipo "emoji-slider". Para "mention"/"hashtag"/"location" solo "label" con el prefijo correspondiente (@/#/📍). NUNCA uses tipo "question".`
 }
 
 export function getMockStories(input: StoryInput): StoriesOutput {
@@ -110,8 +111,9 @@ export function getMockStories(input: StoryInput): StoriesOutput {
         ? `El resultado habla solo. Más brillo, más movimiento, más natural. Si llevas tiempo pensando en hacerte algo así, escríbeme. Cuéntame qué quieres y vemos qué opción encaja contigo.`
         : `Más luz. Más naturalidad. Menos mantenimiento. ✨ Si quieres algo así, escríbeme y te cuento cómo podemos conseguirlo.`,
       sticker: {
-        type: 'question',
-        label: '¿Qué quieres mejorar de tu cabello?',
+        type: 'poll',
+        label: '¿Te gustaría un resultado así?',
+        options: ['Sí, escríbeme', 'Quiero más info'],
       },
       stickerSuggestion: '',
       visualIdea: 'Foto o vídeo del resultado final. Movimiento del cabello. Clienta feliz.',

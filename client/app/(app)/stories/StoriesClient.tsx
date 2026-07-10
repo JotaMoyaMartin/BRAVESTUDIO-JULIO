@@ -104,6 +104,7 @@ function StoriesCreator({ userId, brandFull }: { userId: string; brandFull: Bran
   const [generating, setGenerating] = useState(false)
   const [result, setResult] = useSessionState<StoriesOutput | null>(`u:${userId}:stories:result`, null)
   const [copied, setCopied] = useState<string | null>(null)
+  const [regenerating, setRegenerating] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
   const [savedLib, setSavedLib] = useSessionState<boolean>(`u:${userId}:stories:savedLib`, false)
   const [viewMode, setViewMode] = useSessionState<'mockup' | 'text'>(`u:${userId}:stories:viewMode`, 'mockup')
@@ -210,11 +211,17 @@ function StoriesCreator({ userId, brandFull }: { userId: string; brandFull: Bran
   }
 
   async function regenerateSingle(number: number) {
-    if (!result) return
-    const fresh = await generateStories({ service: service || freeText, count, mode, detail: detail || undefined, brandContext: brandContext || undefined })
-    const newStory = fresh.stories[number - 1]
-    if (!newStory) return
-    setResult(prev => prev ? { stories: prev.stories.map(s => s.number === number ? newStory : s) } : prev)
+    if (!result || regenerating !== null) return
+    setRegenerating(number)
+    try {
+      const fresh = await generateStories({ service: service || freeText, count, mode, detail: detail || undefined, brandContext: brandContext || undefined })
+      const newStory = fresh.stories[number - 1]
+      if (newStory) {
+        setResult(prev => prev ? { stories: prev.stories.map(s => s.number === number ? newStory : s) } : prev)
+      }
+    } finally {
+      setRegenerating(null)
+    }
   }
 
   function buildVisualText(): string {
@@ -290,10 +297,11 @@ Visual: ${s.visualIdea}`
                 </button>
                 <button
                   onClick={() => regenerateSingle(story.number)}
+                  disabled={regenerating === story.number}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-                  style={{ background: '#F5F0E8', color: '#591427' }}
+                  style={{ background: regenerating === story.number ? '#E8D8C8' : '#F5F0E8', color: '#591427', opacity: regenerating === story.number ? 0.7 : 1 }}
                 >
-                  <RefreshCw size={12} /> Regenerar
+                  <RefreshCw size={12} className={regenerating === story.number ? 'animate-spin' : ''} /> {regenerating === story.number ? 'Regenerando...' : 'Regenerar'}
                 </button>
               </StoryMockup>
             ))}
@@ -358,10 +366,11 @@ Visual: ${s.visualIdea}`
                     </button>
                     <button
                       onClick={() => regenerateSingle(story.number)}
+                      disabled={regenerating === story.number}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-                      style={{ background: '#F5F0E8', color: '#591427' }}
+                      style={{ background: regenerating === story.number ? '#E8D8C8' : '#F5F0E8', color: '#591427', opacity: regenerating === story.number ? 0.7 : 1 }}
                     >
-                      <RefreshCw size={12} /> Regenerar
+                      <RefreshCw size={12} className={regenerating === story.number ? 'animate-spin' : ''} /> {regenerating === story.number ? 'Regenerando...' : 'Regenerar'}
                     </button>
                   </div>
                 </div>

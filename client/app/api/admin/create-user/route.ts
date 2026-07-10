@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     email?: string
     password?: string
     full_name?: string
-    role?: 'user' | 'admin' | 'superadmin'
+    role?: 'user' | 'admin' | 'superadmin' | 'premium'
     grantAccess?: boolean
     city?: string
     salon_name?: string
@@ -38,11 +38,11 @@ export async function POST(request: NextRequest) {
   if (typeof password !== 'string' || password.length < 6) {
     return NextResponse.json({ error: 'La contraseña debe tener al menos 6 caracteres' }, { status: 400 })
   }
-  if (role && role !== 'user' && role !== 'admin' && role !== 'superadmin') {
+  if (role && role !== 'user' && role !== 'admin' && role !== 'superadmin' && role !== 'premium') {
     return NextResponse.json({ error: 'Rol no válido' }, { status: 400 })
   }
-  // Solo superadmin puede crear admins
-  if (role && role !== 'user' && myProfile.role !== 'superadmin') {
+  // Solo superadmin puede crear admins. Premium lo puede crear cualquier admin.
+  if (role && role !== 'user' && role !== 'premium' && myProfile.role !== 'superadmin') {
     return NextResponse.json({ error: 'Solo un superadmin puede asignar roles de admin' }, { status: 403 })
   }
 
@@ -71,7 +71,9 @@ export async function POST(request: NextRequest) {
   if (professional_role !== undefined) update.professional_role = professional_role
   if (role) update.role = role
   update.signup_method = 'admin_create'
-  if (grantAccess) {
+  // Premium siempre tiene acceso activo
+  const effectiveGrantAccess = grantAccess || role === 'premium'
+  if (effectiveGrantAccess) {
     update.access_status = 'active'
     update.access_source = 'manual'
     update.is_active = true
@@ -103,7 +105,7 @@ export async function POST(request: NextRequest) {
       p_data: { signup_method: 'admin_create' },
       p_actor: user.id,
     })
-    if (grantAccess) {
+    if (effectiveGrantAccess) {
       await adminClient.rpc('log_user_activity', {
         p_user_id: newUserId,
         p_event: 'access_activated',

@@ -53,6 +53,13 @@ function LoginForm() {
         return
       }
 
+      // Premium va directo a inicio — sin onboarding ni access gate
+      if (profile && profile.role === 'premium') {
+        router.push('/inicio')
+        router.refresh()
+        return
+      }
+
       // Si no ha completado onboarding → ir directo a onboarding (evita doble redirect)
       if (profile && (!profile.full_name || !profile.salon_name)) {
         router.push('/onboarding')

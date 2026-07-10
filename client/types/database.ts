@@ -10,7 +10,7 @@ export interface Database {
           full_name: string | null
           salon_name: string | null
           is_active: boolean
-          role: 'user' | 'admin' | 'superadmin'
+          role: 'user' | 'admin' | 'superadmin' | 'premium'
           access_status: 'active' | 'inactive'
           access_source: 'manual' | 'stripe' | 'skool' | 'promo' | 'none'
           stripe_customer_id: string | null

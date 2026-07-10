@@ -6,7 +6,7 @@ import { Profile } from '@/types/database'
 import {
   Home, Sparkles, Star,
   Film, LayoutGrid, BookOpen, Calendar, LogOut, Menu, X,
-  Clapperboard, Wand2, Settings, Shield, Rocket
+  Clapperboard, Wand2, Settings, Shield, Rocket, Crown
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -34,11 +34,21 @@ const navItems: NavItem[] = [
   { href: '/calendario', label: 'Calendario', icon: Calendar },
 ]
 
+const premiumNavItems: NavItem[] = [
+  { href: '/inicio', label: 'Inicio', icon: Home },
+  { href: '/stories', label: 'Stories BRÄVE', icon: LayoutGrid },
+  { href: '/inspiracion-reels', label: 'Inspiración Reels', icon: Clapperboard },
+  { href: '/transiciones-reels', label: 'Transiciones Reels', icon: Wand2 },
+  { href: '/biblioteca', label: 'Biblioteca', icon: BookOpen },
+]
+
 export default function Sidebar({ profile }: { profile: Profile }) {
   const pathname = usePathname()
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const isAdmin = profile.role === 'admin' || profile.role === 'superadmin'
+  const isPremium = profile.role === 'premium'
+  const activeNavItems = isPremium ? premiumNavItems : navItems
   const adminItems = isAdmin
     ? [{ href: '/admin', label: 'Panel Admin', icon: Settings }]
     : []
@@ -78,7 +88,13 @@ export default function Sidebar({ profile }: { profile: Profile }) {
             <span className="text-xs font-semibold text-cherry-dark">Modo Admin activo</span>
           </div>
         )}
-        {navItems.map(({ href, label, icon: Icon, badge, highlight }) => {
+        {isPremium && (
+          <div className="mb-2 mx-1 px-3 py-2 rounded-[var(--radius-sm)] flex items-center gap-2" style={{ background: 'rgba(212,168,48,0.12)' }}>
+            <Crown size={14} style={{ color: '#b8860b' }} />
+            <span className="text-xs font-semibold text-cherry-dark">Modo Premium</span>
+          </div>
+        )}
+        {activeNavItems.map(({ href, label, icon: Icon, badge, highlight }) => {
           const active = pathname === href || pathname.startsWith(href + '/')
           const isReto = href === '/reto-10k'
           return (
@@ -239,10 +255,16 @@ export default function Sidebar({ profile }: { profile: Profile }) {
             <span className="text-xs font-semibold text-cherry-dark">Modo Admin activo</span>
           </div>
         )}
+        {isPremium && (
+          <div className="mx-4 mt-4 px-3 py-2 rounded-[var(--radius-sm)] flex items-center gap-2" style={{ background: 'rgba(212,168,48,0.12)' }}>
+            <Crown size={14} style={{ color: '#b8860b' }} />
+            <span className="text-xs font-semibold text-cherry-dark">Modo Premium</span>
+          </div>
+        )}
 
         {/* Nav */}
         <nav className="px-4 py-3 space-y-1">
-          {navItems.map(({ href, label, icon: Icon, badge, highlight }) => {
+          {activeNavItems.map(({ href, label, icon: Icon, badge, highlight }) => {
             const active = pathname === href || pathname.startsWith(href + '/')
             const isReto = href === '/reto-10k'
             return (

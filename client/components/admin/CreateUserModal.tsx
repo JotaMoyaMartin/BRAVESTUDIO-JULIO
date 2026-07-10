@@ -20,7 +20,7 @@ export default function CreateUserModal({ open, onClose, onCreated, isSuperAdmin
   const [city, setCity] = useState('')
   const [salon_name, setSalonName] = useState('')
   const [professional_role, setProfessionalRole] = useState('')
-  const [role, setRole] = useState<'user' | 'admin' | 'superadmin'>('user')
+  const [role, setRole] = useState<'user' | 'admin' | 'superadmin' | 'premium'>('user')
   const [grantAccess, setGrantAccess] = useState(true)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -59,7 +59,7 @@ export default function CreateUserModal({ open, onClose, onCreated, isSuperAdmin
           password,
           full_name: full_name.trim() || undefined,
           role: role !== 'user' ? role : undefined,
-          grantAccess,
+          grantAccess: role === 'premium' ? true : grantAccess,
           city: city.trim() || undefined,
           salon_name: salon_name.trim() || undefined,
           professional_role: professional_role.trim() || undefined,
@@ -212,9 +212,10 @@ Cambie la contraseña cuando entres.`
                   value={role}
                   onChange={e => setRole(e.target.value as typeof role)}
                   className={inputClass}
-                  disabled={!isSuperAdmin && role !== 'user'}
+                  disabled={!isSuperAdmin && role !== 'user' && role !== 'premium'}
                 >
                   <option value="user">Usuario</option>
+                  <option value="premium">Premium</option>
                   {isSuperAdmin && <option value="admin">Admin</option>}
                   {isSuperAdmin && <option value="superadmin">Super Admin</option>}
                 </select>
@@ -223,16 +224,22 @@ Cambie la contraseña cuando entres.`
 
               <div>
                 <label className={labelClass}>Acceso a la app</label>
-                <label className="flex items-center gap-2 mt-1.5 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={grantAccess}
-                    onChange={e => setGrantAccess(e.target.checked)}
-                    className="w-4 h-4 accent-[#7A1832]"
-                  />
-                  <span className="text-sm text-cherry-dark">Conceder acceso activo (manual)</span>
-                </label>
-                <p className="text-[11px] text-cherry-dark opacity-50 mt-1">Si no, la usuaria podrá entrar pero no tendrá acceso hasta que lo actives.</p>
+                {role === 'premium' ? (
+                  <div className="mt-1.5 px-3 py-2 rounded-[var(--radius-sm)] bg-buttermilk text-sm text-cherry-dark">
+                    Acceso automático activo (Premium)
+                  </div>
+                ) : (
+                  <label className="flex items-center gap-2 mt-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={grantAccess}
+                      onChange={e => setGrantAccess(e.target.checked)}
+                      className="w-4 h-4 accent-[#7A1832]"
+                    />
+                    <span className="text-sm text-cherry-dark">Conceder acceso activo (manual)</span>
+                  </label>
+                )}
+                {role !== 'premium' && <p className="text-[11px] text-cherry-dark opacity-50 mt-1">Si no, la usuaria podrá entrar pero no tendrá acceso hasta que lo actives.</p>}
               </div>
             </div>
 

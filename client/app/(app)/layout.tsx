@@ -64,11 +64,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         ...DEMO_PROFILE,
         id: user!.id,
         email: user!.email || DEMO_PROFILE.email,
-        role: (role === 'admin' || role === 'superadmin') ? role : 'user',
+        role: (role === 'admin' || role === 'superadmin' || role === 'premium') ? role : 'user',
       }
     }
-    const isAdmin = typedProfile.role === 'admin' || typedProfile.role === 'superadmin'
-    if (!hasActiveAccess(typedProfile) && !isAdmin) redirect(ACCESS_REDIRECT)
+    const isPrivileged = typedProfile.role === 'admin' || typedProfile.role === 'superadmin' || typedProfile.role === 'premium'
+    if (!hasActiveAccess(typedProfile) && !isPrivileged) redirect(ACCESS_REDIRECT)
   }
 
   return (

@@ -21,6 +21,7 @@ import { useSessionState, clearSectionState } from '@/lib/session-store'
 import { BrandFullContextInput, hasBrandContext, buildBrandFullContext } from '@/lib/ai/brand-context'
 import UsarMiMarcaToggle from '@/components/ui/UsarMiMarcaToggle'
 import BraviGuide from '@/components/bravi/BraviGuide'
+import BraviTip from '@/components/bravi/BraviTip'
 import {
   LayoutGrid,
   MessageSquare,
@@ -466,11 +467,8 @@ Visual: ${s.visualIdea}`
   // Creation form
   return (
     <div className="space-y-5">
-      <div className="p-4 rounded-2xl flex items-start gap-3" style={{ background: '#FFF1B5' }}>
-        <BraviGuide section="stories" size={40} />
-        <p className="text-sm" style={{ color: '#591427' }}>
-          <strong>Bravi dice:</strong> Las Stories BRÄVE se construyen alrededor de tu clienta, no del servicio. Así es como se generan reservas.
-        </p>
+      <div className="p-4 rounded-2xl" style={{ background: '#FFF1B5' }}>
+        <BraviTip message="Las Stories BRÄVE se construyen alrededor de tu clienta, no del servicio. Así es como se generan reservas." size={48} />
       </div>
 
       {/* Mode */}
@@ -684,11 +682,8 @@ function QuestionBox({ userId, brandFull }: { userId: string; brandFull: BrandFu
 
   return (
     <div className="space-y-5">
-      <div className="p-4 rounded-2xl flex items-start gap-3" style={{ background: '#FFF1B5' }}>
-        <BraviGuide section="stories" size={40} />
-        <p className="text-sm" style={{ color: '#591427' }}>
-          <strong>Bravi dice:</strong> Genera preguntas naturales para auto-preguntarte en Stories. Luego responde en vídeo o texto. ¡Es la forma más fácil de crear contenido de valor!
-        </p>
+      <div className="p-4 rounded-2xl" style={{ background: '#FFF1B5' }}>
+        <BraviTip message="Genera preguntas naturales para auto-preguntarte en Stories. Luego responde en vídeo o texto. ¡Es la forma más fácil de crear contenido de valor!" size={48} />
       </div>
 
       <div className="rounded-2xl p-5" style={{ background: 'white', border: '1.5px solid rgba(255,241,181,0.8)' }}>

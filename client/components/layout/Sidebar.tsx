@@ -36,10 +36,13 @@ const navItems: NavItem[] = [
 
 const premiumNavItems: NavItem[] = [
   { href: '/inicio', label: 'Inicio', icon: Home },
+  { href: '/mi-estrategia', label: 'Mi Estrategia', icon: Star },
+  { href: '/plan-contenidos', label: 'Plan de Contenidos', icon: Sparkles },
+  { href: '/crear-contenido', label: 'Crear Contenido', icon: Film },
+  { href: '/biblioteca', label: 'Biblioteca', icon: BookOpen },
   { href: '/stories', label: 'Stories BRÄVE', icon: LayoutGrid },
   { href: '/inspiracion-reels', label: 'Inspiración Reels', icon: Clapperboard },
   { href: '/transiciones-reels', label: 'Transiciones Reels', icon: Wand2 },
-  { href: '/biblioteca', label: 'Biblioteca', icon: BookOpen },
 ]
 
 export default function Sidebar({ profile }: { profile: Profile }) {

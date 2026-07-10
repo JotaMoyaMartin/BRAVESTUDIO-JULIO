@@ -20,11 +20,14 @@ const DEMO_PROFILE: Profile = {
 
 export default async function InicioPage() {
   if (!IS_CONFIGURED) {
-    return <InicioClient profile={DEMO_PROFILE} brand={null} contentItems={[]} inspirations={[]} transitions={[]} retoProgress={null} retoItemsCount={0} />
+    return <InicioClient profile={DEMO_PROFILE} brand={null} contentItems={[]} inspirations={[]} transitions={[]} retoProgress={null} retoItemsCount={0} isPremium={false} />
   }
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   const { data: profile } = await supabase.from('profiles').select('*').eq('id', user!.id).single()
+
+  const isPremium = profile?.role === 'premium'
+
   const { data: brand } = await supabase.from('brand_profiles').select('completion_status, salon_name').eq('user_id', user!.id).single()
   const { data: items } = await supabase
     .from('content_items')
@@ -46,19 +49,24 @@ export default async function InicioPage() {
     .order('created_at', { ascending: false })
     .limit(20)
 
-  // Cargar progreso del Reto 10K
-  const { data: retoProgressRow } = await supabase
-    .from('reto_10k_progress')
-    .select('*')
-    .eq('user_id', user!.id)
-    .maybeSingle()
+  // Cargar progreso del Reto 10K solo para usuarios normales
+  let retoProgressRow = null
+  let retoItemsCount = 0
+  if (!isPremium) {
+    const { data: retoRow } = await supabase
+      .from('reto_10k_progress')
+      .select('*')
+      .eq('user_id', user!.id)
+      .maybeSingle()
+    retoProgressRow = retoRow
 
-  // Contar content_items con tag reto-10k
-  const { count: retoItemsCount } = await supabase
-    .from('content_items')
-    .select('id', { count: 'exact', head: true })
-    .eq('user_id', user!.id)
-    .eq('tag', 'reto-10k')
+    const { count } = await supabase
+      .from('content_items')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user!.id)
+      .eq('tag', 'reto-10k')
+    retoItemsCount = count || 0
+  }
 
   return (
     <InicioClient
@@ -68,7 +76,8 @@ export default async function InicioPage() {
       inspirations={(inspirationsData as Pick<ReelInspiration, 'id' | 'title' | 'short_description' | 'cover_image'>[]) || []}
       transitions={(transitionsData as Pick<ReelTransition, 'id' | 'title' | 'short_description' | 'cover_image'>[]) || []}
       retoProgress={retoProgressRow as Reto10kProgress | null}
-      retoItemsCount={retoItemsCount || 0}
+      retoItemsCount={retoItemsCount}
+      isPremium={isPremium}
     />
   )
 }

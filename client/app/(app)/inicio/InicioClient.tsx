@@ -88,6 +88,7 @@ export default function InicioClient({
   transitions,
   retoProgress,
   retoItemsCount,
+  isPremium = false,
 }: {
   profile: Profile | null
   brand: Partial<BrandProfile> | null
@@ -96,6 +97,7 @@ export default function InicioClient({
   transitions: Pick<ReelTransition, 'id' | 'title' | 'short_description' | 'cover_image'>[]
   retoProgress: Reto10kProgress | null
   retoItemsCount: number
+  isPremium?: boolean
 }) {
   const [items, setItems] = useState<Partial<ContentItem>[]>(contentItems)
   const isDemo = profile?.id === 'demo'
@@ -114,6 +116,14 @@ export default function InicioClient({
   const streak = getStreak(items)
   const firstName = profile?.full_name?.split(' ')[0] || 'guapa'
   const brandComplete = brand?.completion_status === 'complete' || brand?.completion_status === 'partial'
+
+  // Premium quick actions
+  const premiumQuickActions = [
+    { href: '/mi-estrategia', icon: Star, label: 'Mi estrategia', desc: 'Tu ficha estratégica', tone: 'cherry' as const },
+    { href: '/plan-contenidos', icon: Film, label: 'Plan de Contenidos', desc: 'Tus guiones asignados', tone: 'pink' as const },
+    { href: '/crear-contenido', icon: Sparkles, label: 'Crear Contenido', desc: 'Reel o carrusel ahora', tone: 'blue' as const },
+    { href: '/stories', icon: LayoutGrid, label: 'Stories BRÄVE', desc: 'Stories y encuestas', tone: 'buttermilk' as const },
+  ]
   const hour = new Date().getHours()
 
   // Items created today
@@ -189,7 +199,7 @@ export default function InicioClient({
       </div>
 
       {/* Brand warning */}
-      {!brandComplete && (
+      {!isPremium && !brandComplete && (
         <div
           className="p-4 rounded-[var(--radius-md)] flex items-start gap-3"
           style={{ background: 'var(--color-buttermilk)', border: '1.5px solid rgba(122,24,50,0.15)' }}
@@ -207,8 +217,9 @@ export default function InicioClient({
         </div>
       )}
 
-      {/* Reto 10K Hero */}
-      {retoProgress?.status === 'active' ? (
+      {/* Reto 10K Hero — solo para usuarios normales */}
+      {!isPremium && (
+        retoProgress?.status === 'active' ? (
         <div
           className="rounded-[var(--radius-md)] p-5"
           style={{
@@ -260,19 +271,27 @@ export default function InicioClient({
             Empezar <ArrowRight size={13} />
           </Link>
         </div>
-      )}
+      ))}
 
       {/* 2. Continuar donde lo dejaste */}
-      {lastItem && (
+      {lastItem && !isPremium && (
         <ContinueCard item={lastItem} section={profile?.last_visited_section ?? null} />
       )}
 
       {/* 3. 4 tarjetas principales */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <QuickActionCard href="/planificar" icon={Sparkles} label="Planificación" desc="Genera ideas para el mes" tone="cherry" />
-        <QuickActionCard href="/crear-contenido" icon={Film} label="Crear Contenido" desc="Reel o carrusel ahora" tone="pink" />
-        <QuickActionCard href="/stories" icon={LayoutGrid} label="Stories BRÄVE" desc="Stories y preguntas" tone="blue" />
-        <QuickActionCard href="/mi-marca" icon={Star} label="Mi Marca" desc="Perfil de tu salón" tone="buttermilk" />
+        {isPremium ? (
+          premiumQuickActions.map(a => (
+            <QuickActionCard key={a.href} href={a.href} icon={a.icon} label={a.label} desc={a.desc} tone={a.tone} />
+          ))
+        ) : (
+          <>
+            <QuickActionCard href="/planificar" icon={Sparkles} label="Planificación" desc="Genera ideas para el mes" tone="cherry" />
+            <QuickActionCard href="/crear-contenido" icon={Film} label="Crear Contenido" desc="Reel o carrusel ahora" tone="pink" />
+            <QuickActionCard href="/stories" icon={LayoutGrid} label="Stories BRÄVE" desc="Stories y preguntas" tone="blue" />
+            <QuickActionCard href="/mi-marca" icon={Star} label="Mi Marca" desc="Perfil de tu salón" tone="buttermilk" />
+          </>
+        )}
       </div>
 
       {/* 3.5 Inspiración de Reels — portadas visuales rotativas */}
@@ -281,42 +300,50 @@ export default function InicioClient({
       {/* 3.6 Transiciones de Reels — portadas visuales rotativas */}
       <TransitionsPreview transitions={transitions} />
 
-      {/* 4. Sorpréndeme protagonista */}
-      <SurpriseCard brandContext={brandContext} userId={profile?.id} />
+      {/* 4. Sorpréndeme protagonista — solo usuarios normales */}
+      {!isPremium && (
+        <SurpriseCard brandContext={brandContext} userId={profile?.id} />
+      )}
 
-      {/* 5. Nivel BRÄVE compacto */}
-      <LevelBar
-        level={LEVELS.indexOf(level) + 1}
-        levelLabel={level.label}
-        emoji={level.emoji}
-        total={xpTotal}
-        progress={levelProgress}
-      />
+      {/* 5. Nivel BRÄVE compacto — solo usuarios normales */}
+      {!isPremium && (
+        <LevelBar
+          level={LEVELS.indexOf(level) + 1}
+          levelLabel={level.label}
+          emoji={level.emoji}
+          total={xpTotal}
+          progress={levelProgress}
+        />
+      )}
 
-      {/* 6. Logros carrusel horizontal */}
-      <div
-        className="rounded-[var(--radius-md)] p-5"
-        style={{ background: 'white', border: '1.5px solid var(--color-buttermilk)' }}
-      >
-        <AchievementsCarousel achievements={achievements} />
-      </div>
-
-      {/* 7. Atajos de servicio */}
-      <div>
-        <h2 className="font-semibold text-sm mb-3 text-cherry-dark opacity-80">Crear Reel rápido sobre…</h2>
-        <div className="flex flex-wrap gap-2">
-          {SERVICES.map(s => (
-            <Link
-              key={s}
-              href={`/crear-contenido?service=${encodeURIComponent(s)}&type=reel`}
-              className="px-4 py-2 rounded-[var(--radius-sm)] text-sm font-medium transition-all hover:scale-105"
-              style={{ background: 'var(--color-buttermilk)', color: 'var(--color-cherry-dark)', border: '1.5px solid rgba(122,24,50,0.1)' }}
-            >
-              {s}
-            </Link>
-          ))}
+      {/* 6. Logros carrusel horizontal — solo usuarios normales */}
+      {!isPremium && (
+        <div
+          className="rounded-[var(--radius-md)] p-5"
+          style={{ background: 'white', border: '1.5px solid var(--color-buttermilk)' }}
+        >
+          <AchievementsCarousel achievements={achievements} />
         </div>
-      </div>
+      )}
+
+      {/* 7. Atajos de servicio — solo usuarios normales */}
+      {!isPremium && (
+        <div>
+          <h2 className="font-semibold text-sm mb-3 text-cherry-dark opacity-80">Crear Reel rápido sobre…</h2>
+          <div className="flex flex-wrap gap-2">
+            {SERVICES.map(s => (
+              <Link
+                key={s}
+                href={`/crear-contenido?service=${encodeURIComponent(s)}&type=reel`}
+                className="px-4 py-2 rounded-[var(--radius-sm)] text-sm font-medium transition-all hover:scale-105"
+                style={{ background: 'var(--color-buttermilk)', color: 'var(--color-cherry-dark)', border: '1.5px solid rgba(122,24,50,0.1)' }}
+              >
+                {s}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

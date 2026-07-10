@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, CheckCircle, XCircle, Clock, ShieldAlert, History, Mail } from 'lucide-react'
+import { X, CheckCircle, XCircle, Clock, ShieldAlert, History, Mail, Crown } from 'lucide-react'
 import { Profile, UserActivityLog, PromoRedemption } from '@/types/database'
 import { hasActiveAccess } from '@/lib/access'
 import { SOURCE_LABELS, SIGNUP_LABELS, EVENT_LABELS } from '@/lib/admin-labels'
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
+import PremiumManagement from './PremiumManagement'
 
 interface UserDrawerProps {
   user: Profile | null
@@ -211,6 +212,16 @@ export default function UserDrawer({ user, onClose, onUpdate, stats }: UserDrawe
                     </div>
                     <Row label="Últ. actividad" value={fmtDate(stats.lastActivity)} />
                   </div>
+                </section>
+              )}
+
+              {/* Gestión Premium — solo para usuarios premium */}
+              {user.role === 'premium' && (
+                <section>
+                  <h4 className="text-xs uppercase tracking-wide text-cherry-dark opacity-60 mb-2 flex items-center gap-1.5">
+                    <Crown size={12} style={{ color: '#b8860b' }} /> Gestión Premium
+                  </h4>
+                  <PremiumManagement user={user} />
                 </section>
               )}
 

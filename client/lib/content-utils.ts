@@ -63,11 +63,17 @@ export function formatContentForCopy(
   if (item.type === 'story') {
     // Stories guardadas como secuencia
     if (json.stories) {
-      const stories = json.stories as Array<{ number: number; role: string; text: string }>
+      const stories = json.stories as Array<{ number: number; role: string; text: string; stickerSuggestion?: string; sticker?: { type: string; label: string; options?: string[] } }>
       if (visual) {
-        return stories.map(s => `📱 Story ${s.number} — ${s.role}\n\n${s.text}`).join('\n\n✨\n\n')
+        return stories.map(s => {
+          const sticker = s.sticker ? `🏷️ Sticker (${s.sticker.type}): ${s.sticker.label}${s.sticker.options ? ` — ${s.sticker.options.join(' / ')}` : ''}` : s.stickerSuggestion ? `🏷️ Sticker: ${s.stickerSuggestion}` : ''
+          return `📱 Story ${s.number} — ${s.role}\n\n${s.text}${sticker ? `\n\n${sticker}` : ''}`
+        }).join('\n\n✨\n\n')
       }
-      return stories.map(s => `Story ${s.number} — ${s.role}:\n${s.text}`).join('\n\n---\n\n')
+      return stories.map(s => {
+        const sticker = s.sticker ? `Sticker (${s.sticker.type}): ${s.sticker.label}${s.sticker.options ? ` — ${s.sticker.options.join(' / ')}` : ''}` : s.stickerSuggestion ? `Sticker: ${s.stickerSuggestion}` : ''
+        return `Story ${s.number} — ${s.role}:\n${s.text}${sticker ? `\n${sticker}` : ''}`
+      }).join('\n\n---\n\n')
     }
     // Pregunta guardada
     if (json.question) {

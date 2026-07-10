@@ -41,7 +41,7 @@ MODO: ${input.mode === 'camera' ? 'Guion para grabar a cámara (conversacional)'
 ${input.brandContext ? `CONTEXTO DEL SALÓN: ${input.brandContext}` : ''}
 
 METODOLOGÍA OBLIGATORIA:
-- Story 1: PROBLEMA/IDENTIFICACIÓN - Conseguir atención. Usar problema real, frase de clienta, duda frecuente o curiosidad.
+- Story 1: PROBLEMA/IDENTIFICACIÓN - Conseguir atención generando INTRIGA. Usar problema real, frase de clienta, duda frecuente o curiosidad. NO resuelvas el problema aquí — deja la incógnita abierta para que la clienta quiera ver la siguiente Story.
 - Story 2 (si aplica): AUTORIDAD - La estilista demuestra su criterio profesional. Explica qué detectó, analizó y decidió. Debe explicar QUÉ haces, CÓMO lo haces y POR QUÉ lo haces.
 - Story 3 (si aplica): RESULTADO + ACCIÓN - Muestra el beneficio final + CTA conversacional.
 
@@ -51,6 +51,8 @@ PROHIBIDO: "Escribe RUBIO", "Comenta BALAYAGE", "Escribe INFO", o cualquier CTA 
 
 IMPORTANTE: No construyas la historia alrededor del servicio. Constrúyela alrededor de la clienta.
 Las ideas visuales deben ser NATURALES: selfie, espejo, resultado en movimiento, mano tocando cabello, etc.
+
+STICKERS/ENCUESTAS: NO pongas stickers en todas las Stories. Solo en algunas, preferiblemente al inicio (Story 1 para generar interacción) o al final (Story 3 para invitar a responder). La Story 2 (autoridad) normalmente NO lleva sticker. Si solo hay 1 Story, puede llevar sticker. De forma aleatoria natural, algunas secuencias pueden no tener ningún sticker.
 
 PRINCIPIOS BRÄVE: No vendemos servicios, vendemos confianza. No vendemos color, vendemos seguridad. El proceso vende. El resultado atrae. El proceso convence.
 
@@ -73,7 +75,7 @@ Devuelve EXACTAMENTE este JSON:
   ]
 }
 
-El campo "sticker" es opcional. "options" solo para tipo "poll". "emoji" solo para tipo "emoji-slider". Para "question" solo "label". Para "mention"/"hashtag"/"location" solo "label" con el prefijo correspondiente (@/#/📍).`
+El campo "sticker" es OPCIONAL — no lo incluyas en todas las Stories. "stickerSuggestion" puede ser un string vacío "" si esa Story no lleva interacción. "options" solo para tipo "poll". "emoji" solo para tipo "emoji-slider". Para "question" solo "label". Para "mention"/"hashtag"/"location" solo "label" con el prefijo correspondiente (@/#/📍).`
 }
 
 export function getMockStories(input: StoryInput): StoriesOutput {
@@ -82,9 +84,14 @@ export function getMockStories(input: StoryInput): StoriesOutput {
       number: 1,
       role: 'Problema / Identificación',
       text: input.mode === 'camera'
-        ? `¿Llevas tiempo queriendo hacerte un ${input.service} pero no sabes si es para ti? Hoy quiero contarte algo que puede cambiarte la idea completamente.`
-        : `¿Tu ${input.service} no está durandote lo que debería? Puede que no sea culpa del producto. 👇`,
-      stickerSuggestion: 'Encuesta: "¿Has pensado en hacerte un ' + input.service + '?" Sí / No sé',
+        ? `¿Llevas tiempo queriendo hacerte un ${input.service} pero algo te frena? Hoy quiero contarte algo que cambié en mi forma de trabajar y que puede cambiarte la idea completamente.`
+        : `¿Tu ${input.service} no dura lo que debería? Hay algo que casi nadie te cuenta… 👇`,
+      sticker: {
+        type: 'poll',
+        label: `¿Has pensado en hacerte un ${input.service}?`,
+        options: ['Sí', 'Aún no sé'],
+      },
+      stickerSuggestion: '',
       visualIdea: 'Selfie natural en el salón o mirando a cámara con buena luz',
     },
     {
@@ -93,7 +100,7 @@ export function getMockStories(input: StoryInput): StoriesOutput {
       text: input.mode === 'camera'
         ? `Cuando esta clienta vino, lo primero que hice fue analizar su cabello. No empecé con el producto. Empecé por entender qué necesitaba realmente. Y eso lo cambia todo.`
         : `Antes de empezar cualquier ${input.service}, siempre analizo el estado del cabello, la historia de tratamientos y el resultado que la clienta quiere conseguir. Cada persona necesita una solución diferente.`,
-      stickerSuggestion: 'Emoji de diamante o estrella para destacar el valor',
+      stickerSuggestion: '',
       visualIdea: 'Vídeo o foto del proceso de trabajo, lavacabezas, o manos trabajando el cabello',
     },
     {
@@ -102,8 +109,12 @@ export function getMockStories(input: StoryInput): StoriesOutput {
       text: input.mode === 'camera'
         ? `El resultado habla solo. Más brillo, más movimiento, más natural. Si llevas tiempo pensando en hacerte algo así, escríbeme. Cuéntame qué quieres y vemos qué opción encaja contigo.`
         : `Más luz. Más naturalidad. Menos mantenimiento. ✨ Si quieres algo así, escríbeme y te cuento cómo podemos conseguirlo.`,
-      stickerSuggestion: 'Caja de preguntas: "¿Qué quieres mejorar de tu cabello?"',
-      visualIdea: 'Foto o vídeo del resultado final. Movimiento del cabello. Clienta feliz (de espaldas o de espaldas).',
+      sticker: {
+        type: 'question',
+        label: '¿Qué quieres mejorar de tu cabello?',
+      },
+      stickerSuggestion: '',
+      visualIdea: 'Foto o vídeo del resultado final. Movimiento del cabello. Clienta feliz.',
     },
   ]
 

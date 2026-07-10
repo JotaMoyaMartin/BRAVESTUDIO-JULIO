@@ -313,6 +313,9 @@ Visual: ${s.visualIdea}`
               const roleEmojis = ['🔴', '🔵', '🟡']
               const color = roleColors[(story.number - 1) % roleColors.length]
               const emoji = roleEmojis[(story.number - 1) % roleEmojis.length]
+              const stickerLabel = story.sticker?.label || story.stickerSuggestion || ''
+              const stickerType = story.sticker?.type
+              const stickerTypeLabel = stickerType === 'poll' ? 'Encuesta' : stickerType === 'question' ? 'Caja de preguntas' : stickerType === 'emoji-slider' ? 'Slider de emoji' : stickerType === 'mention' ? 'Mención' : stickerType === 'hashtag' ? 'Hashtag' : stickerType === 'location' ? 'Ubicación' : 'Sticker'
               return (
                 <div key={story.number} className="p-4 rounded-[var(--radius-md)]" style={{ background: 'white', border: '1.5px solid rgba(255,241,181,0.8)' }}>
                   <div className="flex items-center gap-3 mb-3">
@@ -322,6 +325,28 @@ Visual: ${s.visualIdea}`
                     <span className="font-bold text-sm" style={{ color }}>{emoji} {story.role}</span>
                   </div>
                   <p className="text-sm leading-relaxed mb-3" style={{ color: '#1a1a1a' }}>{story.text}</p>
+                  {stickerLabel && (
+                    <div
+                      className="mb-3 px-3 py-2 rounded-lg flex items-start gap-2"
+                      style={{ background: 'rgba(193,219,232,0.3)', border: '1px solid rgba(74,122,138,0.2)' }}
+                    >
+                      <span className="text-sm flex-shrink-0">🏷️</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[10px] font-bold uppercase tracking-wider mb-0.5" style={{ color: '#2a5a6a', opacity: 0.8 }}>
+                          {stickerTypeLabel} recomendada
+                        </p>
+                        <p className="text-xs leading-snug" style={{ color: '#1a3a4a' }}>
+                          {stickerLabel}
+                          {story.sticker?.options ? ` — ${story.sticker.options.join(' / ')}` : ''}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  {story.visualIdea && (
+                    <p className="text-xs italic mb-3" style={{ color: '#591427', opacity: 0.55 }}>
+                      📸 {story.visualIdea}
+                    </p>
+                  )}
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleCopy(story.text, `story-text-${story.number}`)}

@@ -12,9 +12,10 @@ import VoiceButton from '@/components/VoiceButton'
 import { StrategyDisplay } from '@/components/mi-marca/StrategyDisplay'
 import { RoadmapDisplay } from '@/components/mi-marca/RoadmapDisplay'
 import BraviGuide from '@/components/bravi/BraviGuide'
+import BraviTip from '@/components/bravi/BraviTip'
 import {
   Sparkles, Store, Scissors, Heart, Target, MessageCircle,
-  Eye, Clock, Palette, ChevronDown, ChevronUp, RefreshCw, Map as MapIcon,
+  Eye, Clock, Palette, RefreshCw, Map as MapIcon,
 } from 'lucide-react'
 
 // ── 8 question blocks, 33 questions ──────────────────────────────────
@@ -229,7 +230,6 @@ export default function MiMarcaClient({ userId, brand }: { userId: string; brand
   const [roadmap, setRoadmap] = useSessionState<Roadmap | null>(`u:${userId}:marca:roadmap`,
     brand?.roadmap_json ? (brand.roadmap_json as unknown as Roadmap) : null
   )
-  const [expandedBlock, setExpandedBlock] = useState<number | null>(0)
   const [justGenerated, setJustGenerated] = useState(false)
   const [generatingRoadmap, setGeneratingRoadmap] = useState(false)
   const [roadmapError, setRoadmapError] = useState('')
@@ -479,11 +479,11 @@ export default function MiMarcaClient({ userId, brand }: { userId: string; brand
 
       {/* Input section */}
       <div className="rounded-[var(--radius-lg)] p-5 space-y-4 bg-white shadow-soft" style={{ border: '1.5px solid var(--color-buttermilk)' }}>
-        <div className="float-soft flex items-start gap-3 p-4 rounded-[var(--radius-md)]" style={{ background: 'var(--color-buttermilk)' }}>
-          <BraviGuide section="mi-marca" size={40} />
-          <p className="text-sm text-cherry-dark">
-            <strong>Bravi dice:</strong> {strategy ? '¿Quieres actualizar tu estrategia? Escribe cambios y regenera.' : 'Cuéntame sobre tu salón respondiendo las preguntas de abajo. No importa el orden ni el formato.'}
-          </p>
+        <div className="p-4 rounded-[var(--radius-md)]" style={{ background: 'var(--color-buttermilk)' }}>
+          <BraviTip
+            message={strategy ? '¿Quieres actualizar tu estrategia? Escribe cambios y regenera.' : 'Cuéntame sobre tu salón respondiendo las preguntas de abajo. No importa el orden ni el formato.'}
+            size={48}
+          />
         </div>
 
         <textarea
@@ -507,42 +507,32 @@ export default function MiMarcaClient({ userId, brand }: { userId: string; brand
         {error && <p className="text-xs text-danger text-center">{error}</p>}
       </div>
 
-      {/* Question blocks */}
+      {/* Preguntas guía — todas visibles, sin desplegables */}
       <div className="space-y-3">
         <p className="text-sm font-semibold text-cherry-dark px-1">
           Preguntas guía — respóndelas en el cuadro de arriba:
         </p>
-        {QUESTION_BLOCKS.map((block, i) => {
-          const Icon = block.icon
-          const isExpanded = expandedBlock === i
-          return (
-            <div key={block.title} className="rounded-[var(--radius-md)] bg-white shadow-soft overflow-hidden" style={{ border: '1.5px solid var(--color-buttermilk)' }}>
-              <button
-                onClick={() => setExpandedBlock(isExpanded ? null : i)}
-                className="w-full flex items-center justify-between px-4 py-3 text-left"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-[var(--radius-sm)] flex items-center justify-center" style={{ background: 'var(--color-buttermilk)' }}>
-                    <Icon size={16} style={{ color: 'var(--color-cherry)' }} />
-                  </div>
+        <div className="rounded-[var(--radius-md)] bg-white shadow-soft p-4 space-y-4" style={{ border: '1.5px solid var(--color-buttermilk)' }}>
+          {QUESTION_BLOCKS.map((block) => {
+            const Icon = block.icon
+            return (
+              <div key={block.title}>
+                <div className="flex items-center gap-2 mb-2 pb-1.5" style={{ borderBottom: '1px solid rgba(255,241,181,0.5)' }}>
+                  <Icon size={14} style={{ color: 'var(--color-cherry)' }} />
                   <span className="font-semibold text-sm text-ink">{block.title}</span>
-                  <span className="text-xs text-cherry-dark opacity-50">{block.questions.length} preguntas</span>
                 </div>
-                {isExpanded ? <ChevronUp size={16} style={{ color: 'var(--color-cherry)' }} /> : <ChevronDown size={16} style={{ color: 'var(--color-cherry)' }} />}
-              </button>
-              {isExpanded && (
-                <div className="px-4 pb-4 pt-1 space-y-2" style={{ borderTop: '1px solid rgba(255,241,181,0.5)' }}>
+                <div className="space-y-1.5">
                   {block.questions.map(q => (
-                    <div key={q} className="flex items-start gap-2 text-sm text-ink py-1">
+                    <div key={q} className="flex items-start gap-2 text-sm text-ink">
                       <span style={{ color: 'var(--color-cherry)', opacity: 0.5 }}>•</span>
-                      <span>{q}</span>
+                      <span style={{ lineHeight: 1.4 }}>{q}</span>
                     </div>
                   ))}
                 </div>
-              )}
-            </div>
-          )
-        })}
+              </div>
+            )
+          })}
+        </div>
       </div>
     </div>
   )

@@ -559,6 +559,86 @@ export interface Database {
           updated_by?: string | null
         }
       }
+      academia_modules: {
+        Row: {
+          id: string
+          title: string
+          description: string | null
+          sort_order: number
+          status: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          title: string
+          description?: string | null
+          sort_order?: number
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          title?: string
+          description?: string | null
+          sort_order?: number
+          status?: string
+          updated_at?: string
+        }
+      }
+      academia_lessons: {
+        Row: {
+          id: string
+          module_id: string | null
+          title: string
+          description: string | null
+          loom_url: string
+          sort_order: number
+          status: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          module_id?: string | null
+          title: string
+          description?: string | null
+          loom_url: string
+          sort_order?: number
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          module_id?: string | null
+          title?: string
+          description?: string | null
+          loom_url?: string
+          sort_order?: number
+          status?: string
+          updated_at?: string
+        }
+      }
+      academia_lesson_progress: {
+        Row: {
+          user_id: string
+          lesson_id: string
+          completed: boolean
+          completed_at: string | null
+          created_at: string
+        }
+        Insert: {
+          user_id: string
+          lesson_id: string
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          completed?: boolean
+          completed_at?: string | null
+        }
+      }
     }
   }
 }
@@ -577,3 +657,6 @@ export type UserActivityLog = Database['public']['Tables']['user_activity_log'][
 export type PromoRedemption = Database['public']['Tables']['promo_redemptions']['Row']
 export type Reto10kProgressRow = Database['public']['Tables']['reto_10k_progress']['Row']
 export type Reto10kConfigRow = Database['public']['Tables']['reto_10k_config']['Row']
+export type AcademiaModule = Database['public']['Tables']['academia_modules']['Row']
+export type AcademiaLesson = Database['public']['Tables']['academia_lessons']['Row']
+export type AcademiaLessonProgress = Database['public']['Tables']['academia_lesson_progress']['Row']

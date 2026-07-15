@@ -6,7 +6,7 @@ import { Profile } from '@/types/database'
 import {
   Home, Sparkles, Star,
   Film, LayoutGrid, BookOpen, Calendar, LogOut, Menu, X,
-  Clapperboard, Wand2, Settings, Shield, Rocket, Crown
+  Clapperboard, Wand2, Settings, Shield, Rocket, Crown, GraduationCap
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -43,6 +43,7 @@ const premiumNavItems: NavItem[] = [
   { href: '/stories', label: 'Stories BRÄVE', icon: LayoutGrid },
   { href: '/inspiracion-reels', label: 'Inspiración Reels', icon: Clapperboard },
   { href: '/transiciones-reels', label: 'Transiciones Reels', icon: Wand2 },
+  { href: '/academia', label: 'Academia', icon: GraduationCap, badge: 'NUEVO', highlight: true },
 ]
 
 export default function Sidebar({ profile }: { profile: Profile }) {

@@ -639,6 +639,40 @@ export interface Database {
           completed_at?: string | null
         }
       }
+      premium_strategy_sessions: {
+        Row: {
+          id: string
+          user_id: string
+          admin_id: string | null
+          transcription: string | null
+          strategy_draft: Record<string, unknown> | null
+          chat_messages: Record<string, unknown>[]
+          status: string
+          published_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          admin_id?: string | null
+          transcription?: string | null
+          strategy_draft?: Record<string, unknown> | null
+          chat_messages?: Record<string, unknown>[]
+          status?: string
+          published_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          transcription?: string | null
+          strategy_draft?: Record<string, unknown> | null
+          chat_messages?: Record<string, unknown>[]
+          status?: string
+          published_at?: string | null
+          updated_at?: string
+        }
+      }
     }
   }
 }
@@ -660,3 +694,4 @@ export type Reto10kConfigRow = Database['public']['Tables']['reto_10k_config']['
 export type AcademiaModule = Database['public']['Tables']['academia_modules']['Row']
 export type AcademiaLesson = Database['public']['Tables']['academia_lessons']['Row']
 export type AcademiaLessonProgress = Database['public']['Tables']['academia_lesson_progress']['Row']
+export type PremiumStrategySession = Database['public']['Tables']['premium_strategy_sessions']['Row']

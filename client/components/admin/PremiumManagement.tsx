@@ -1,16 +1,14 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { Profile, ContentItem } from '@/types/database'
-import { Sparkles, Film, LayoutGrid, FileText, Trash2, Plus, Loader2, CheckCircle2 } from 'lucide-react'
+import { Sparkles, Film, LayoutGrid, FileText, Trash2, Plus, ArrowRight } from 'lucide-react'
 
 interface Props {
   user: Profile
+  onGoToGestion?: () => void
 }
 
-export default function PremiumManagement({ user }: Props) {
-  const [transcription, setTranscription] = useState('')
-  const [generating, setGenerating] = useState(false)
-  const [strategyStatus, setStrategyStatus] = useState<'loading' | 'exists' | 'none' | 'generated'>('loading')
+export default function PremiumManagement({ user, onGoToGestion }: Props) {
   const [error, setError] = useState('')
 
   // Script creation state
@@ -29,9 +27,9 @@ export default function PremiumManagement({ user }: Props) {
   })
   const [savingScript, setSavingScript] = useState(false)
 
-  // Check if strategy exists
+  // Load scripts
   useEffect(() => {
-    async function checkStrategy() {
+    async function loadScripts() {
       try {
         const res = await fetch(`/api/admin/premium-scripts?userId=${user.id}`)
         const data = await res.json()
@@ -41,28 +39,8 @@ export default function PremiumManagement({ user }: Props) {
         setLoadingScripts(false)
       }
     }
-    checkStrategy()
+    loadScripts()
   }, [user.id])
-
-  async function generateStrategy() {
-    if (!transcription.trim()) return
-    setGenerating(true)
-    setError('')
-    try {
-      const res = await fetch('/api/admin/premium-strategy', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, transcription }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Error al generar estrategia')
-      setStrategyStatus('generated')
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error')
-    } finally {
-      setGenerating(false)
-    }
-  }
 
   async function createScript() {
     if (!newScript.title.trim()) return
@@ -113,36 +91,21 @@ export default function PremiumManagement({ user }: Props) {
 
   return (
     <div className="space-y-6">
-      {/* Estrategia */}
+      {/* Estrategia — link to Gestión Premium tab */}
       <section>
         <h4 className="text-xs uppercase tracking-wide text-cherry-dark opacity-60 mb-2 flex items-center gap-1.5">
           <Sparkles size={12} /> Estrategia Premium
         </h4>
         <div className="rounded-[var(--radius-md)] bg-white p-4 border border-soft space-y-3">
-          {strategyStatus === 'generated' && (
-            <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 rounded-[var(--radius-sm)] px-3 py-2">
-              <CheckCircle2 size={16} />
-              <span>Estrategia generada. El cliente ya puede verla en "Mi Estrategia".</span>
-            </div>
-          )}
           <p className="text-xs text-cherry-dark opacity-70">
-            Pega la transcripción de la videollamada con el cliente. La IA generará la ficha estratégica completa.
+            La estrategia completa (transcripción, generación con IA, refinamiento con chat y publicación) se gestiona desde el tab "Gestión Premium".
           </p>
-          <textarea
-            value={transcription}
-            onChange={e => setTranscription(e.target.value)}
-            rows={8}
-            placeholder="Pega aquí toda la transcripción de la videollamada con el cliente..."
-            className={inputClass}
-            style={{ resize: 'vertical', lineHeight: 1.5 }}
-          />
           <button
-            onClick={generateStrategy}
-            disabled={generating || !transcription.trim()}
-            className="btn-primary w-full justify-center text-sm py-2.5"
-            style={{ opacity: !transcription.trim() ? 0.5 : 1 }}
+            onClick={onGoToGestion}
+            disabled={!onGoToGestion}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-[var(--radius-sm)] text-sm font-bold transition-all bg-cherry text-white hover:opacity-90 disabled:opacity-50"
           >
-            {generating ? <><Loader2 size={14} className="animate-spin" /> Generando estrategia...</> : <><Sparkles size={14} /> Generar estrategia</>}
+            <Sparkles size={14} /> Ir a Gestión Premium <ArrowRight size={14} />
           </button>
         </div>
       </section>

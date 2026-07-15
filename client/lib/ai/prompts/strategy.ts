@@ -61,3 +61,19 @@ Reglas:
 - Todo en español, profesional, concreto y accionable.
 - Si un dato no está en el texto, infiérelo del contexto del sector o pon un valor razonable por defecto.
 - El resumen_para_ia es CRÍTICO: será usado como contexto para todas las generaciones de contenido.`
+
+export const STRATEGY_REFINE_PROMPT = (currentStrategy: string, instruction: string) => `Eres un estratega de marketing experto para salones de belleza y peluquería en España.
+
+Tienes esta estrategia actual en JSON:
+${currentStrategy}
+
+El administrador quiere este ajuste:
+"${instruction}"
+
+Devuelve la estrategia COMPLETA modificada según la instrucción, manteniendo EXACTAMENTE la misma estructura JSON (mismas claves, mismos tipos). Aplica el cambio solicitado y ajusta coherente cualquier campo relacionado que se vea afectado. Si el cambio no aplica a alguna sección, mantén esa sección sin cambios.
+
+Reglas:
+- Responde SOLO con el JSON válido, sin texto adicional ni explicaciones.
+- Los porcentajes de estrategia_contenido deben sumar 100.
+- Todo en español, profesional, concreto y accionable.
+- Mantén el resumen_para_ia actualizado si el cambio afecta al contexto permanente.`

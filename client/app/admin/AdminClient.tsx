@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { ShieldCheck, Crown } from 'lucide-react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { Profile, PromoCode } from '@/types/database'
 import { UserStats, DashboardMetrics } from './page'
 import AdminTabs, { TabKey } from '@/components/admin/AdminTabs'
@@ -39,11 +38,10 @@ export default function AdminClient({
   const [activeTab, setActiveTab] = useState<TabKey>('dashboard')
   const [users, setUsers] = useState(initialUsers)
   const isSuperAdmin = currentUserRole === 'superadmin'
-  const router = useRouter()
 
   function enterPremiumPreview() {
     document.cookie = 'brave_preview_premium=true; path=/; max-age=3600'
-    router.push('/inicio')
+    window.location.href = '/inicio'
   }
 
   function handleUserUpdate(updated: Profile) {

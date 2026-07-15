@@ -2,11 +2,14 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Sparkles, Send, Loader2, Search, CheckCircle2, FileText, SendHorizonal, RotateCcw } from 'lucide-react'
+import { Sparkles, Send, Loader2, Search, CheckCircle2, FileText, SendHorizonal, RotateCcw, GraduationCap, Users } from 'lucide-react'
 import { PremiumStrategySession } from '@/types/database'
 import { StrategyDocument } from '@/lib/strategy-types'
 import { StrategyDisplay } from '@/components/mi-marca/StrategyDisplay'
+import AcademiaTab from '@/components/admin/AcademiaTab'
 import Card from '@/components/ui/Card'
+
+type SubTab = 'estrategias' | 'academia'
 
 interface ClientInfo {
   id: string
@@ -25,7 +28,10 @@ interface ChatMessage {
 async function api(path: string, init?: RequestInit) {
   const res = await fetch(path, init)
   const data = await res.json()
-  if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`)
+  if (!res.ok) {
+    const detail = data?.detail ? ` — ${data.detail}` : ''
+    throw new Error((data?.error || `HTTP ${res.status}`) + detail)
+  }
   return data
 }
 
@@ -44,6 +50,7 @@ export default function GestionPremiumTab() {
   const [publishing, setPublishing] = useState(false)
   const [error, setError] = useState('')
   const [showTranscription, setShowTranscription] = useState(false)
+  const [subTab, setSubTab] = useState<SubTab>('estrategias')
   const chatScrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => { loadClients() }, [])
@@ -98,7 +105,8 @@ export default function GestionPremiumTab() {
       // Refresh clients to update sidebar status
       loadClients()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error generando estrategia')
+      const msg = e instanceof Error ? e.message : 'Error generando estrategia'
+      setError(msg.includes('detail') ? msg : msg)
     } finally {
       setGenerating(false)
     }
@@ -161,11 +169,40 @@ export default function GestionPremiumTab() {
 
   return (
     <div className="space-y-4">
-      {error && (
+      {/* Sub-tab toggle */}
+      <div className="flex items-center gap-1.5 rounded-[var(--radius-md)] p-1.5" style={{ background: 'var(--color-warm-gray)' }}>
+        <button
+          onClick={() => setSubTab('estrategias')}
+          className="flex items-center gap-2 px-4 py-2 rounded-[var(--radius-sm)] text-sm font-semibold transition-all"
+          style={{
+            background: subTab === 'estrategias' ? 'var(--color-cherry)' : 'transparent',
+            color: subTab === 'estrategias' ? 'white' : 'var(--color-cherry-dark)',
+            opacity: subTab === 'estrategias' ? 1 : 0.65,
+          }}
+        >
+          <Users size={14} /> Estrategias
+        </button>
+        <button
+          onClick={() => setSubTab('academia')}
+          className="flex items-center gap-2 px-4 py-2 rounded-[var(--radius-sm)] text-sm font-semibold transition-all"
+          style={{
+            background: subTab === 'academia' ? 'var(--color-cherry)' : 'transparent',
+            color: subTab === 'academia' ? 'white' : 'var(--color-cherry-dark)',
+            opacity: subTab === 'academia' ? 1 : 0.65,
+          }}
+        >
+          <GraduationCap size={14} /> Academia
+        </button>
+      </div>
+
+      {error && subTab === 'estrategias' && (
         <div className="rounded-[var(--radius-sm)] p-3 text-xs bg-[#fde8e8] text-danger">{error}</div>
       )}
 
-      <div className="flex gap-4" style={{ minHeight: 600 }}>
+      {subTab === 'academia' ? (
+        <AcademiaTab />
+      ) : (
+        <div className="flex gap-4" style={{ minHeight: 600 }}>
         {/* Left: client list */}
         <div className="w-64 flex-shrink-0 space-y-3">
           <div className="relative">
@@ -423,6 +460,7 @@ export default function GestionPremiumTab() {
           )}
         </div>
       </div>
+      )}
     </div>
   )
 }

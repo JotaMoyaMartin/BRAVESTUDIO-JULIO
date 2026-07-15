@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { generateAIContent, extractJSON } from '@/lib/ai/client'
+import { serverGenerateAIContent, extractJSON } from '@/lib/ai/server-generate'
 import { STRATEGY_REFINE_PROMPT } from '@/lib/ai/prompts/strategy'
 import { StrategyDocument } from '@/lib/strategy-types'
 import { PremiumStrategySession } from '@/types/database'
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest, { params }: { params: { session
   }
 
   try {
-    const raw = await generateAIContent(
+    const raw = await serverGenerateAIContent(
       STRATEGY_REFINE_PROMPT(JSON.stringify(currentDraft), message.trim())
     )
     const newDraft = extractJSON<StrategyDocument>(raw)
@@ -80,7 +80,8 @@ export async function POST(request: NextRequest, { params }: { params: { session
       chatMessages: newMessages,
       session: updated as PremiumStrategySession,
     })
-  } catch {
-    return NextResponse.json({ error: 'No se pudo refinar la estrategia. Inténtalo de nuevo.' }, { status: 500 })
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : 'Unknown error'
+    return NextResponse.json({ error: 'No se pudo refinar la estrategia', detail: detail.slice(0, 300) }, { status: 500 })
   }
 }

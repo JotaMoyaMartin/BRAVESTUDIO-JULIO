@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { generateAIContent, extractJSON } from '@/lib/ai/client'
+import { serverGenerateAIContent, extractJSON } from '@/lib/ai/server-generate'
 import { STRATEGY_PROMPT } from '@/lib/ai/prompts/strategy'
-import { buildProfile } from '@/lib/brand-extract'
 import { StrategyDocument } from '@/lib/strategy-types'
 import { Profile, PremiumStrategySession } from '@/types/database'
 
@@ -77,7 +76,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const raw = await generateAIContent(STRATEGY_PROMPT(transcription))
+    const raw = await serverGenerateAIContent(STRATEGY_PROMPT(transcription))
     const parsed = extractJSON<StrategyDocument>(raw)
 
     if (!parsed || !parsed.perfil_brave) {
@@ -101,7 +100,8 @@ export async function POST(request: NextRequest) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
     return NextResponse.json({ session: session as PremiumStrategySession, strategy: parsed })
-  } catch {
-    return NextResponse.json({ error: 'No se pudo generar la estrategia. Inténtalo de nuevo.' }, { status: 500 })
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : 'Unknown error'
+    return NextResponse.json({ error: 'No se pudo generar la estrategia', detail: detail.slice(0, 300) }, { status: 500 })
   }
 }

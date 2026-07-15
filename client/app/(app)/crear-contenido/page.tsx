@@ -20,7 +20,7 @@ export default async function CrearContenidoPage({ searchParams }: { searchParam
     .from('brand_profiles')
     .select('optimized_summary, salon_name, main_services, service_to_promote, strategy_json, raw_input')
     .eq('user_id', user!.id)
-    .single()
+    .maybeSingle()
   return (
     <PageTransition>
       <CrearContenidoClient

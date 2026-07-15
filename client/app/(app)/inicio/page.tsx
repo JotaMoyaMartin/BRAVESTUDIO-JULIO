@@ -28,7 +28,7 @@ export default async function InicioPage() {
 
   const isPremium = profile?.role === 'premium'
 
-  const { data: brand } = await supabase.from('brand_profiles').select('completion_status, salon_name').eq('user_id', user!.id).single()
+  const { data: brand } = await supabase.from('brand_profiles').select('completion_status, salon_name').eq('user_id', user!.id).maybeSingle()
   const { data: items } = await supabase
     .from('content_items')
     .select('id, type, title, status, scheduled_date, created_at, updated_at, tag')

@@ -7,7 +7,7 @@ export function buildRetosPrompt(input: RetoInput): string {
   const missionBlock = input.missionTitle
     ? `\nMISIÓN DEL DÍA (OBLIGATORIA — todo el contenido debe orbitar esta misión):\n- Título: ${input.missionTitle}\n- Descripción: ${input.missionDescription || ''}\n- Pista: ${input.missionPromptHint || ''}\nCada reel debe estar claramente conectado a esta misión. Si la misión es sobre un tema concreto, NO generes reels de temas no relacionados.`
     : `\nMISIÓN DEL DÍA: No hay misión específica — genera contenido coherente con la fase actual.`
-  return `Eres un guionista profesional para estilistas en Instagram, especializado en el Reto 10K BRÄVE. Sigues el MANUAL OFICIAL DE GUIONES BRÄVE al pie de la letra.
+  return `Eres un guionista profesional para estilistas en Instagram. Sigues el MANUAL OFICIAL DE GUIONES BRÄVE al pie de la letra.
 
 FASE ACTUAL: ${input.currentPhase} — ${input.phaseTitle}
 DÍA DEL RETO: ${input.currentDay} de 30
@@ -42,13 +42,23 @@ Todos los reels son de AUTORIDAD (35-45s) con esta estructura INALTERABLE:
 
 DURACIÓN: Gancho 3-5s, Contexto 5-10s, Solución 20-30s, CTA 3-5s = 35-45s total.
 
-=== METODOLOGÍA DEL RETO ===
+=== REGLA CRÍTICA: NUNCA menciones el reto ===
+
+ESTRICTAMENTE PROHIBIDO en guiones, títulos, captions o cualquier texto que vea la audiencia:
+- Mencionar "reto", "reto 10K", "día 1", "día 15", "día 30", "llevo X días", "30 días", "challenge"
+- Cualquier referencia a que la estilista está siguiendo un plan, programa o Challenge
+- Frases como "hoy toca...", "como parte de mi reto...", "en este día del reto..."
+- La audiencia NO sabe que existe un reto. El contenido debe verse natural, como contenido orgánico espontáneo de la estilista.
+
+La información de fase/día/misión es CONTEXTO INTERNO para ti (la IA) saber qué tema y ángulo abordar, pero NUNCA debe filtrarse al contenido generado.
+
+=== METODOLOGÍA ===
 
 - Genera EXACTAMENTE ${count} reels para esta semana. TODOS de tipo "reel" (sin carruseles).
 - Cada reel debe estar conectado a la MISIÓN DEL DÍA y a los SERVICIOS ESTRELLA.
 - Varía el pilar de contenido entre los 6 pilares BRÄVE: "autoridad" (educación/consejos/opiniones que demuestran expertise), "viralidad" (ángulo alto impacto/controversia/trending), "educacion" (tutorial/paso a paso/explicar un proceso), "deseo" (aspiracional/antes-después/transformación que genera querer), "dolor" (problema/frustración de la clienta y cómo la resuelves), "objecion" (responder una duda o creencia que frena la reserva).
 - El campo "category" debe ser uno de: "autoridad", "viralidad", "educacion", "deseo", "dolor", "objecion".
-- Títulos atractivos, NO repetidos, coherentes con la misión.
+- Títulos atractivos, NO repetidos, coherentes con la misión. Sin mencionar el reto.
 - "hookIdea" es una idea breve de gancho (un ángulo, no el texto literal).
 - "caption" es el texto de publicación LISTO PARA COPIAR y pegar en Instagram. Debe seguir EXACTAMENTE este formato:
   · Varios párrafos de texto separados por doble salto de línea (\\n\\n).
@@ -279,7 +289,7 @@ export async function generateRetos(input: RetoInput): Promise<RetoOutput> {
 
 export function buildMissionPrompt(input: RetoMissionInput): string {
   const services = input.services.length > 0 ? input.services.join(', ') : 'servicios generales de peluquería'
-  return `Eres un guionista profesional para estilistas en Instagram, especializado en el Reto 10K BRÄVE. Sigues el MANUAL OFICIAL DE GUIONES BRÄVE al pie de la letra.
+  return `Eres un guionista profesional para estilistas en Instagram. Sigues el MANUAL OFICIAL DE GUIONES BRÄVE al pie de la letra.
 
 MISIÓN DEL DÍA (OBLIGATORIA — el reel debe estar 100% dedicado a esta misión):
 - Título: ${input.missionTitle}
@@ -310,6 +320,14 @@ El reel es de AUTORIDAD (35-45s) con esta estructura INALTERABLE:
 4. CTA (3-5s): conversacional. NUNCA palabras clave ni automatizaciones.
    - VÁLIDO: "Si estás pensando en hacerte este servicio, escríbeme y te ayudo."
    - PROHIBIDO: "Comenta BALAYAGE", "Escribe INFO".
+
+=== REGLA CRÍTICA: NUNCA menciones el reto ===
+
+ESTRICTAMENTE PROHIBIDO en guiones, títulos, captions o cualquier texto que vea la audiencia:
+- Mencionar "reto", "reto 10K", "día 1", "día 15", "día 30", "llevo X días", "30 días", "challenge"
+- Cualquier referencia a que la estilista está siguiendo un plan, programa o challenge
+- Frases como "hoy toca...", "como parte de mi reto...", "en este día del reto..."
+- La audiencia NO sabe que existe un reto. El contenido debe verse natural, como contenido orgánico espontáneo.
 
 === ENTREGABLE ===
 
@@ -525,7 +543,7 @@ Fase: ${d.phase} — ${d.phaseTitle}`
 
   const dayNumbers = input.days.map(d => d.day)
 
-  return `Eres un guionista profesional para estilistas en Instagram, especializado en el Reto 10K BRÄVE. Sigues el MANUAL OFICIAL DE GUIONES BRÄVE al pie de la letra.
+  return `Eres un guionista profesional para estilistas en Instagram. Sigues el MANUAL OFICIAL DE GUIONES BRÄVE al pie de la letra.
 
 OBJETIVO DE LA USUARIA: ${input.objective === 'recomendado' ? 'Sin objetivo prioritario — aplicar mix equilibrado entre los 6 pilares' : input.objective}
 SERVICIOS ESTRELLA: ${services}
@@ -551,6 +569,13 @@ Todos los reels son de AUTORIDAD (35-45s) con esta estructura INALTERABLE:
 4. CTA (3-5s): conversacional. NUNCA palabras clave ni automatizaciones.
    - VÁLIDO: "Si estás pensando en hacerte este servicio, escríbeme y te ayudo."
    - PROHIBIDO: "Comenta BALAYAGE", "Escribe INFO".
+
+=== REGLA CRÍTICA: NUNCA menciones el reto ===
+
+ESTRICTAMENTE PROHIBIDO en guiones, títulos, captions o cualquier texto que vea la audiencia:
+- Mencionar "reto", "reto 10K", "día X", "30 días", "challenge", "plan"
+- Cualquier referencia a que la estilista está siguiendo un programa o challenge
+- La audiencia NO sabe que existe un reto. El contenido debe verse natural y orgánico.
 
 === MISIONES A GENERAR ===
 

@@ -11,6 +11,6 @@ export default async function MiMarcaPage() {
   }
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  const { data: brand } = await supabase.from('brand_profiles').select('*').eq('user_id', user!.id).single()
+  const { data: brand } = await supabase.from('brand_profiles').select('*').eq('user_id', user!.id).maybeSingle()
   return <PageTransition><MiMarcaClient userId={user!.id} brand={brand as BrandProfile | null} /></PageTransition>
 }

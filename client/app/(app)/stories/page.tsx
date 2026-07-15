@@ -15,6 +15,6 @@ export default async function StoriesPage() {
     .from('brand_profiles')
     .select('optimized_summary, salon_name, main_services, service_to_promote, strategy_json, raw_input')
     .eq('user_id', user!.id)
-    .single()
+    .maybeSingle()
   return <PageTransition><StoriesClient userId={user!.id} brandFull={(brand as BrandFullContextInput) || null} /></PageTransition>
 }

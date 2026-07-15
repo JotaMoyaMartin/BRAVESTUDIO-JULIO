@@ -59,22 +59,17 @@ export default function UsarMiMarcaToggle({ enabled, onChange, disabled, hasBran
   }
 
   return (
-    <label
-      className={`flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all ${
-        disabled ? 'opacity-60' : ''
-      }`}
+    <button
+      type="button"
+      onClick={() => !disabled && onChange(!enabled)}
+      disabled={disabled}
+      className="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all w-full text-left"
       style={{
         background: enabled ? 'rgba(122,24,50,0.06)' : 'var(--color-warm-gray)',
         border: `1.5px solid ${enabled ? 'var(--color-cherry)' : 'rgba(122,24,50,0.15)'}`,
+        opacity: disabled ? 0.6 : 1,
       }}
     >
-      <input
-        type="checkbox"
-        checked={enabled}
-        disabled={disabled}
-        onChange={e => onChange(e.target.checked)}
-        className="sr-only"
-      />
       <span
         className="inline-flex items-center justify-center w-9 h-5 rounded-full transition-colors flex-shrink-0"
         style={{ background: enabled ? 'var(--color-cherry)' : 'rgba(122,24,50,0.2)' }}
@@ -105,6 +100,6 @@ export default function UsarMiMarcaToggle({ enabled, onChange, disabled, hasBran
             : 'Generación genérica sin usar la información de tu salón.'}
         </p>
       </div>
-    </label>
+    </button>
   )
 }

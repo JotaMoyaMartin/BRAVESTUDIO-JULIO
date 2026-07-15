@@ -58,7 +58,7 @@ export default async function Reto10kPage() {
   // Cargar brand profile
   const { data: brand } = await supabase
     .from('brand_profiles')
-    .select('salon_name, optimized_summary, main_services, service_to_promote')
+    .select('salon_name, optimized_summary, main_services, service_to_promote, strategy_json, raw_input')
     .eq('user_id', user!.id)
     .maybeSingle()
 

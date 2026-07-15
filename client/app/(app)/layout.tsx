@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
+import { cookies } from 'next/headers'
 import Sidebar from '@/components/layout/Sidebar'
 import SectionTracker from '@/components/layout/SectionTracker'
+import PreviewPremiumBanner from '@/components/layout/PreviewPremiumBanner'
 import { Profile } from '@/types/database'
 import { hasActiveAccess, ACCESS_REDIRECT } from '@/lib/access'
 import { ToastProvider } from '@/components/ui/Toast'
@@ -37,6 +39,7 @@ const DEMO_PROFILE: Profile = {
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   let typedProfile: Profile = DEMO_PROFILE
+  let isPreviewingPremium = false
 
   if (IS_CONFIGURED) {
     const { redirect } = await import('next/navigation')
@@ -70,6 +73,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     }
     const isPrivileged = typedProfile.role === 'admin' || typedProfile.role === 'superadmin' || typedProfile.role === 'premium'
     if (!hasActiveAccess(typedProfile) && !isPrivileged) redirect(ACCESS_REDIRECT)
+
+    // Admin preview premium mode — override role to premium for visualization
+    const cookieStore = await cookies()
+    const previewPremium = cookieStore.get('brave_preview_premium')?.value === 'true'
+    isPreviewingPremium = previewPremium && (typedProfile.role === 'admin' || typedProfile.role === 'superadmin')
+    if (isPreviewingPremium) {
+      typedProfile = { ...typedProfile, role: 'premium' }
+    }
   }
 
   return (
@@ -78,6 +89,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <main className="flex-1 overflow-y-auto">
         <div className="max-w-4xl mx-auto px-5 sm:px-6 pt-20 pb-8 md:pt-8 md:py-8">
           <SectionTracker />
+          {isPreviewingPremium && <PreviewPremiumBanner />}
           <ToastProvider>{children}</ToastProvider>
         </div>
       </main>

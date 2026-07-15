@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { cookies } from 'next/headers'
 import InicioClient from './InicioClient'
 import { Profile, BrandProfile, ContentItem, ReelInspiration, ReelTransition } from '@/types/database'
 import { Reto10kProgress } from '@/types/reto10k'
@@ -26,7 +27,11 @@ export default async function InicioPage() {
   const { data: { user } } = await supabase.auth.getUser()
   const { data: profile } = await supabase.from('profiles').select('*').eq('id', user!.id).single()
 
-  const isPremium = profile?.role === 'premium'
+  // Check premium preview mode (admin visualizing premium experience)
+  const cookieStore = await cookies()
+  const previewPremium = cookieStore.get('brave_preview_premium')?.value === 'true'
+  const realRole = (profile as { role?: string } | null)?.role
+  const isPremium = realRole === 'premium' || (previewPremium && (realRole === 'admin' || realRole === 'superadmin'))
 
   const { data: brand } = await supabase.from('brand_profiles').select('completion_status, salon_name').eq('user_id', user!.id).maybeSingle()
   const { data: items } = await supabase

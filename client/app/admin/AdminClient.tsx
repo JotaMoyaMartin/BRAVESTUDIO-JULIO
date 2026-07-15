@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { ShieldCheck } from 'lucide-react'
+import { ShieldCheck, Crown } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Profile, PromoCode } from '@/types/database'
 import { UserStats, DashboardMetrics } from './page'
 import AdminTabs, { TabKey } from '@/components/admin/AdminTabs'
@@ -38,6 +39,12 @@ export default function AdminClient({
   const [activeTab, setActiveTab] = useState<TabKey>('dashboard')
   const [users, setUsers] = useState(initialUsers)
   const isSuperAdmin = currentUserRole === 'superadmin'
+  const router = useRouter()
+
+  function enterPremiumPreview() {
+    document.cookie = 'brave_preview_premium=true; path=/; max-age=3600'
+    router.push('/inicio')
+  }
 
   function handleUserUpdate(updated: Profile) {
     setUsers(prev => prev.map(u => (u.id === updated.id ? updated : u)))
@@ -73,13 +80,23 @@ export default function AdminClient({
             </div>
             <p className="text-sm text-cherry-dark opacity-60">{activeCount} activas · {users.length} totales</p>
           </div>
-          <Link
-            href="/inicio"
-            className="ml-auto text-sm font-medium px-4 py-2 rounded-[var(--radius-sm)] transition-all"
-            style={{ background: 'var(--color-buttermilk)', color: 'var(--color-cherry-dark)' }}
-          >
-            Entrar en App
-          </Link>
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              onClick={enterPremiumPreview}
+              className="text-sm font-medium px-4 py-2 rounded-[var(--radius-sm)] transition-all inline-flex items-center gap-1.5"
+              style={{ background: 'rgba(184,134,11,0.12)', color: '#b8860b', border: '1px solid rgba(184,134,11,0.2)' }}
+              title="Ver la app como usuaria premium"
+            >
+              <Crown size={14} /> Vista Premium
+            </button>
+            <Link
+              href="/inicio"
+              className="text-sm font-medium px-4 py-2 rounded-[var(--radius-sm)] transition-all"
+              style={{ background: 'var(--color-buttermilk)', color: 'var(--color-cherry-dark)' }}
+            >
+              Entrar en App
+            </Link>
+          </div>
         </div>
 
         {/* Tabs */}

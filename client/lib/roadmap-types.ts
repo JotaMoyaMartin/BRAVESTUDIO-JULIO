@@ -38,6 +38,40 @@ export interface Roadmap {
 
 export const EMPTY_ROADMAP: Roadmap = { phases: [], generated_at: '' }
 
+/**
+ * Defensively fills missing fields of a Roadmap.
+ * Real-world `roadmap_json` from the DB (or stale session state in localStorage)
+ * can be `{}` or partial — without this, `RoadmapDisplay` crashes when it calls
+ * `roadmap.phases.reduce(...)` or `phase.tasks.filter(...)`.
+ */
+export function normalizeRoadmap(r: unknown): Roadmap | null {
+  if (!r || typeof r !== 'object') return null
+  const src = r as Partial<Roadmap>
+  const phases = Array.isArray(src.phases) ? src.phases : []
+  const validColors: RoadmapColor[] = ['cherry', 'cherry-dark', 'buttermilk', 'pastel-blue', 'pastel-green', 'warm-gray']
+  const validStatuses: RoadmapStatus[] = ['completed', 'in_progress', 'pending']
+  return {
+    phases: phases.map((p: any, i: number) => ({
+      number: typeof p?.number === 'number' ? p.number : i + 1,
+      name: typeof p?.name === 'string' ? p.name : '',
+      description: typeof p?.description === 'string' ? p.description : '',
+      goal: typeof p?.goal === 'string' ? p.goal : '',
+      icon: typeof p?.icon === 'string' ? p.icon : '✨',
+      color: validColors.includes(p?.color) ? p.color : 'cherry',
+      status: validStatuses.includes(p?.status) ? p.status : 'pending',
+      tasks: Array.isArray(p?.tasks)
+        ? p.tasks.map((t: any, j: number) => ({
+            id: typeof t?.id === 'string' ? t.id : `t${j + 1}`,
+            label: typeof t?.label === 'string' ? t.label : '',
+            done: !!t?.done,
+          }))
+        : [],
+      bravi_message: typeof p?.bravi_message === 'string' ? p.bravi_message : undefined,
+    })),
+    generated_at: typeof src.generated_at === 'string' ? src.generated_at : '',
+  }
+}
+
 // ── Mapa de colores → tokens CSS ────────────────────────────────────
 
 export const COLOR_MAP: Record<RoadmapColor, { bg: string; bgSoft: string; text: string; border: string; ring: string }> = {

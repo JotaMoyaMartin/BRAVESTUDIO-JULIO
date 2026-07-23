@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ShieldCheck, Crown } from 'lucide-react'
+import { ShieldCheck, Crown, Users, BarChart3 } from 'lucide-react'
 import Link from 'next/link'
 import { Profile, PromoCode } from '@/types/database'
 import { UserStats, DashboardMetrics } from './page'
@@ -80,6 +80,16 @@ export default function AdminClient({
             <p className="text-sm text-cherry-dark opacity-60">{activeCount} activas · {users.length} totales</p>
           </div>
           <div className="ml-auto flex items-center gap-2">
+            {isSuperAdmin && (
+              <Link
+                href="/admin/finanzas"
+                className="text-sm font-medium px-4 py-2 rounded-[var(--radius-sm)] transition-all inline-flex items-center gap-1.5"
+                style={{ background: 'rgba(122,24,50,0.08)', color: 'var(--color-cherry)', border: '1px solid rgba(122,24,50,0.18)' }}
+                title="Finanzas BRAVECONTENT — solo tú puedes ver esto"
+              >
+                <BarChart3 size={14} /> Finanzas BC
+              </Link>
+            )}
             <button
               onClick={enterPremiumPreview}
               className="text-sm font-medium px-4 py-2 rounded-[var(--radius-sm)] transition-all inline-flex items-center gap-1.5"
@@ -88,6 +98,14 @@ export default function AdminClient({
             >
               <Crown size={14} /> Vista Premium
             </button>
+            <Link
+              href="/team"
+              className="text-sm font-medium px-4 py-2 rounded-[var(--radius-sm)] transition-all inline-flex items-center gap-1.5"
+              style={{ background: 'rgba(122,24,50,0.08)', color: 'var(--color-cherry-dark)', border: '1px solid rgba(122,24,50,0.2)' }}
+              title="Entrar al panel del equipo BRÄVE CONTENT"
+            >
+              <Users size={14} /> Modo Equipo
+            </Link>
             <Link
               href="/inicio"
               className="text-sm font-medium px-4 py-2 rounded-[var(--radius-sm)] transition-all"

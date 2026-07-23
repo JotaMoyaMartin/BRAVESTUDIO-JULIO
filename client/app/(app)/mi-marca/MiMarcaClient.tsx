@@ -5,8 +5,8 @@ import { demoGetBrand, demoSaveBrand } from '@/lib/demo-store'
 import { BrandProfile } from '@/types/database'
 import { generateAIContent, extractJSON } from '@/lib/ai/client'
 import { buildProfile } from '@/lib/brand-extract'
-import { StrategyDocument, EMPTY_STRATEGY } from '@/lib/strategy-types'
-import { Roadmap, EMPTY_ROADMAP, RoadmapPhase } from '@/lib/roadmap-types'
+import { StrategyDocument, EMPTY_STRATEGY, normalizeStrategy } from '@/lib/strategy-types'
+import { Roadmap, EMPTY_ROADMAP, RoadmapPhase, normalizeRoadmap } from '@/lib/roadmap-types'
 import { useSessionState, clearSectionState } from '@/lib/session-store'
 import VoiceButton from '@/components/VoiceButton'
 import { StrategyDisplay } from '@/components/mi-marca/StrategyDisplay'
@@ -225,10 +225,10 @@ export default function MiMarcaClient({ userId, brand }: { userId: string; brand
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [strategy, setStrategy] = useSessionState<StrategyDocument | null>(`u:${userId}:marca:strategy`,
-    brand?.strategy_json ? (brand.strategy_json as unknown as StrategyDocument) : null
+    brand?.strategy_json ? normalizeStrategy(brand.strategy_json) : null
   )
   const [roadmap, setRoadmap] = useSessionState<Roadmap | null>(`u:${userId}:marca:roadmap`,
-    brand?.roadmap_json ? (brand.roadmap_json as unknown as Roadmap) : null
+    brand?.roadmap_json ? normalizeRoadmap(brand.roadmap_json) : null
   )
   const [justGenerated, setJustGenerated] = useState(false)
   const [generatingRoadmap, setGeneratingRoadmap] = useState(false)
@@ -246,15 +246,20 @@ export default function MiMarcaClient({ userId, brand }: { userId: string; brand
           setText((stored.raw_input as string) || '')
         }
         if (stored.strategy_json && !strategy) {
-          setStrategy(stored.strategy_json as unknown as StrategyDocument)
+          setStrategy(normalizeStrategy(stored.strategy_json))
         } else if (stored.optimized_summary && !strategy) {
           setStrategy({ ...EMPTY_STRATEGY, resumen_para_ia: stored.optimized_summary as string })
         }
         if (stored.roadmap_json && !roadmap) {
-          setRoadmap(stored.roadmap_json as unknown as Roadmap)
+          setRoadmap(normalizeRoadmap(stored.roadmap_json))
         }
       }
     }
+    // Defensively normalize whatever was loaded from the session (DB row or
+    // stale localStorage). Older sessions may have partial shapes that crash
+    // the display components on the very first render.
+    setStrategy(prev => (prev ? normalizeStrategy(prev) : prev))
+    setRoadmap(prev => (prev ? normalizeRoadmap(prev) : prev))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -296,7 +301,7 @@ export default function MiMarcaClient({ userId, brand }: { userId: string; brand
           }
         }
 
-        setStrategy(parsed)
+        setStrategy(normalizeStrategy(parsed))
         setJustGenerated(true)
         // Lleva a la usuaria al principio de la página para que vea la estrategia nueva
         requestAnimationFrame(() => {
@@ -383,7 +388,7 @@ export default function MiMarcaClient({ userId, brand }: { userId: string; brand
         })),
         generated_at: new Date().toISOString(),
       }
-      setRoadmap(next)
+      setRoadmap(normalizeRoadmap(next) ?? next)
       await persistRoadmap(next)
       // Scroll suave a la hoja de ruta
       requestAnimationFrame(() => {

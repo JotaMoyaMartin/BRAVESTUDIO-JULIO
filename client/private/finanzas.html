@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BRAVECONTENT — Finanzas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --sheet:#ffffff;
+  --border:#e2e2dc;
+  --border2:#efefea;
+  --text:#1a1a1a;
+  --muted:#7a7a7a;
+  --muted2:#bbb;
+  --accent:#7A1832;
+  --accent-dark:#591427;
+  --accent-light:#A04060;
+  --cream:#FFFDF5;
+  --buttermilk:#FFF1B5;
+  --green:#16a34a;
+  --red:#dc2626;
+  --orange:#ea580c;
+  --yellow-bg:#fffbeb;
+  --nav-h:50px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--cream);color:var(--text);font-family:'Poppins','Inter','Segoe UI',system-ui,sans-serif;font-size:13px;}
+
+/* ── NAV ── */
+.topnav{
+  height:var(--nav-h);background:#fff;border-bottom:1px solid #e5e5e5;
+  display:flex;align-items:center;padding:0 20px;gap:4px;
+  position:sticky;top:0;z-index:200;box-shadow:0 1px 3px rgba(0,0,0,.06);
+}
+.brand{font-size:15px;font-weight:900;color:#1a1a1a;letter-spacing:-.4px;margin-right:10px;}
+.brand span{color:var(--accent);}
+.nav-sep{width:1px;height:18px;background:#e5e5e5;margin:0 8px;}
+.nbtn{padding:6px 13px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600;color:#666;border:none;background:none;transition:all .14s;}
+.nbtn:hover{color:#1a1a1a;background:#f3f3f3;}
+.nbtn.active{color:var(--accent);background:#eef2ff;}
+.nav-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
+.save-btn{padding:7px 16px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:700;color:#fff;background:var(--accent);border:none;transition:background .14s;}
+.save-btn:hover{background:var(--accent-dark);}
+.saved-lbl{font-size:11px;color:#16a34a;font-weight:600;}
+
+/* ── RANGE STRIP ── */
+.range-strip{
+  background:#fff;border-bottom:1px solid #e5e5e5;
+  padding:8px 20px;display:flex;align-items:center;gap:8px;
+  position:sticky;top:var(--nav-h);z-index:190;
+}
+.range-strip label{font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.6px;margin-right:4px;}
+.rtab{padding:5px 13px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;
+  color:#666;border:1px solid #e5e5e5;background:#fff;transition:all .14s;}
+.rtab.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+.range-strip .sep{flex:1;}
+.info-pill{font-size:11px;color:#888;background:#f3f3f3;border-radius:5px;padding:3px 10px;}
+
+/* ── PAGES ── */
+.page{display:none;}
+.page.active{display:block;}
+
+/* ══ SHEET ══ */
+.sheet-wrap{overflow:auto;height:calc(100vh - var(--nav-h) - 41px);}
+table.sheet{border-collapse:collapse;min-width:max-content;}
+
+/* sticky row/col headers */
+.sh-corner{position:sticky;left:0;top:0;z-index:20;background:#f7f7f5;border-right:1px solid var(--border);border-bottom:1px solid var(--border);}
+.col-hdr{position:sticky;top:0;z-index:10;background:#f7f7f5;text-align:center;
+  font-size:10px;font-weight:600;color:#aaa;padding:2px;
+  border-bottom:1px solid var(--border);border-right:1px solid var(--border2);}
+.row-num{position:sticky;left:0;z-index:5;background:#f7f7f5;text-align:center;
+  font-size:10px;color:#ccc;padding:0 4px;width:26px;min-width:26px;
+  border-right:1px solid var(--border);border-bottom:1px solid var(--border2);}
+
+/* sticky left cols */
+.sc-a{position:sticky;left:26px;z-index:4;background:inherit;}
+.sc-b{position:sticky;left:136px;z-index:4;background:inherit;}
+.sc-c{position:sticky;left:226px;z-index:4;background:inherit;border-right:2px solid var(--border) !important;}
+
+/* Base cell */
+td{border-right:1px solid var(--border2);border-bottom:1px solid var(--border2);padding:0;white-space:nowrap;vertical-align:middle;}
+.cell{display:block;width:100%;min-height:22px;padding:3px 7px;cursor:cell;}
+.c-r{text-align:right;}
+.c-b{font-weight:700;}
+.c-it{font-style:italic;}
+.c-sm{font-size:11px;}
+.c-grey{color:var(--muted);}
+.c-grey2{color:var(--muted2);}
+
+/* Row palettes — same feel as Google Sheets */
+.rw-white   {background:#fff;}
+.rw-factu   {background:#fff7ed;}   /* naranja muy suave */
+.rw-brv     {background:#fef9ec;}   /* bravecontent ingresos */
+.rw-skool   {background:#eff6ff;}   /* azul muy suave */
+.rw-clients {background:#f7fdf7;}   /* verde pálido */
+.rw-gastos  {background:#fff1f1;}   /* rojo suave */
+.rw-margen  {background:#f0fdf4;}   /* verde */
+.rw-resto   {background:#fffbeb;}   /* amarillo */
+.rw-reparto {background:#faf5ff;}   /* violeta */
+.rw-total   {background:#eff6ff;font-weight:700;}  /* total con skool */
+.rw-svc-hdr {background:#fff5f7;}   /* SERVICIO header */
+.rw-client  {background:#fff;}
+.rw-sep     {background:#f8f8f6;height:6px;}
+.rw-inactive td{opacity:.55;}
+
+/* Month highlight */
+.cur-month{background:#fffce6 !important;}
+
+/* Focused cell */
+td.focused{outline:2px solid var(--accent);outline-offset:-2px;z-index:6;}
+.cell-inp{
+  position:absolute;inset:0;border:none;outline:none;
+  background:#fffce6;padding:3px 7px;
+  font-size:13px;font-family:inherit;z-index:30;
+}
+
+/* Color helpers */
+.col-purple{color:var(--accent);font-weight:700;}
+.col-green{color:#16a34a;}
+.col-red{color:#dc2626;}
+.col-orange{color:#ea580c;}
+.col-blue{color:#2563eb;}
+.col-skool{color:#2563eb;font-weight:700;}
+
+/* ══ DASHBOARD ══ */
+.dash-wrap{padding:24px;overflow-y:auto;height:calc(100vh - var(--nav-h));}
+.kpi-row{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:22px;}
+.kpi{background:#fff;border:1px solid #e5e5e5;border-radius:10px;padding:16px 20px;min-width:155px;flex:1;box-shadow:0 1px 3px rgba(0,0,0,.04);}
+.kpi-lbl{font-size:10px;color:#999;text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px;font-weight:700;}
+.kpi-val{font-size:24px;font-weight:800;}
+.kpi-d{font-size:11px;margin-top:4px;}
+.dash-grid{display:grid;grid-template-columns:3fr 2fr;gap:16px;margin-bottom:20px;}
+.dcard{background:#fff;border:1px solid #e5e5e5;border-radius:10px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.04);}
+.dcard-head{padding:12px 16px;border-bottom:1px solid #f0f0f0;font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.6px;display:flex;align-items:center;justify-content:space-between;}
+.dcard-body{padding:16px;}
+.ch-wrap{position:relative;height:220px;}
+.range-tabs{display:flex;gap:3px;}
+
+/* Table styles (shared) */
+.t-wrap{background:#fff;border:1px solid #e5e5e5;border-radius:10px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.04);}
+table.dt{width:100%;border-collapse:collapse;}
+table.dt th{padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.6px;background:#fafaf8;border-bottom:1px solid #eee;}
+table.dt th.r{text-align:right;}
+table.dt td{padding:9px 12px;border-bottom:1px solid #f5f5f5;font-size:13px;}
+table.dt td.r{text-align:right;}
+table.dt tr:hover td{background:#fafaf8;}
+table.dt tr.total-r td{background:#f5f5ff;font-weight:700;}
+
+/* ══ CLIENTES PAGE ══ */
+.cp-wrap{padding:24px;overflow-y:auto;height:calc(100vh - var(--nav-h));}
+
+/* MODAL */
+.mbg{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:500;display:none;align-items:center;justify-content:center;}
+.mbg.open{display:flex;}
+.mbox{background:#fff;border-radius:14px;padding:24px;width:500px;max-width:96vw;box-shadow:0 20px 60px rgba(0,0,0,.15);}
+.mbox h2{font-size:16px;font-weight:800;margin-bottom:18px;}
+.fg2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.fg{display:flex;flex-direction:column;gap:5px;}
+.fl{font-size:11px;font-weight:700;color:#888;text-transform:uppercase;}
+.fi{border:1px solid #ddd;border-radius:7px;padding:8px 11px;font-size:13px;font-family:inherit;}
+.fi:focus{outline:none;border-color:var(--accent);}
+.mfooter{display:flex;gap:10px;justify-content:flex-end;margin-top:18px;padding-top:14px;border-top:1px solid #f0f0f0;}
+.btn{padding:8px 18px;border-radius:7px;cursor:pointer;font-size:13px;font-weight:600;border:none;}
+.btn-p{background:var(--accent);color:#fff;}
+.btn-g{background:#f3f3f3;color:#666;}
+.btn-sm{padding:4px 10px;font-size:11px;}
+.btn-danger{background:#fff1f1;color:#dc2626;}
+
+/* Toast */
+.toast{position:fixed;bottom:20px;right:20px;background:#1a1a1a;color:#4ade80;
+  padding:10px 18px;border-radius:8px;font-weight:700;font-size:13px;z-index:999;
+  transform:translateY(50px);opacity:0;transition:all .25s;}
+.toast.show{transform:translateY(0);opacity:1;}
+
+/* add-col btn */
+.add-col-th{cursor:pointer;color:var(--accent);font-size:15px;text-align:center;padding:4px 8px;}
+.add-col-th:hover{background:#eef2ff;}
+</style>
+</head>
+<body>
+
+<!-- ══ TOP NAV ══ -->
+<div class="topnav">
+  <span class="brand">BRÄVE<span style="color:var(--accent)">CONTENT</span> <span style="font-size:10px;font-weight:600;color:var(--muted);letter-spacing:.3px">Finanzas</span></span>
+  <div class="nav-sep"></div>
+  <button class="nbtn active" onclick="showPage('sheet',this)">📋 Hoja</button>
+  <button class="nbtn" onclick="showPage('dashboard',this)">📊 Dashboard</button>
+  <button class="nbtn" onclick="showPage('clients-pg',this)">👥 Clientes</button>
+  <div class="nav-right">
+    <span class="saved-lbl" id="savedLbl"></span>
+    <button class="save-btn" onclick="saveDB()">💾 Guardar</button>
+  </div>
+</div>
+
+<!-- ══ SHEET PAGE ══ -->
+<div class="page active" id="page-sheet">
+  <!-- Range strip -->
+  <div class="range-strip">
+    <label>Mostrar:</label>
+    <button class="rtab" onclick="setSheetRange(3,this)">3 meses</button>
+    <button class="rtab" onclick="setSheetRange(6,this)">6 meses</button>
+    <button class="rtab" onclick="setSheetRange(12,this)">12 meses</button>
+    <button class="rtab active" onclick="setSheetRange(0,this)">Todo</button>
+    <div class="sep"></div>
+    <span class="info-pill" id="sheetInfo">—</span>
+    <button class="rtab" onclick="openAddMonthModal()" style="margin-left:8px">＋ Añadir mes</button>
+  </div>
+  <div class="sheet-wrap" id="sheetWrap">
+    <table class="sheet" id="mainSheet">
+      <colgroup id="cg"></colgroup>
+      <thead id="sh-head"></thead>
+      <tbody id="sh-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══ DASHBOARD PAGE ══ -->
+<div class="page" id="page-dashboard">
+<div class="dash-wrap">
+  <div class="kpi-row" id="kpiRow"></div>
+  <div class="dash-grid">
+    <div class="dcard">
+      <div class="dcard-head">
+        Facturación vs Gastos
+        <div class="range-tabs">
+          <button class="rtab active" onclick="setDashRange(3,this)">3M</button>
+          <button class="rtab" onclick="setDashRange(6,this)">6M</button>
+          <button class="rtab" onclick="setDashRange(12,this)">12M</button>
+          <button class="rtab" onclick="setDashRange(0,this)">Todo</button>
+        </div>
+      </div>
+      <div class="dcard-body"><div class="ch-wrap"><canvas id="chartBar"></canvas></div></div>
+    </div>
+    <div class="dcard">
+      <div class="dcard-head">Margen neto %</div>
+      <div class="dcard-body"><div class="ch-wrap"><canvas id="chartLine"></canvas></div></div>
+    </div>
+  </div>
+  <div class="t-wrap">
+    <table class="dt" id="dashDt">
+      <thead><tr id="dashTH"></tr></thead>
+      <tbody id="dashTB"></tbody>
+    </table>
+  </div>
+</div>
+</div>
+
+<!-- ══ CLIENTS PAGE ══ -->
+<div class="page" id="page-clients-pg">
+<div class="cp-wrap">
+  <div class="kpi-row" id="cliKpi"></div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+    <input id="cliSearch" placeholder="Buscar cliente..." oninput="renderCliPage()"
+      style="border:1px solid #ddd;border-radius:7px;padding:8px 12px;font-size:13px;width:240px;">
+    <button class="btn btn-p" onclick="openClientModal()">+ Añadir cliente</button>
+  </div>
+  <div class="t-wrap">
+    <table class="dt">
+      <thead><tr>
+        <th>Nombre</th><th>Ciudad</th><th>Servicio</th>
+        <th class="r">Fee / mes</th><th>Desde</th><th>Estado</th><th></th>
+      </tr></thead>
+      <tbody id="cliBody"></tbody>
+    </table>
+  </div>
+</div>
+</div>
+
+<!-- CLIENT MODAL -->
+<div class="mbg" id="clientModal">
+  <div class="mbox">
+    <h2 id="cmTitle">Añadir cliente</h2>
+    <div class="fg2">
+      <div class="fg"><label class="fl">Nombre</label><input class="fi" id="cm-name"></div>
+      <div class="fg"><label class="fl">Ciudad</label><input class="fi" id="cm-city"></div>
+      <div class="fg"><label class="fl">Servicio</label>
+        <select class="fi" id="cm-service">
+          <option>redes</option><option>redes + ads</option><option>redes + videog.</option><option>ads</option>
+        </select></div>
+      <div class="fg"><label class="fl">Fee mensual (€)</label><input class="fi" type="number" id="cm-fee"></div>
+      <div class="fg"><label class="fl">Mes de inicio</label><input class="fi" type="month" id="cm-since"></div>
+      <div class="fg"><label class="fl">Estado</label>
+        <select class="fi" id="cm-active"><option value="true">Activo ✓</option><option value="false">Inactivo</option></select></div>
+    </div>
+    <div class="mfooter">
+      <button class="btn btn-g" onclick="closeClientModal()">Cancelar</button>
+      <button class="btn btn-p" onclick="saveClient()">Guardar cliente</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// DEFAULT DATA
+// ═══════════════════════════════════════════════════════
+const DEF_MONTHS = [
+  {id:'2023-08',lbl:'AGOSTO',    brv:2600,  skool:0,   exp:605,  clients:4,  rep:738},
+  {id:'2023-09',lbl:'SEPTIEMBRE',brv:3400,  skool:0,   exp:605,  clients:7,  rep:1058},
+  {id:'2023-10',lbl:'OCTUBRE',   brv:3680,  skool:0,   exp:1020, clients:8,  rep:962},
+  {id:'2023-11',lbl:'NOVIEMBRE', brv:6600,  skool:0,   exp:2260, clients:15, rep:1510},
+  {id:'2023-12',lbl:'DICIEMBRE', brv:6800,  skool:0,   exp:2498, clients:14, rep:1471},
+  {id:'2024-01',lbl:'ENERO',     brv:0,     skool:0,   exp:0,    clients:0,  rep:0},
+  {id:'2024-02',lbl:'FEBRERO',   brv:8925,  skool:0,   exp:2885, clients:20, rep:2265},
+  {id:'2024-03',lbl:'MARZO',     brv:8200,  skool:0,   exp:2824, clients:14, rep:1933},
+  {id:'2024-04',lbl:'ABRIL',     brv:8516,  skool:0,   exp:2896, clients:15, rep:2145},
+  {id:'2024-05',lbl:'MAYO',      brv:5500,  skool:0,   exp:3334, clients:11, rep:1083},
+  {id:'2024-06',lbl:'JUNIO',     brv:5200,  skool:0,   exp:2711, clients:11, rep:1245},
+  {id:'2024-07',lbl:'JULIO',     brv:5650,  skool:0,   exp:2912, clients:13, rep:1369},
+  {id:'2024-08',lbl:'AGOSTO',    brv:5900,  skool:0,   exp:3033, clients:14, rep:1434},
+  {id:'2024-09',lbl:'SEPTIEMBRE',brv:6000,  skool:0,   exp:3028, clients:13, rep:1486},
+  {id:'2024-10',lbl:'OCTUBRE',   brv:6700,  skool:0,   exp:3705, clients:14, rep:1498},
+  {id:'2024-11',lbl:'NOVIEMBRE', brv:6750,  skool:0,   exp:3705, clients:14, rep:1523},
+  {id:'2024-12',lbl:'DICIEMBRE', brv:5606,  skool:0,   exp:3325, clients:13, rep:1141},
+  {id:'2025-01',lbl:'ENERO',     brv:6265,  skool:0,   exp:3809, clients:14, rep:1228},
+  {id:'2025-02',lbl:'FEBRERO',   brv:6010,  skool:0,   exp:3366, clients:14, rep:1322},
+  {id:'2025-03',lbl:'MARZO',     brv:6260,  skool:195, exp:3000, clients:16, rep:1630},
+  {id:'2025-04',lbl:'ABRIL',     brv:7295,  skool:196, exp:4438, clients:15, rep:1429},
+  {id:'2025-05',lbl:'MAYO',      brv:8790,  skool:793, exp:4015, clients:18, rep:2388},
+  {id:'2025-06',lbl:'JUNIO',     brv:8260,  skool:635, exp:4500, clients:20, rep:1880},
+  {id:'2025-07',lbl:'JULIO',     brv:9060,  skool:920, exp:4500, clients:21, rep:2280},
+  {id:'2025-08',lbl:'AGOSTO',    brv:9860,  skool:1000,exp:4500, clients:19, rep:2680},
+  {id:'2025-09',lbl:'SEPTIEMBRE',brv:11210, skool:1000,exp:4500, clients:0,  rep:3355},
+  {id:'2025-10',lbl:'OCTUBRE',   brv:11460, skool:0,   exp:4500, clients:0,  rep:3480},
+  {id:'2025-11',lbl:'NOVIEMBRE', brv:12260, skool:0,   exp:4500, clients:0,  rep:3880},
+  {id:'2025-12',lbl:'DICIEMBRE', brv:13060, skool:0,   exp:4500, clients:0,  rep:4280},
+  {id:'2026-01',lbl:'ENERO',     brv:13860, skool:0,   exp:4500, clients:19, rep:4680},
+  {id:'2026-02',lbl:'FEBRERO',   brv:14660, skool:0,   exp:4500, clients:20, rep:5080},
+  {id:'2026-03',lbl:'MARZO',     brv:5100,  skool:0,   exp:4500, clients:21, rep:0},
+  {id:'2026-04',lbl:'ABRIL',     brv:8890,  skool:0,   exp:4720, clients:19, rep:0},
+  {id:'2026-05',lbl:'MAYO',      brv:8940,  skool:0,   exp:4834, clients:0,  rep:0},
+  {id:'2026-06',lbl:'JUNIO',     brv:9965,  skool:0,   exp:4550, clients:0,  rep:0},
+  {id:'2026-07',lbl:'JULIO',     brv:9180,  skool:0,   exp:5500, clients:0,  rep:0},
+  {id:'2026-08',lbl:'AGOSTO',    brv:7230,  skool:0,   exp:5000, clients:0,  rep:0},
+];
+
+const DEF_CLIENTS = [
+  // ── ACTIVOS ──────────────────────────────────────────────────────
+  {id:1, name:'Cris',             city:'Mallorca',        service:'redes',           fee:450,  active:true,  since:'2023-08'},
+  {id:2, name:'Mayte',            city:'Toledo',          service:'redes + ads',     fee:650,  active:true,  since:'2023-10'},
+  {id:3, name:'Ainhoa',           city:'Tarragona',       service:'redes',           fee:400,  active:true,  since:'2024-06'},
+  {id:4, name:'Jacquelin',        city:'Pamplona',        service:'redes',           fee:450,  active:true,  since:'2024-09'},
+  {id:5, name:'Christofer',       city:'Córdoba',         service:'redes',           fee:340,  active:true,  since:'2024-09'},
+  {id:6, name:'Carmen',           city:'Motril Granada',  service:'redes',           fee:400,  active:true,  since:'2024-10'},
+  {id:7, name:'Eva y Raquel',     city:'Badalona',        service:'redes',           fee:390,  active:true,  since:'2024-10'},
+  {id:8, name:'Tania',            city:'Suiza Bern',      service:'redes + ads',     fee:600,  active:true,  since:'2023-11'},
+  {id:9, name:'Asun',             city:'Logroño',         service:'redes',           fee:450,  active:true,  since:'2025-12'},
+  {id:10,name:'Elena M.',         city:'Mataró',          service:'redes',           fee:450,  active:true,  since:'2026-01'},
+  {id:11,name:'Jenni',            city:'Tenerife',        service:'redes',           fee:650,  active:true,  since:'2026-01'},
+  {id:12,name:'Maria Jose',       city:'Zaragoza',        service:'redes',           fee:450,  active:true,  since:'2026-02'},
+  {id:13,name:'Angie',            city:'Barcelona',       service:'redes',           fee:450,  active:true,  since:'2026-06'},
+  {id:14,name:'Marta',            city:'Madrid',          service:'redes + ads',     fee:650,  active:true,  since:'2026-06'},
+  {id:15,name:'Fran',             city:'Marbella',        service:'redes',           fee:450,  active:true,  since:'2026-06'},
+  {id:16,name:'Carlota',          city:'Logroño',         service:'redes + ads',     fee:650,  active:true,  since:'2024-05'},
+  {id:17,name:'Lola',             city:'Roquetas de Mar', service:'redes',           fee:450,  active:true,  since:'2024-09'},
+  {id:18,name:'Ester',            city:'Girona',          service:'redes',           fee:450,  active:true,  since:'2024-11'},
+  {id:19,name:'Alicia',           city:'Palma Mallorca',  service:'redes',           fee:390,  active:true,  since:'2024-10'},
+  {id:20,name:'Mari',             city:'Almería',         service:'redes',           fee:450,  active:true,  since:'2024-11'},
+  {id:21,name:'Marilo',           city:'Alicante',        service:'redes',           fee:300,  active:true,  since:'2023-11'},
+  {id:22,name:'Jeronimo',         city:'Suiza',           service:'redes',           fee:400,  active:true,  since:'2023-10'},
+  {id:23,name:'Oihane',           city:'Cantabria',       service:'redes',           fee:400,  active:true,  since:'2024-12'},
+  {id:24,name:'Beatriz',          city:'Valencia',        service:'redes',           fee:450,  active:true,  since:'2025-02'},
+  {id:25,name:'Julio',            city:'San Sebastián',   service:'redes',           fee:450,  active:true,  since:'2025-03'},
+  // ── INACTIVOS ────────────────────────────────────────────────────
+  {id:26,name:'Rocio',            city:'Cádiz',           service:'redes',           fee:400,  active:false, since:'2023-08', until:'2024-03'},
+  {id:27,name:'Flor',             city:'Burgos',          service:'redes',           fee:400,  active:false, since:'2023-11', until:'2024-03'},
+  {id:28,name:'Greysi',           city:'Mataró',          service:'redes',           fee:400,  active:false, since:'2023-11', until:'2024-03'},
+  {id:29,name:'Elena H.',         city:'Hospitalet',      service:'redes + ads',     fee:733,  active:false, since:'2023-12', until:'2024-01'},
+  {id:30,name:'Hugo',             city:'Murcia',          service:'redes',           fee:400,  active:false, since:'2023-11', until:'2024-05'},
+  {id:31,name:'Edurne',           city:'Pamplona',        service:'redes + videog.', fee:1150, active:false, since:'2023-11', until:'2025-01'},
+  {id:32,name:'Pilar',            city:'Ciudad Real',     service:'redes + ads',     fee:650,  active:false, since:'2023-08', until:'2025-01'},
+  {id:33,name:'Lisset',           city:'Sabadell',        service:'redes + ads',     fee:650,  active:false, since:'2023-09', until:'2025-01'},
+  {id:34,name:'Lorena',           city:'Viladecans',      service:'redes',           fee:390,  active:false, since:'2024-08', until:'2025-02'},
+  {id:35,name:'Dr. Cut',          city:'Barcelona',       service:'redes',           fee:300,  active:false, since:'2024-08', until:'2025-01'},
+  {id:36,name:'Almudena',         city:'Tarragona',       service:'redes',           fee:400,  active:false, since:'2023-09', until:'2024-04'},
+  {id:37,name:'Chabely',          city:'Santander',       service:'redes',           fee:400,  active:false, since:'2024-09', until:'2025-01'},
+  {id:38,name:'Miriam',           city:'Zaragoza',        service:'redes',           fee:400,  active:false, since:'2023-08', until:'2023-10'},
+  {id:39,name:'Caridad',          city:'Gerona',          service:'redes',           fee:400,  active:false, since:'2023-11', until:'2023-11'},
+  {id:40,name:'Conchy',           city:'Pontevedra',      service:'redes',           fee:400,  active:false, since:'2023-11', until:'2023-12'},
+  {id:41,name:'Aduho Lliça',      city:'Lliça',           service:'redes',           fee:175,  active:false, since:'2024-01', until:'2024-01'},
+  {id:42,name:'Aduho Mollet',     city:'Mollet',          service:'redes',           fee:175,  active:false, since:'2024-01', until:'2024-01'},
+  {id:43,name:'Aduho S.Cugat',    city:'Sant Cugat',      service:'redes',           fee:175,  active:false, since:'2024-01', until:'2024-01'},
+  {id:44,name:'Aduho Franquesas', city:'Las Franquesas',  service:'redes',           fee:175,  active:false, since:'2024-01', until:'2024-01'},
+  {id:45,name:'Aduho Granollers', city:'Granollers',      service:'redes',           fee:175,  active:false, since:'2024-01', until:'2024-01'},
+  {id:46,name:'CLASE ADUHO',      city:'—',               service:'formación',       fee:500,  active:false, since:'2024-01', until:'2024-01'},
+  {id:47,name:'Maria Bilbao',     city:'Bilbao',          service:'redes',           fee:225,  active:false, since:'2024-11', until:'2024-12'},
+  {id:48,name:'Coworking Coqueta',city:'Barcelona',       service:'redes + ads',     fee:400,  active:false, since:'2024-11', until:'2025-02'},
+  {id:49,name:'Sweet',            city:'Barcelona',       service:'redes + ads',     fee:400,  active:false, since:'2024-11', until:'2025-02'},
+  {id:50,name:'Zara',             city:'Barcelona',       service:'redes',           fee:400,  active:false, since:'2023-12', until:'2024-04'},
+];
+
+// ── FEES HISTÓRICOS (overrides donde el fee difiere del fee base del cliente) ──────
+// Formato: clientId_mesId → importe
+const INIT_FEES = (()=>{
+  const f={};
+  const s=(cid,pairs)=>pairs.forEach(([m,v])=>{f[`${cid}_${m}`]=v;});
+  // 1 Cris — fee histórico: 900→400→450
+  s(1,[['2023-08',900],['2023-09',900],['2023-10',900],['2023-11',900],['2023-12',900],
+       ['2024-01',0],
+       ['2024-02',900],['2024-03',900],['2024-04',900],
+       ['2024-05',400],['2024-06',400],['2024-07',400],['2024-08',400],['2024-09',400],['2024-10',400],
+       ['2024-11',450],['2024-12',450],['2025-01',450],['2025-02',450],['2025-03',450],['2025-04',450],['2025-05',450],
+       ['2025-06',400],['2025-07',400],['2025-08',400],['2025-09',400],['2025-10',400],['2025-11',400],['2025-12',400],
+       ['2026-01',400],['2026-02',400],['2026-03',0],
+       ['2026-04',450],['2026-05',450],['2026-06',450],['2026-07',450],['2026-08',450]]);
+  // 2 Mayte — fee histórico: 400→650→1000→650
+  s(2,[['2023-10',400],['2023-11',400],['2023-12',400],['2024-01',400],['2024-02',0],
+       ['2024-03',650],['2024-04',650],['2024-05',650],
+       ['2024-06',400],['2024-07',400],['2024-08',400],['2024-09',400],['2024-10',400],
+       ['2024-11',650],['2024-12',650],['2025-01',650],['2025-02',650],['2025-03',650],
+       ['2025-04',650],['2025-05',650],['2025-06',1000],
+       ['2025-07',650],['2025-08',650],['2025-09',650],['2025-10',650],['2025-11',650],['2025-12',650],
+       ['2026-01',650],['2026-02',650],['2026-03',650],['2026-04',0],
+       ['2026-05',650],['2026-06',650],['2026-07',650],['2026-08',650]]);
+  // 3 Ainhoa — arrancó Jun24 a 450, luego 400
+  s(3,[['2024-06',450],['2024-07',400],['2024-08',400],['2024-09',400],['2024-10',400],['2024-11',400],['2024-12',400],
+       ['2025-01',400],['2025-02',400],['2025-03',400],['2025-04',400],['2025-05',400],['2025-06',400],['2025-07',400],
+       ['2025-08',400],['2025-09',400],['2025-10',400],['2025-11',400],['2025-12',400],
+       ['2026-01',400],['2026-02',400],['2026-03',0],
+       ['2026-04',400],['2026-05',400],['2026-06',400],['2026-07',400],['2026-08',400]]);
+  // 4 Jacquelin — arrancó Sep24 a 450, subida puntual a 650
+  s(4,[['2024-09',450],['2024-10',450],['2024-11',450],['2024-12',450],
+       ['2025-01',450],['2025-02',450],['2025-03',450],['2025-04',650],
+       ['2025-05',450],['2025-06',450],['2025-07',450],['2025-08',450],['2025-09',450],['2025-10',450],['2025-11',450],['2025-12',450],
+       ['2026-01',450],['2026-02',650],['2026-03',0],
+       ['2026-04',450],['2026-05',450],['2026-06',450],['2026-07',450]]);
+  // 5 Christofer — fee cambiante: 188/390/790/550/250/340
+  s(5,[['2024-09',188],['2024-10',390],['2024-11',390],['2024-12',390],
+       ['2025-01',390],['2025-02',790],['2025-03',550],
+       ['2025-04',390],['2025-05',390],['2025-06',390],['2025-07',390],['2025-08',390],['2025-09',390],
+       ['2025-10',390],['2025-11',390],['2025-12',390],
+       ['2026-01',250],['2026-02',250],['2026-03',250],
+       ['2026-04',340],['2026-05',340],['2026-06',340],['2026-07',340],['2026-08',340]]);
+  // 6 Carmen — arrancó Oct24 a 400, luego 390
+  s(6,[['2024-10',400],['2024-11',400],['2024-12',0],
+       ['2025-01',400],['2025-02',400],['2025-03',400],
+       ['2025-04',390],['2025-05',390],['2025-06',390],['2025-07',390],['2025-08',390],['2025-09',390],
+       ['2025-10',390],['2025-11',390],['2025-12',390],
+       ['2026-01',400],['2026-02',400],['2026-03',400],['2026-04',400],['2026-05',400],['2026-06',400],['2026-07',400],['2026-08',400]]);
+  // 7 Eva y Raquel — arrancó Oct24 con 195, luego 390
+  s(7,[['2024-10',195],['2024-11',195],['2024-12',0],
+       ['2025-01',390],['2025-02',390],['2025-03',390],['2025-04',390],['2025-05',390],['2025-06',390],['2025-07',390],
+       ['2025-08',390],['2025-09',390],['2025-10',390],['2025-11',390],['2025-12',390],
+       ['2026-01',390],['2026-02',390],['2026-03',390],['2026-04',390],['2026-05',390],['2026-06',390],['2026-07',390],['2026-08',390]]);
+  // 8 Tania — fee variable: 200/400/450/600
+  s(8,[['2023-11',0],['2023-12',0],
+       ['2024-01',200],['2024-02',400],['2024-03',0],
+       ['2024-04',400],['2024-05',400],['2024-06',400],['2024-07',400],['2024-08',400],['2024-09',400],['2024-10',400],['2024-11',400],['2024-12',0],
+       ['2025-01',400],['2025-02',0],['2025-03',0],
+       ['2025-04',200],['2025-05',600],['2025-06',600],
+       ['2025-07',450],['2025-08',450],['2025-09',450],['2025-10',450],['2025-11',450],['2025-12',450],
+       ['2026-01',450],['2026-02',450],['2026-03',0],
+       ['2026-04',600],['2026-05',600],['2026-06',600],['2026-07',600],['2026-08',600]]);
+  // 16 Carlota — Logroño, redes+ads: 300→400→650
+  s(16,[['2024-05',300],['2024-06',400],['2024-07',400],['2024-08',400],['2024-09',400],['2024-10',400],
+        ['2024-11',400],['2024-12',650],['2025-01',0],
+        ['2025-02',400],['2025-03',400],['2025-04',650],
+        ['2025-05',400],['2025-06',400],['2025-07',400],['2025-08',400],['2025-09',400],['2025-10',400],
+        ['2025-11',400],['2025-12',650],['2026-01',0],
+        ['2026-02',650],['2026-03',650],['2026-04',650],['2026-05',650],['2026-06',650],['2026-07',650],['2026-08',650]]);
+  // 17 Lola — Roquetas, arrancó Sep24
+  s(17,[['2024-09',400],['2024-10',0],['2024-11',450],['2024-12',300],
+        ['2025-01',450],['2025-02',400],['2025-03',400],['2025-04',400],['2025-05',400],['2025-06',400],
+        ['2025-07',400],['2025-08',400],['2025-09',400],['2025-10',400],['2025-11',400],
+        ['2025-12',400],['2026-01',450],['2026-02',450],['2026-03',450],['2026-04',1050],
+        ['2026-05',450],['2026-06',450],['2026-07',450],['2026-08',450]]);
+  // 21 Marilo — Alicante, fee cambiante: 600→300
+  s(21,[['2023-11',600],['2023-12',600],['2024-01',0],
+        ['2024-02',600],['2024-03',600],['2024-04',900],
+        ['2024-05',300],['2024-06',300],['2024-07',300],['2024-08',300],['2024-09',300],['2024-10',300],
+        ['2024-11',300],['2024-12',300],['2025-01',300],['2025-02',300],['2025-03',300],['2025-04',300],
+        ['2025-05',300],['2025-06',300],['2025-07',300],['2025-08',300],['2025-09',300],['2025-10',300],
+        ['2025-11',300],['2025-12',300],['2026-01',300],['2026-02',300],['2026-03',300],
+        ['2026-04',300],['2026-05',300],['2026-06',300],['2026-07',300]]);
+  // 22 Jeronimo — Suiza, arrancó Oct23 a 280/400
+  s(22,[['2023-10',280],['2023-11',400],['2023-12',400],['2024-01',0],
+        ['2024-02',400],['2024-03',400],['2024-04',400],['2024-05',400],['2024-06',400],['2024-07',400],
+        ['2024-08',400],['2024-09',400],['2024-10',400],['2024-11',400],['2024-12',400],
+        ['2025-01',400],['2025-02',400],['2025-03',400],['2025-04',400],['2025-05',400],['2025-06',400],
+        ['2025-07',400],['2025-08',400],['2025-09',400],['2025-10',400],['2025-11',400],['2025-12',400],
+        ['2026-01',400],['2026-02',400],['2026-03',400],['2026-04',400],['2026-05',400],['2026-06',400],['2026-07',400]]);
+  // 23 Oihane — Cantabria, desde Dic24
+  s(23,[['2024-12',350],['2025-01',0],['2025-02',400],['2025-03',300],['2025-04',200],
+        ['2025-05',390],['2025-06',390],['2025-07',390],['2025-08',390],['2025-09',390],['2025-10',390],
+        ['2025-11',390],['2025-12',390],['2026-01',390],['2026-02',400],['2026-03',400],['2026-04',400],
+        ['2026-05',400],['2026-06',400],['2026-07',400],['2026-08',400]]);
+  // 24 Beatriz — Valencia, desde Feb25
+  s(24,[['2025-02',225],['2025-03',450],['2025-04',400],['2025-05',400],['2025-06',400],
+        ['2025-07',450],['2025-08',400],['2025-09',400],['2025-10',400],['2025-11',400],['2025-12',400],
+        ['2026-01',450],['2026-02',450],['2026-03',450],['2026-04',450],['2026-05',450],['2026-06',450],['2026-07',450],['2026-08',450]]);
+  // 25 Julio — San Sebastián, desde Mar25
+  s(25,[['2025-03',350],['2025-04',400],['2025-05',400],['2025-06',400],
+        ['2025-07',450],['2025-08',400],['2025-09',400],['2025-10',400],['2025-11',400],['2025-12',400],
+        ['2026-01',450],['2026-02',450],['2026-03',450],['2026-04',450],['2026-05',450],['2026-06',450],['2026-07',450],['2026-08',450]]);
+  // ── EX-CLIENTES con fees específicos ─────────────────────────────
+  s(26,[['2023-08',900],['2023-09',500],['2023-10',500],['2023-11',400],['2023-12',400],['2024-01',400],['2024-02',400],['2024-03',400]]); // Rocio
+  s(27,[['2023-11',200],['2023-12',400],['2024-01',400],['2024-02',400],['2024-03',400]]); // Flor
+  s(28,[['2023-11',200],['2023-12',400],['2024-01',400],['2024-02',400],['2024-03',400]]); // Greysi
+  s(29,[['2023-12',800],['2024-01',666]]); // Elena H
+  s(30,[['2023-11',400],['2023-12',400],['2024-01',400],['2024-02',400],['2024-03',400],['2024-04',400],['2024-05',400]]); // Hugo
+  s(31,[['2023-11',900],['2023-12',900],['2024-01',900],['2024-02',900],['2024-03',900],['2024-04',1150],['2024-05',1150],['2024-06',1150],['2024-07',1150],['2024-08',1150],['2024-09',1150],['2024-10',1150],['2024-11',650],['2024-12',1150],['2025-01',1150]]); // Edurne
+  s(32,[['2023-08',400],['2023-09',400],['2023-10',400],['2023-11',400],['2023-12',400],['2024-01',650],['2024-02',650],['2024-03',650],['2024-04',650],['2024-05',400],['2024-06',400],['2024-07',400],['2024-08',400],['2024-09',400],['2024-10',400],['2024-11',400],['2024-12',400],['2025-01',80]]); // Pilar
+  s(33,[['2023-09',400],['2023-10',400],['2023-11',400],['2023-12',400],['2024-01',650],['2024-02',650],['2024-03',650],['2024-04',650],['2024-05',650],['2024-06',650],['2024-07',650],['2024-08',650],['2024-09',400],['2024-10',650],['2024-11',650],['2025-01',650]]); // Lisset
+  s(34,[['2024-08',300],['2024-09',0],['2024-10',188],['2024-11',390],['2024-12',390],['2025-01',0],['2025-02',390]]); // Lorena
+  s(35,[['2024-08',150],['2024-09',300],['2024-10',300],['2024-11',300],['2024-12',300],['2025-01',300]]); // Dr.Cut
+  s(36,[['2023-09',400],['2023-10',400],['2023-11',400],['2023-12',400],['2024-01',400],['2024-02',650],['2024-03',400],['2024-04',400]]); // Almudena
+  s(37,[['2024-09',400],['2024-10',400],['2024-11',400],['2024-12',400],['2025-01',400]]); // Chabely
+  s(38,[['2023-08',400],['2023-09',400],['2023-10',400]]); // Miriam
+  s(39,[['2023-11',400]]); // Caridad
+  s(40,[['2023-11',400],['2023-12',400]]); // Conchy
+  s(47,[['2024-11',150],['2024-12',300]]); // Maria Bilbao
+  s(48,[['2024-11',200],['2024-12',400],['2025-01',400],['2025-02',400]]); // Coworking Coqueta
+  s(49,[['2024-11',200],['2024-12',400],['2025-01',400],['2025-02',400]]); // Sweet
+  s(50,[['2023-12',400],['2024-01',400],['2024-02',400],['2024-03',400],['2024-04',400]]); // Zara
+  return f;
+})();
+
+// ═══════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════
+let DB = {months:[], clients:[], fees:{}};
+let sheetRange = 0, dashRange = 6;
+let editingCid = null;
+let charts = {};
+let activePage = 'sheet';
+
+function loadDB() {
+  try {
+    const s = localStorage.getItem('bc_v4');
+    if (s) DB = JSON.parse(s);
+    else { DB = {months:JSON.parse(JSON.stringify(DEF_MONTHS)), clients:JSON.parse(JSON.stringify(DEF_CLIENTS)), fees:JSON.parse(JSON.stringify(INIT_FEES))}; }
+  } catch(e) {
+    DB = {months:JSON.parse(JSON.stringify(DEF_MONTHS)), clients:JSON.parse(JSON.stringify(DEF_CLIENTS)), fees:JSON.parse(JSON.stringify(INIT_FEES))};
+  }
+}
+
+function saveDB() {
+  localStorage.setItem('bc_v4', JSON.stringify(DB));
+  stamp('Guardado ' + new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}));
+  showToast('✓ Guardado');
+}
+
+function stamp(t) { document.getElementById('savedLbl').textContent = t; }
+
+// ═══════════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════════
+function n(v){ return isNaN(+v) ? 0 : +v; }
+function pct(rev,exp){ return rev>0 ? (rev-exp)/rev*100 : 0; }
+function fmtN(v,d=0){ return v===''||v==null?'':Number(v).toLocaleString('es-ES',{minimumFractionDigits:d,maximumFractionDigits:d}); }
+function fmtP(v){ return v.toFixed(1)+'%'; }
+function mlbl(id){ if(!id)return''; const [y,m]=id.split('-'); const ns=['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']; return ns[+m]+' '+y.slice(2); }
+function curMid(){ return new Date().toISOString().slice(0,7); }
+function sorted(){ return [...DB.months].sort((a,b)=>a.id.localeCompare(b.id)); }
+function visMonths(){
+  const s = sorted().filter(m=>m.brv>0||m.skool>0||m.exp>0);
+  if(!sheetRange||sheetRange>=s.length) return s;
+  return s.slice(-sheetRange);
+}
+
+// ═══════════════════════════════════════════════════════
+// NAV
+// ═══════════════════════════════════════════════════════
+function showPage(id, btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nbtn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  btn.classList.add('active');
+  activePage=id;
+  if(id==='sheet') renderSheet();
+  if(id==='dashboard') renderDashboard();
+  if(id==='clients-pg') renderCliPage();
+}
+
+// ═══════════════════════════════════════════════════════
+// SHEET RANGE
+// ═══════════════════════════════════════════════════════
+function setSheetRange(n, el){
+  sheetRange=n;
+  document.querySelectorAll('#page-sheet .rtab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  renderSheet();
+}
+
+// ═══════════════════════════════════════════════════════
+// RENDER SHEET
+// ═══════════════════════════════════════════════════════
+function renderSheet(){
+  const months = visMonths();
+  const curId = curMid();
+  const N = months.length;
+
+  document.getElementById('sheetInfo').textContent =
+    `${months[0]?mlbl(months[0].id):'—'} → ${months[N-1]?mlbl(months[N-1].id):'—'} (${N} meses)`;
+
+  // Colgroup
+  const cg = document.getElementById('cg');
+  cg.innerHTML = '<col style="width:26px"><col style="width:110px"><col style="width:90px"><col style="width:195px"><col style="width:36px"><col style="width:30px">'
+    + months.map(()=>'<col style="width:86px">').join('') + '<col style="width:50px">';
+
+  const colLetters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').concat(['AA','AB','AC','AD','AE','AF','AG','AH','AI','AJ','AK','AL']);
+
+  // THEAD
+  const thead = document.getElementById('sh-head');
+  let h1='<tr>';
+  h1+=`<th class="col-hdr sh-corner" style="width:26px"></th>`;
+  h1+=`<th class="col-hdr" style="position:sticky;left:26px;z-index:12">A</th>`;
+  h1+=`<th class="col-hdr" style="position:sticky;left:136px;z-index:12">B</th>`;
+  h1+=`<th class="col-hdr" style="position:sticky;left:226px;z-index:12">C</th>`;
+  h1+=`<th class="col-hdr">D</th><th class="col-hdr">E</th>`;
+  months.forEach((m,i)=>{ h1+=`<th class="col-hdr${m.id===curId?' cur-month':''}">${colLetters[i+5]||'?'}</th>`; });
+  h1+=`<th class="col-hdr add-col-th" onclick="openAddMonthModal()" title="Añadir mes">＋</th></tr>`;
+
+  // Month name row
+  let h2='<tr>';
+  h2+=`<th class="col-hdr sh-corner" style="width:26px">1</th>`;
+  h2+=`<th class="col-hdr" style="position:sticky;left:26px;z-index:12;font-size:10px;color:#bbb">Ciudad</th>`;
+  h2+=`<th class="col-hdr" style="position:sticky;left:136px;z-index:12;font-size:10px;color:#bbb">Servicio</th>`;
+  h2+=`<th class="col-hdr" style="position:sticky;left:226px;z-index:12;font-size:10px;color:#bbb">Concepto</th>`;
+  h2+=`<th class="col-hdr" style="font-size:10px;color:#bbb">nº</th><th class="col-hdr" style="font-size:10px;color:#bbb">p</th>`;
+  months.forEach((m,i)=>{
+    const yr = (i===0||months[i].id.slice(0,4)!==months[i-1]?.id.slice(0,4)) ? `<div style="font-size:9px;font-weight:400;color:#bbb;line-height:1">${m.id.slice(0,4)}</div>` : '';
+    h2+=`<th class="col-hdr${m.id===curId?' cur-month':''}" style="font-size:11px;font-weight:700;padding:3px 2px">${yr}${m.lbl}</th>`;
+  });
+  h2+=`<th class="col-hdr"></th></tr>`;
+  thead.innerHTML = h1+h2;
+
+  // TBODY
+  const tbody = document.getElementById('sh-body');
+  let html='';
+  let rn=2;
+
+  // Helper: empty separator
+  const sep = (h=6) => {
+    rn++;
+    return `<tr class="rw-sep" style="height:${h}px"><td class="row-num">${rn}</td><td class="sc-a"></td><td class="sc-b"></td><td class="sc-c"></td><td></td><td></td>${months.map(()=>'<td></td>').join('')}<td></td></tr>`;
+  };
+
+  // Helper: summary row
+  const sumRow = (cls, lc, lb, la, vals, opts={}) => {
+    rn++;
+    let r=`<tr class="${cls}"><td class="row-num">${rn}</td>`;
+    r+=`<td class="sc-a"><span class="cell c-grey2 c-sm">${la||''}</span></td>`;
+    r+=`<td class="sc-b"><span class="cell c-grey2 c-sm">${lb||''}</span></td>`;
+    r+=`<td class="sc-c"><span class="cell${opts.bold?' c-b':''}">${lc||''}</span></td>`;
+    r+=`<td><span class="cell"></span></td><td><span class="cell"></span></td>`;
+    vals.forEach((v,i)=>{
+      const mid=months[i].id;
+      const isCur=mid===curId;
+      const empty=!v&&v!==0;
+      let disp = empty?'' : (opts.pct ? fmtP(v) : fmtN(v));
+      let color = '';
+      if(opts.pct){ color=v>=50?'color:#16a34a':v>=40?'color:#ea580c':'color:#dc2626'; }
+      if(opts.colorFn) color=opts.colorFn(v);
+      if(opts.editable){
+        r+=`<td class="${isCur?'cur-month':''}" onclick="editCell(this,'${mid}','${opts.field}',${n(v)})">
+          <span class="cell c-r${opts.bold?' c-b':''}" style="${color}">${disp}</span></td>`;
+      } else {
+        r+=`<td class="${isCur?'cur-month':''}"><span class="cell c-r${opts.bold?' c-b':''}" style="${color}">${disp}</span></td>`;
+      }
+    });
+    r+=`<td></td></tr>`;
+    return r;
+  };
+
+  // ── Row 3: nota
+  rn++; html+=`<tr class="rw-white"><td class="row-num">${rn}</td><td class="sc-a" colspan="5"><span class="cell c-grey c-it c-sm" style="padding:4px 8px">*cantidades sin impuestos añadidos</span></td>${months.map(()=>'<td></td>').join('')}<td></td></tr>`;
+  html+=sep();
+
+  // ── FACTURACIÓN TOTAL
+  html+=sumRow('rw-factu','','','TOTAL FACTURACIÓN',
+    months.map(m=>n(m.brv)+n(m.skool)), {bold:true});
+
+  // ── BraveContent ingresos
+  html+=sumRow('rw-brv','','','↳ BraveContent (redes)',
+    months.map(m=>n(m.brv)), {editable:true,field:'brv',
+    colorFn:v=>v>0?'color:#4f46e5;font-weight:600':''});
+
+  // ── SKOOL ingresos
+  html+=sumRow('rw-skool','','','↳ Skool',
+    months.map(m=>n(m.skool)), {editable:true,field:'skool',
+    colorFn:v=>v>0?'color:#2563eb;font-weight:600':''});
+
+  html+=sep();
+
+  // ── Clientes
+  html+=sumRow('rw-clients','','','Clientes',
+    months.map(m=>m.clients||0), {editable:true,field:'clients'});
+
+  html+=sep();
+
+  // ── GASTOS
+  html+=sumRow('rw-gastos','','','GASTOS',
+    months.map(m=>n(m.exp)), {bold:true,editable:true,field:'exp',
+    colorFn:v=>v>0?'color:#dc2626':''});
+
+  // ── MARGEN
+  html+=sumRow('rw-margen','','','MARGEN',
+    months.map(m=>pct(n(m.brv)+n(m.skool),n(m.exp))), {bold:true,pct:true});
+
+  // ── RESTO (neto)
+  html+=sumRow('rw-resto','','','RESTO',
+    months.map(m=>n(m.brv)+n(m.skool)-n(m.exp)), {bold:true,
+    colorFn:v=>v>0?'color:#16a34a;font-weight:700':'color:#dc2626;font-weight:700'});
+
+  // ── Reparto
+  html+=sumRow('rw-reparto','','','Reparto',
+    months.map(m=>n(m.rep)||(Math.round((n(m.brv)+n(m.skool)-n(m.exp))*0.5))),
+    {editable:true,field:'rep',colorFn:_=>'color:#7c3aed'});
+
+  html+=sep(10);
+
+  // ── SERVICIO HEADER
+  rn++;
+  html+=`<tr class="rw-svc-hdr">
+    <td class="row-num">${rn}</td>
+    <td class="sc-a"></td><td class="sc-b"></td>
+    <td class="sc-c"><span class="cell c-b" style="padding:5px 7px">SERVICIO</span></td>
+    <td></td><td></td>
+    ${months.map(()=>'<td></td>').join('')}
+    <td style="text-align:center"><button onclick="openClientModal()" style="background:#4f46e5;color:#fff;border:none;border-radius:4px;padding:2px 9px;cursor:pointer;font-size:11px;font-weight:700">+</button></td>
+  </tr>`;
+
+  // ── Clients — active first
+  const sortedClients = [...DB.clients].sort((a,b)=>b.active-a.active||a.name.localeCompare(b.name));
+  sortedClients.forEach(c=>{
+    rn++;
+    html+=`<tr class="rw-client${!c.active?' rw-inactive':''}" id="crow-${c.id}">`;
+    html+=`<td class="row-num">${rn}</td>`;
+    html+=`<td class="sc-a"><span class="cell c-grey c-sm">${c.city}</span></td>`;
+    html+=`<td class="sc-b"><span class="cell c-grey c-sm">${c.service}</span></td>`;
+    html+=`<td class="sc-c" ondblclick="openClientModal(${c.id})" title="Doble click para editar">
+      <span class="cell${c.active?' c-b':''}">${c.name}</span></td>`;
+    html+=`<td><span class="cell c-r c-grey2 c-sm"></span></td>`;
+    html+=`<td><span class="cell c-grey2 c-sm c-sm" style="text-align:center">${!c.active?'x':''}</span></td>`;
+
+    months.forEach(m=>{
+      const isCur=m.id===curId;
+      const key=`${c.id}_${m.id}`;
+      let feeV = DB.fees[key]!==undefined ? DB.fees[key]
+        : (c.active && m.id>=c.since ? c.fee : 0);
+      const disp = feeV>0 ? fmtN(feeV) : '';
+      const color = c.active&&feeV>0 ? 'color:#4f46e5' : 'color:#ccc';
+      html+=`<td class="${isCur?'cur-month':''}" onclick="editFeeCell(this,'${c.id}','${m.id}',${feeV})">
+        <span class="cell c-r" style="${color}">${disp}</span></td>`;
+    });
+
+    html+=`<td style="text-align:center">
+      <button onclick="toggleActive(${c.id})" style="font-size:11px;padding:2px 6px;border:none;border-radius:4px;cursor:pointer;background:${c.active?'#fff1f1':'#f0fdf4'};color:${c.active?'#dc2626':'#16a34a'}">${c.active?'✕':'✓'}</button>
+    </td>`;
+    html+=`</tr>`;
+  });
+
+  tbody.innerHTML=html;
+
+  // Scroll to rightmost (latest months)
+  if(!sheetRange){
+    setTimeout(()=>{
+      const w=document.getElementById('sheetWrap');
+      if(w) w.scrollLeft=Math.max(0,w.scrollWidth-w.clientWidth-80);
+    },80);
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// INLINE EDIT — summary
+// ═══════════════════════════════════════════════════════
+function editCell(td, mid, field, cur){
+  if(td.querySelector('input')) return;
+  const m=DB.months.find(x=>x.id===mid); if(!m) return;
+  td.classList.add('focused');
+  const inp=document.createElement('input');
+  inp.className='cell-inp'; inp.type='number'; inp.value=cur||0; inp.style.textAlign='right';
+  td.style.position='relative'; td.appendChild(inp);
+  inp.focus(); inp.select();
+  const commit=()=>{
+    m[field]=parseFloat(inp.value)||0;
+    td.classList.remove('focused'); inp.remove();
+    localStorage.setItem('bc_v4',JSON.stringify(DB));
+    stamp('Auto-guardado'); renderSheet();
+  };
+  inp.addEventListener('blur',commit);
+  inp.addEventListener('keydown',e=>{
+    if(e.key==='Enter'||e.key==='Tab'){e.preventDefault();commit();}
+    if(e.key==='Escape'){td.classList.remove('focused');inp.remove();}
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+// INLINE EDIT — client fee
+// ═══════════════════════════════════════════════════════
+function editFeeCell(td, cid, mid, cur){
+  if(td.querySelector('input')) return;
+  td.classList.add('focused');
+  const inp=document.createElement('input');
+  inp.className='cell-inp'; inp.type='number'; inp.value=cur||0; inp.style.textAlign='right';
+  td.style.position='relative'; td.appendChild(inp);
+  inp.focus(); inp.select();
+  const commit=()=>{
+    const v=parseFloat(inp.value)||0;
+    DB.fees[`${cid}_${mid}`]=v;
+    td.classList.remove('focused'); inp.remove();
+    localStorage.setItem('bc_v4',JSON.stringify(DB));
+    stamp('Auto-guardado'); renderSheet();
+  };
+  inp.addEventListener('blur',commit);
+  inp.addEventListener('keydown',e=>{
+    if(e.key==='Enter'||e.key==='Tab'){e.preventDefault();commit();}
+    if(e.key==='Escape'){td.classList.remove('focused');inp.remove();}
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+// TOGGLE ACTIVE
+// ═══════════════════════════════════════════════════════
+function toggleActive(id){
+  const c=DB.clients.find(x=>x.id===id); if(!c) return;
+  c.active=!c.active; saveDB(); renderSheet();
+}
+
+// ═══════════════════════════════════════════════════════
+// ADD MONTH MODAL
+// ═══════════════════════════════════════════════════════
+function openAddMonthModal(){
+  const mo=prompt('Mes a añadir (AAAA-MM):');
+  if(!mo||!/^\d{4}-\d{2}$/.test(mo)){if(mo)alert('Formato incorrecto. Usa AAAA-MM');return;}
+  if(DB.months.find(m=>m.id===mo)){alert('Ese mes ya existe');return;}
+  const ns=['','ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+  DB.months.push({id:mo,lbl:ns[+mo.split('-')[1]]||mo,brv:0,skool:0,exp:0,clients:0,rep:0});
+  saveDB(); renderSheet();
+}
+
+// ═══════════════════════════════════════════════════════
+// CLIENT MODAL
+// ═══════════════════════════════════════════════════════
+function openClientModal(id){
+  editingCid=id||null;
+  document.getElementById('cmTitle').textContent=id?'Editar cliente':'Añadir cliente';
+  if(id){
+    const c=DB.clients.find(x=>x.id===id); if(!c) return;
+    document.getElementById('cm-name').value=c.name;
+    document.getElementById('cm-city').value=c.city;
+    document.getElementById('cm-service').value=c.service;
+    document.getElementById('cm-fee').value=c.fee;
+    document.getElementById('cm-since').value=c.since;
+    document.getElementById('cm-active').value=String(c.active);
+  } else {
+    ['cm-name','cm-city','cm-fee'].forEach(i=>document.getElementById(i).value='');
+    document.getElementById('cm-service').value='redes';
+    document.getElementById('cm-since').value=curMid();
+    document.getElementById('cm-active').value='true';
+  }
+  document.getElementById('clientModal').classList.add('open');
+}
+function closeClientModal(){document.getElementById('clientModal').classList.remove('open');}
+function saveClient(){
+  const data={
+    name:document.getElementById('cm-name').value.trim(),
+    city:document.getElementById('cm-city').value.trim(),
+    service:document.getElementById('cm-service').value,
+    fee:parseFloat(document.getElementById('cm-fee').value)||0,
+    since:document.getElementById('cm-since').value,
+    active:document.getElementById('cm-active').value==='true',
+  };
+  if(!data.name) return;
+  if(editingCid){
+    const idx=DB.clients.findIndex(c=>c.id===editingCid);
+    if(idx>=0) DB.clients[idx]={...DB.clients[idx],...data};
+  } else {
+    DB.clients.push({id:DB.clients.reduce((m,c)=>Math.max(m,c.id),0)+1,...data});
+  }
+  saveDB(); closeClientModal();
+  if(activePage==='sheet') renderSheet();
+  else renderCliPage();
+}
+
+// ═══════════════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════════════
+function setDashRange(n,el){
+  dashRange=n;
+  document.querySelectorAll('#page-dashboard .rtab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active'); renderDashboard();
+}
+function getMonths(n){
+  const s=sorted().filter(m=>m.brv>0||m.skool>0||m.exp>0);
+  return (!n||n>=s.length)?s:s.slice(-n);
+}
+function renderDashboard(){
+  const months=getMonths(dashRange);
+  const tBrv=months.reduce((s,m)=>s+n(m.brv),0);
+  const tSkool=months.reduce((s,m)=>s+n(m.skool),0);
+  const tRev=tBrv+tSkool;
+  const tExp=months.reduce((s,m)=>s+n(m.exp),0);
+  const avgM=months.length?months.reduce((s,m)=>s+pct(n(m.brv)+n(m.skool),n(m.exp)),0)/months.length:0;
+  const last=months[months.length-1];
+  const prev=months[months.length-2];
+  const delta=prev&&(n(prev.brv)+n(prev.skool))>0?((n(last.brv)+n(last.skool)-(n(prev.brv)+n(prev.skool)))/(n(prev.brv)+n(prev.skool))*100):0;
+  const mrr=DB.clients.filter(c=>c.active).reduce((s,c)=>s+c.fee,0);
+
+  document.getElementById('kpiRow').innerHTML=`
+    <div class="kpi"><div class="kpi-lbl">Facturación total</div><div class="kpi-val" style="color:#4f46e5">${fmtN(tRev)} €</div><div class="kpi-d" style="color:#999">Período seleccionado</div></div>
+    <div class="kpi"><div class="kpi-lbl">↳ BraveContent</div><div class="kpi-val" style="color:#4f46e5">${fmtN(tBrv)} €</div></div>
+    <div class="kpi"><div class="kpi-lbl">↳ Skool</div><div class="kpi-val" style="color:#2563eb">${fmtN(tSkool)} €</div></div>
+    <div class="kpi"><div class="kpi-lbl">Gastos</div><div class="kpi-val" style="color:#dc2626">${fmtN(tExp)} €</div></div>
+    <div class="kpi"><div class="kpi-lbl">Neto</div><div class="kpi-val" style="color:#16a34a">${fmtN(tRev-tExp)} €</div></div>
+    <div class="kpi"><div class="kpi-lbl">Margen medio</div><div class="kpi-val" style="color:#ea580c">${fmtP(avgM)}</div></div>
+    <div class="kpi"><div class="kpi-lbl">Último mes</div><div class="kpi-val">${fmtN(n(last?.brv)+n(last?.skool))} €</div><div class="kpi-d" style="color:${delta>=0?'#16a34a':'#dc2626'}">${delta>=0?'▲':'▼'} ${Math.abs(delta).toFixed(1)}%</div></div>
+    <div class="kpi"><div class="kpi-lbl">MRR activo</div><div class="kpi-val" style="color:#4f46e5">${fmtN(mrr)} €</div><div class="kpi-d" style="color:#999">${DB.clients.filter(c=>c.active).length} clientes</div></div>
+  `;
+
+  if(charts.bar){charts.bar.destroy();}
+  if(charts.line){charts.line.destroy();}
+
+  const base={
+    responsive:true,maintainAspectRatio:false,
+    interaction:{mode:'index',intersect:false},
+    plugins:{legend:{labels:{font:{size:11},boxWidth:10,padding:10}},
+      tooltip:{backgroundColor:'#1a1a1a',titleColor:'#fff',bodyColor:'#ddd',borderColor:'#333',borderWidth:1}},
+    scales:{x:{ticks:{font:{size:10}},grid:{color:'#f5f5f5'}},
+      y:{ticks:{font:{size:10},callback:v=>'€'+v.toLocaleString('es-ES')},grid:{color:'#f5f5f5'}}}
+  };
+
+  charts.bar=new Chart(document.getElementById('chartBar'),{
+    type:'bar',
+    data:{
+      labels:months.map(m=>mlbl(m.id)),
+      datasets:[
+        {label:'BraveContent',data:months.map(m=>n(m.brv)),backgroundColor:'rgba(79,70,229,.75)',borderRadius:3,stack:'rev'},
+        {label:'Skool',data:months.map(m=>n(m.skool)),backgroundColor:'rgba(37,99,235,.65)',borderRadius:3,stack:'rev'},
+        {label:'Gastos',data:months.map(m=>n(m.exp)),backgroundColor:'rgba(220,38,38,.55)',borderRadius:3},
+      ]
+    },
+    options:{...base,scales:{...base.scales,x:{...base.scales.x,stacked:true}}}
+  });
+
+  charts.line=new Chart(document.getElementById('chartLine'),{
+    type:'line',
+    data:{
+      labels:months.map(m=>mlbl(m.id)),
+      datasets:[{label:'Margen %',data:months.map(m=>+pct(n(m.brv)+n(m.skool),n(m.exp)).toFixed(1)),
+        borderColor:'#ea580c',backgroundColor:'rgba(234,88,12,.08)',fill:true,tension:.4,pointRadius:3}]
+    },
+    options:{...base,scales:{x:{ticks:{font:{size:10}},grid:{color:'#f5f5f5'}},
+      y:{min:0,max:80,ticks:{font:{size:10},callback:v=>v+'%'},grid:{color:'#f5f5f5'}}}}
+  });
+
+  // Table
+  document.getElementById('dashTH').innerHTML=
+    `<th>Mes</th><th class="r">BraveContent</th><th class="r">Skool</th><th class="r">Total</th><th class="r">Gastos</th><th class="r">Neto</th><th class="r">Margen</th><th class="r">Clientes</th>`;
+  document.getElementById('dashTB').innerHTML=months.slice().reverse().map(m=>{
+    const tot=n(m.brv)+n(m.skool), net=tot-n(m.exp), mg=pct(tot,n(m.exp));
+    const mc=mg>=50?'#16a34a':mg>=40?'#ea580c':'#dc2626';
+    return `<tr><td style="font-weight:700">${mlbl(m.id)}</td>
+      <td class="r" style="color:#4f46e5">${fmtN(m.brv)} €</td>
+      <td class="r" style="color:#2563eb">${n(m.skool)>0?fmtN(m.skool)+' €':'—'}</td>
+      <td class="r" style="font-weight:700">${fmtN(tot)} €</td>
+      <td class="r" style="color:#dc2626">${fmtN(m.exp)} €</td>
+      <td class="r" style="color:#16a34a;font-weight:700">${fmtN(net)} €</td>
+      <td class="r" style="color:${mc};font-weight:700">${fmtP(mg)}</td>
+      <td class="r" style="color:#666">${m.clients||'—'}</td></tr>`;
+  }).join('')+`<tr class="total-r">
+    <td>TOTAL</td>
+    <td class="r" style="color:#4f46e5">${fmtN(tBrv)} €</td>
+    <td class="r" style="color:#2563eb">${fmtN(tSkool)} €</td>
+    <td class="r">${fmtN(tRev)} €</td>
+    <td class="r" style="color:#dc2626">${fmtN(tExp)} €</td>
+    <td class="r" style="color:#16a34a">${fmtN(tRev-tExp)} €</td>
+    <td class="r">${fmtP(avgM)}</td><td class="r">—</td></tr>`;
+}
+
+// ═══════════════════════════════════════════════════════
+// CLIENTS PAGE
+// ═══════════════════════════════════════════════════════
+function monthDiff(a, b){
+  if(!a||!b) return null;
+  const [ay,am]=a.split('-').map(Number);
+  const [by,bm]=b.split('-').map(Number);
+  return (by-ay)*12+(bm-am)+1;
+}
+function renderCliPage(){
+  const active=DB.clients.filter(c=>c.active);
+  const inactive=DB.clients.filter(c=>!c.active&&c.since&&c.until);
+  const mrr=active.reduce((s,c)=>s+c.fee,0);
+  const tenures=inactive.map(c=>monthDiff(c.since,c.until)).filter(v=>v>0);
+  const avgTenure=tenures.length?Math.round(tenures.reduce((s,v)=>s+v,0)/tenures.length):null;
+  document.getElementById('cliKpi').innerHTML=`
+    <div class="kpi"><div class="kpi-lbl">MRR</div><div class="kpi-val" style="color:#16a34a">${fmtN(mrr)} €</div></div>
+    <div class="kpi"><div class="kpi-lbl">Clientes activos</div><div class="kpi-val" style="color:#4f46e5">${active.length}</div></div>
+    <div class="kpi"><div class="kpi-lbl">Ticket medio</div><div class="kpi-val" style="color:#ea580c">€${active.length?Math.round(mrr/active.length):0}</div></div>
+    <div class="kpi"><div class="kpi-lbl">Total cartera</div><div class="kpi-val">${DB.clients.length}</div></div>
+    ${avgTenure!==null?`<div class="kpi"><div class="kpi-lbl">Permanencia media ex-clientes</div><div class="kpi-val" style="color:#7c3aed">${avgTenure} meses</div></div>`:''}
+  `;
+  const q=(document.getElementById('cliSearch')?.value||'').toLowerCase();
+  const list=[...DB.clients].filter(c=>!q||c.name.toLowerCase().includes(q)||c.city.toLowerCase().includes(q))
+    .sort((a,b)=>b.active-a.active||a.name.localeCompare(b.name));
+  document.getElementById('cliBody').innerHTML=list.map(c=>`
+    <tr style="border-bottom:1px solid #f5f5f5">
+      <td style="padding:9px 12px;font-weight:${c.active?700:400};color:${c.active?'#1a1a1a':'#aaa'}">${c.name}</td>
+      <td style="padding:9px 12px;color:#666;font-size:12px">${c.city}</td>
+      <td style="padding:9px 12px">
+        <span style="background:${c.service.includes('ads')?'#fff1f1':'#eef2ff'};color:${c.service.includes('ads')?'#dc2626':'#4f46e5'};border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600">${c.service}</span></td>
+      <td style="padding:9px 12px;text-align:right;font-weight:700;color:#4f46e5">${fmtN(c.fee)} €</td>
+      <td style="padding:9px 12px;color:#999;font-size:12px">${mlbl(c.since)}</td>
+      <td style="padding:9px 12px">
+        <span style="background:${c.active?'#f0fdf4':'#f9f9f9'};color:${c.active?'#16a34a':'#aaa'};border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600">${c.active?'Activo':'Inactivo'}</span></td>
+      <td style="padding:9px 12px;display:flex;gap:6px">
+        <button onclick="openClientModal(${c.id})" class="btn btn-g btn-sm">✏️ Editar</button>
+        <button onclick="toggleActive(${c.id})" class="btn btn-sm" style="background:${c.active?'#fff1f1':'#f0fdf4'};color:${c.active?'#dc2626':'#16a34a'}">${c.active?'Desactivar':'Activar'}</button>
+      </td>
+    </tr>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════════
+let tT;
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(tT); tT=setTimeout(()=>t.classList.remove('show'),1500);
+}
+
+document.getElementById('clientModal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeClientModal();});
+
+// ═══════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════
+loadDB();
+renderSheet();
+</script>
+</body>
+</html>

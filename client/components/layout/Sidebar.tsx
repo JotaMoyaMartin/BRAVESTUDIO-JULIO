@@ -6,7 +6,7 @@ import { Profile } from '@/types/database'
 import {
   Home, Sparkles, Star,
   Film, LayoutGrid, BookOpen, Calendar, LogOut, Menu, X,
-  Clapperboard, Wand2, Settings, Shield, Rocket, Crown, GraduationCap
+  Clapperboard, Wand2, Settings, Shield, Rocket, Crown, GraduationCap, Users, BarChart3,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -38,6 +38,7 @@ const premiumNavItems: NavItem[] = [
   { href: '/inicio', label: 'Inicio', icon: Home },
   { href: '/mi-estrategia', label: 'Mi Estrategia', icon: Star },
   { href: '/plan-contenidos', label: 'Plan de Contenidos', icon: Sparkles },
+  { href: '/metricas', label: 'Métricas', icon: BarChart3 },
   { href: '/crear-contenido', label: 'Crear Contenido', icon: Film },
   { href: '/biblioteca', label: 'Biblioteca', icon: BookOpen },
   { href: '/stories', label: 'Stories BRÄVE', icon: LayoutGrid },
@@ -54,7 +55,10 @@ export default function Sidebar({ profile }: { profile: Profile }) {
   const isPremium = profile.role === 'premium'
   const activeNavItems = isPremium ? premiumNavItems : navItems
   const adminItems = isAdmin
-    ? [{ href: '/admin', label: 'Panel Admin', icon: Settings }]
+    ? [
+        { href: '/admin', label: 'Panel Admin', icon: Settings },
+        { href: '/team', label: 'Modo Equipo', icon: Users },
+      ]
     : []
 
   // Auto-close on route change

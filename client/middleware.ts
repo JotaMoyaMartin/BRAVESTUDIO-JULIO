@@ -53,7 +53,8 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/skool-access') ||
     pathname.startsWith('/api/auth') ||
     pathname.startsWith('/auth/') ||
-    pathname.startsWith('/api/stripe/webhook')
+    pathname.startsWith('/api/stripe/webhook') ||
+    pathname.startsWith('/team')
 
   if (isPublicAuthRoute) {
     // Redirect authenticated users with active access away from public marketing/auth pages

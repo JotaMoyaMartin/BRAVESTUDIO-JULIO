@@ -41,13 +41,17 @@ export function formatContentForCopy(
   const cap = item.caption_with_hashtags || ''
   const visual = mode === 'visual'
 
-  // Reel
-  if (item.type === 'reel' && json.script) {
-    const s = json.script as Record<string, string>
-    if (visual) {
-      return `🎬 ${item.title}\n\n✨ GANCHO:\n${s.hook}\n\n👁️ CONTEXTO:\n${s.context}\n\n💡 SOLUCIÓN:\n${s.solution}\n\n💌 CTA:\n${s.cta}${cap ? `\n\n📝 PUBLICACIÓN:\n${cap}` : ''}`
+  // Reel — supports nested { script: { hook, context, solution, cta } }
+  // and flat { hook, context, solution, cta } (from team admin routes)
+  if (item.type === 'reel') {
+    const s = (json.script as Record<string, string> | undefined) ||
+      ((json.hook || json.context || json.solution || json.cta) ? json as Record<string, string> : undefined)
+    if (s && (s.hook || s.context || s.solution || s.cta)) {
+      if (visual) {
+        return `🎬 ${item.title}\n\n✨ GANCHO:\n${s.hook || ''}\n\n👁️ CONTEXTO:\n${s.context || ''}\n\n💡 SOLUCIÓN:\n${s.solution || ''}\n\n💌 CTA:\n${s.cta || ''}${cap ? `\n\n📝 PUBLICACIÓN:\n${cap}` : ''}`
+      }
+      return `GANCHO:\n${s.hook || ''}\n\nCONTEXTO:\n${s.context || ''}\n\nSOLUCIÓN:\n${s.solution || ''}\n\nCTA:\n${s.cta || ''}${cap ? `\n\nPUBLICACIÓN:\n${cap}` : ''}`
     }
-    return `GANCHO:\n${s.hook}\n\nCONTEXTO:\n${s.context}\n\nSOLUCIÓN:\n${s.solution}\n\nCTA:\n${s.cta}${cap ? `\n\nPUBLICACIÓN:\n${cap}` : ''}`
   }
 
   // Carrusel

@@ -48,6 +48,7 @@ export default function EstrategiaDetail({ client, onBack }: { client: Client; o
   const { user } = useAuth()
   const [ideas, setIdeas] = useState<Idea[]>([])
   const [scripts, setScripts] = useState<Record<string, Script>>({})
+  const [orphans, setOrphans] = useState<Script[]>([])
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
   const [generatingScriptId, setGeneratingScriptId] = useState<string | null>(null)
@@ -77,6 +78,7 @@ export default function EstrategiaDetail({ client, onBack }: { client: Client; o
       if (!res.ok) throw new Error(j.error || 'Error al cargar ideas')
       setIdeas(j.ideas || [])
       setScripts(j.scripts || {})
+      setOrphans(j.orphanItems || [])
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Error desconocido')
     } finally {
@@ -152,6 +154,26 @@ export default function EstrategiaDetail({ client, onBack }: { client: Client; o
     }
   }
 
+  async function handleDeleteOrphan(item: Script) {
+    setDeletingId(item.id)
+    setError(null)
+    try {
+      const res = await fetch(`/team/api/estrategia/items/${item.id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ actorId }),
+      })
+      const j = await res.json()
+      if (!res.ok) throw new Error(j.error || 'Error al borrar guion')
+      setOrphans(prev => prev.filter(o => o.id !== item.id))
+      setInfo('Guion huérfano eliminado.')
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Error desconocido')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
   async function handleClearAll() {
     setClearingAll(true)
     setError(null)
@@ -165,6 +187,7 @@ export default function EstrategiaDetail({ client, onBack }: { client: Client; o
       if (!res.ok) throw new Error(j.error || 'Error al limpiar')
       setIdeas([])
       setScripts({})
+      setOrphans([])
       setConfirmClearAll(false)
       setInfo('Plan limpiado por completo.')
     } catch (e: unknown) {
@@ -466,6 +489,44 @@ export default function EstrategiaDetail({ client, onBack }: { client: Client; o
               {descartadas.map(i => (
                 <IdeaCard key={i.id} idea={i} readOnly onDelete={() => handleDeleteIdea(i)} deleting={deletingId === i.id} />
               ))}
+            </Section>
+          )}
+
+          {/* Guiones huérfanos (sin idea vinculada) */}
+          {orphans.length > 0 && (
+            <Section title="Guiones sin idea vinculada" subtitle={`${orphans.length} guiones sueltos que la clienta ve pero no aparecen arriba`}>
+              {orphans.map(item => {
+                const json = (item.content_json || {}) as Record<string, unknown>
+                const sd = (json.script as Record<string, string> | undefined) ||
+                  ((json.hook || json.context || json.solution || json.cta) ? json as Record<string, string> : null)
+                return (
+                  <div key={item.id} className="bg-white rounded-xl border border-[#FFF1B5] p-4">
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10.5px] uppercase tracking-wide font-medium px-2 py-0.5 rounded-full bg-[#f4f3f1] text-[#8a8680]">
+                          Huérfano
+                        </span>
+                        <span className="text-[10.5px] text-[#8a8680] uppercase">{TYPE_LABELS[item.type] || item.type}</span>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteOrphan(item)}
+                        disabled={deletingId === item.id}
+                        className="p-1 rounded hover:bg-[#FFF5F5] text-[#8a8680] hover:text-[#e03131] disabled:opacity-50"
+                        title="Borrar guion"
+                      >
+                        {deletingId === item.id ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+                      </button>
+                    </div>
+                    <div className="font-semibold text-[13.5px] text-[#1a1a1a] mb-1.5 leading-snug">{item.title}</div>
+                    {item.service && (
+                      <div className="text-[11px] text-[#8a8680] mb-1">{item.service}</div>
+                    )}
+                    {sd && sd.hook && (
+                      <div className="text-[12px] text-[#3d3d3d] leading-relaxed line-clamp-2">{sd.hook}</div>
+                    )}
+                  </div>
+                )
+              })}
             </Section>
           )}
 

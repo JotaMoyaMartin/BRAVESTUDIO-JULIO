@@ -65,7 +65,21 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ideas: ideas || [], scripts })
+  // Buscar content_items huérfanos (tag='premium-script' sin idea vinculada)
+  const { data: allPremiumItems, error: orphansErr } = await admin
+    .from('content_items')
+    .select('id, title, content_json, visual_idea, caption_with_hashtags, type, service, status, created_at')
+    .eq('user_id', supabaseUserId)
+    .eq('tag', 'premium-script')
+    .order('created_at', { ascending: false })
+
+  let orphanItems: typeof allPremiumItems = []
+  if (!orphansErr && allPremiumItems) {
+    const linkedIds = new Set(scriptIds)
+    orphanItems = allPremiumItems.filter(it => !linkedIds.has(it.id))
+  }
+
+  return NextResponse.json({ ideas: ideas || [], scripts, orphanItems: orphanItems || [] })
 }
 
 /**
@@ -94,7 +108,10 @@ export async function DELETE(req: NextRequest) {
   }
 
   const admin = createAdminClient()
+  // Borrar todas las ideas
   const { error } = await admin.from('content_ideas').delete().eq('user_id', supabaseUserId)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  // Borrar también los content_items premium-script huérfanos
+  await admin.from('content_items').delete().eq('user_id', supabaseUserId).eq('tag', 'premium-script')
   return NextResponse.json({ ok: true })
 }

@@ -15,7 +15,7 @@ const NAV: { key: NavKey; label: string; icon: any; roles?: string[] }[] = [
   { key: 'clientes', label: 'Clientes', icon: UserSquare },
   { key: 'planificacion', label: 'Planificación', icon: Calendar },
   { key: 'tareas', label: 'Tareas', icon: CheckSquare },
-  { key: 'productividad', label: 'Productividad', icon: Zap },
+  { key: 'productividad', label: 'Productividad', icon: Zap, roles: ['admin'] },
   { key: 'equipo', label: 'Equipo', icon: Users, roles: ['admin'] },
   { key: 'notificaciones', label: 'Notificaciones', icon: Bell },
   { key: 'config', label: 'Configuración', icon: Settings, roles: ['admin'] },

@@ -163,9 +163,10 @@ export interface Task {
   dueDate?: string | null
 }
 
-// ── Tareas y Productividad (módulo independiente) ──
-export type ProductivityColumn = 'ahora' | 'hoy' | 'esta_semana' | 'despues' | 'hecho'
+// ── Productividad v2 (simplificado con objetivos) ──
+export type ProductivityColumn = 'ahora' | 'esta_semana' | 'hecho'
 export type ProductivityPriority = 'alta' | 'media' | 'baja'
+export type GoalPeriod = 'monthly' | 'weekly'
 
 export interface Subtask {
   id: string
@@ -173,64 +174,34 @@ export interface Subtask {
   done: boolean
 }
 
-export interface TaskComment {
+export interface Goal {
   id: string
-  authorId: string   // memberId
-  text: string
+  title: string
+  target: number
+  current: number         // auto-calculado: count(linked tasks done) + manualOffset
+  period: GoalPeriod
+  periodLabel: string     // "Julio 2026" | "Semana 30 (22-28 jul)"
+  taskIds: string[]       // tareas vinculadas
+  manualOffset: number    // ajuste manual
   createdAt: string
-}
-
-export interface TaskHistoryEntry {
-  id: string
-  action: string
-  at: string
-  by: string   // memberId or 'system'
 }
 
 export interface ProductivityTask {
   id: string
-  projectId: string
   title: string
   description: string
   column: ProductivityColumn
   priority: ProductivityPriority
-  assignedTo: string | null       // memberId
+  assignedTo: string | null
   estimatedMinutes: number | null
   actualMinutes: number
   dueDate: string | null
   subtasks: Subtask[]
-  attachments: string[]            // base64 data URLs
-  referenceLinks: string[]
-  comments: TaskComment[]
-  history: TaskHistoryEntry[]
+  goalId: string | null
   postponeCount: number
   createdAt: string
   updatedAt: string
 }
-
-export interface Project {
-  id: string
-  name: string
-  description: string
-  color: string
-  nextAction: string | null
-  status: 'activo' | 'pausado' | 'completado'
-  createdAt: string
-  updatedAt: string
-}
-
-export interface InboxEntry {
-  id: string
-  rawText: string
-  source: 'texto' | 'audio'
-  createdAt: string
-  convertedToTaskId: string | null
-  suggestedProjectId: string | null
-  suggestedPriority: ProductivityPriority | null
-  suggestedDueDate: string | null
-}
-
-export type FocusSessionStatus = 'completada' | 'pausada' | 'interrumpida'
 
 export interface FocusSession {
   id: string
@@ -240,31 +211,19 @@ export interface FocusSession {
   plannedMinutes: number
   actualMinutes: number
   interruptions: number
-  status: FocusSessionStatus
-}
-
-export interface DailyStats {
-  date: string             // YYYY-MM-DD
-  completedCount: number
-  prioritiesMet: number
-  focusMinutes: number
-  interruptions: number
-  postponedCount: number
+  status: 'completada' | 'pausada' | 'interrumpida'
 }
 
 export interface ProductivitySettings {
   pomodoroPresets: number[]
   defaultPreset: number
-  focusRemindersEnabled: boolean
   multiTaskAlertEnabled: boolean
   postponeAlertThreshold: number
 }
 
 export interface ProductivityState {
   tasks: ProductivityTask[]
-  projects: Project[]
-  inbox: InboxEntry[]
+  goals: Goal[]
   focusSessions: FocusSession[]
-  dailyStats: DailyStats[]
   settings: ProductivitySettings
 }

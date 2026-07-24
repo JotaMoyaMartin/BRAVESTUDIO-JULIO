@@ -1,31 +1,27 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
 import { useAuth } from '@/lib/team/auth-context'
-import type { ProductivityTask, Project, DailyStats } from '@/lib/team/types'
+import type { Goal, ProductivityTask } from '@/lib/team/types'
 import { Sparkles, Loader2, ArrowUp, X } from 'lucide-react'
 import VoiceButton from '@/components/VoiceButton'
 
-interface ChatMessage {
-  role: 'user' | 'assistant'
-  content: string
-}
+interface ChatMessage { role: 'user' | 'assistant'; content: string }
 
 interface Props {
+  goals: Goal[]
   tasks: ProductivityTask[]
-  projects: Project[]
-  inboxCount: number
-  dailyStats: DailyStats[]
+  focusSessionsCount: number
   focusModeActive: boolean
 }
 
 const QUICK_COMMANDS = [
-  'Organízame el día según prioridades y tiempo disponible',
-  'Dame un resumen del progreso semanal',
-  '¿Qué bloqueos o sobrecarga tengo?',
-  'Sugiere qué tarea debería dividir en subtareas',
+  '¿Voy bien con mis objetivos?',
+  'Organízame la semana',
+  '¿Qué bloquea mi progreso?',
+  '¿Qué tarea debería hacer ahora?',
 ]
 
-const HISTORY_KEY = 'brave_content_productividad_chat'
+const HISTORY_KEY = 'brave_content_productividad_chat_v2'
 
 function loadHistory(): ChatMessage[] {
   if (typeof window === 'undefined') return []
@@ -40,7 +36,7 @@ function saveHistory(msgs: ChatMessage[]): void {
   try { localStorage.setItem(HISTORY_KEY, JSON.stringify(msgs)) } catch { /* ignore */ }
 }
 
-export default function ProductividadAssistant({ tasks, projects, inboxCount, dailyStats, focusModeActive }: Props) {
+export default function ProductividadAssistant({ goals, tasks, focusSessionsCount, focusModeActive }: Props) {
   const { user } = useAuth()
   const actorId = user!.id
   const [open, setOpen] = useState(false)
@@ -75,7 +71,7 @@ export default function ProductividadAssistant({ tasks, projects, inboxCount, da
         body: JSON.stringify({
           actorId,
           message: msg,
-          context: { tasks, projects, inboxCount, dailyStats, focusModeActive },
+          context: { goals, tasks, focusSessionsCount, focusModeActive },
         }),
       })
       const j = await res.json()
@@ -95,10 +91,6 @@ export default function ProductividadAssistant({ tasks, projects, inboxCount, da
     }
   }
 
-  function onKeyDown(e: React.KeyboardEvent) {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
-  }
-
   function clearHistory() {
     setMessages([])
     saveHistory([])
@@ -110,7 +102,7 @@ export default function ProductividadAssistant({ tasks, projects, inboxCount, da
         <button
           onClick={() => setOpen(true)}
           className="fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-[#7A1832] text-white shadow-lg flex items-center justify-center hover:bg-[#591427] transition-all hover:scale-105"
-          title="Abrir asistente de productividad"
+          title="Abrir asistente"
         >
           <Sparkles size={22} />
           <span className="absolute -top-1 -right-1 w-3 h-3 bg-[#9c36b5] rounded-full border-2 border-white" />
@@ -125,17 +117,17 @@ export default function ProductividadAssistant({ tasks, projects, inboxCount, da
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-[13px] font-semibold text-[#1a1a1a] truncate">Asistente de productividad</div>
-              <div className="text-[10.5px] text-[#8a8680]">Conoce tu tablero, proyectos y progreso</div>
+              <div className="text-[10.5px] text-[#8a8680]">Conoce tus objetivos y tareas</div>
             </div>
-            <button onClick={clearHistory} className="p-1.5 rounded-md hover:bg-[#FFF1B5] text-[#8a8680] text-[10px]" title="Limpiar conversación">Limpiar</button>
-            <button onClick={() => setOpen(false)} className="p-1.5 rounded-md hover:bg-[#FFF1B5] text-[#8a8680]" title="Cerrar"><X size={16} /></button>
+            <button onClick={clearHistory} className="p-1.5 rounded-md hover:bg-[#FFF1B5] text-[#8a8680] text-[10px]">Limpiar</button>
+            <button onClick={() => setOpen(false)} className="p-1.5 rounded-md hover:bg-[#FFF1B5] text-[#8a8680]"><X size={16} /></button>
           </div>
 
           <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-2.5 bg-[#FFFDF5]">
             {messages.length === 0 ? (
               <div className="text-center text-[#8a8680] text-[12px] py-6 px-3">
                 <Sparkles className="mx-auto mb-2 text-[#7A1832]" />
-                Soy tu asistente de productividad. Puedo organizar tu día, dividir tareas, resumir progreso o detectar bloqueos. Usa el micrófono para dictar.
+                Soy tu asistente. Puedo ayudarte con tus objetivos, organizar tu semana o detectar bloqueos.
               </div>
             ) : (
               messages.map((m, i) => (
@@ -165,7 +157,6 @@ export default function ProductividadAssistant({ tasks, projects, inboxCount, da
 
           {error && <div className="px-3 py-1.5 text-[11px] text-[#e03131] border-t border-[#FFF5F5] bg-[#FFF5F5]">{error}</div>}
 
-          {/* Comandos rápidos */}
           {messages.length === 0 && (
             <div className="px-3 pb-2 flex flex-wrap gap-1.5 border-t border-[#FFF1B5] bg-white pt-2">
               {QUICK_COMMANDS.map(cmd => (
@@ -181,7 +172,7 @@ export default function ProductividadAssistant({ tasks, projects, inboxCount, da
               <textarea
                 value={input}
                 onChange={e => setInput(e.target.value)}
-                onKeyDown={onKeyDown}
+                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
                 rows={1}
                 placeholder="Escribe o dicta…"
                 className="flex-1 px-2.5 py-2 text-[12px] rounded-lg border border-[#e8e6e3] bg-[#FFFDF5] focus:outline-none focus:border-[#7A1832] resize-none max-h-28"
@@ -196,8 +187,7 @@ export default function ProductividadAssistant({ tasks, projects, inboxCount, da
               <button
                 onClick={() => send()}
                 disabled={sending || !input.trim()}
-                className="w-9 h-9 rounded-lg bg-[#7A1832] text-white flex items-center justify-center disabled:opacity-40 hover:bg-[#591427] transition-colors shrink-0"
-                title="Enviar"
+                className="w-9 h-9 rounded-lg bg-[#7A1832] text-white flex items-center justify-center disabled:opacity-40 hover:bg-[#591427] shrink-0"
               >
                 {sending ? <Loader2 size={14} className="animate-spin" /> : <ArrowUp size={15} />}
               </button>

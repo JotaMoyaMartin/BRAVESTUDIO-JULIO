@@ -1,7 +1,6 @@
 'use client'
-import { Clock, Calendar, CheckSquare, AlertCircle } from 'lucide-react'
-import type { ProductivityTask, Project } from '@/lib/team/types'
-import type { TeamMember } from '@/lib/team/types'
+import { Clock, Calendar, CheckSquare, AlertCircle, Target } from 'lucide-react'
+import type { ProductivityTask, Goal } from '@/lib/team/types'
 
 const PRIORITY_COLOR: Record<string, string> = {
   alta: '#e03131',
@@ -11,13 +10,12 @@ const PRIORITY_COLOR: Record<string, string> = {
 
 interface TaskCardProps {
   task: ProductivityTask
-  project?: Project
-  assignee?: TeamMember
+  goal?: Goal
   onClick: () => void
   dragging?: boolean
 }
 
-export default function TaskCard({ task, project, assignee, onClick, dragging }: TaskCardProps) {
+export default function TaskCard({ task, goal, onClick, dragging }: TaskCardProps) {
   const subtaskDone = task.subtasks.filter(s => s.done).length
   const subtaskTotal = task.subtasks.length
   const isOverdue =
@@ -27,13 +25,10 @@ export default function TaskCard({ task, project, assignee, onClick, dragging }:
   return (
     <div
       onClick={dragging ? undefined : onClick}
-      className={`bg-white rounded-xl border border-[#FFF1B5] p-3 cursor-pointer transition-all hover:shadow-sm ${
-        dragging ? 'opacity-40' : ''
-      }`}
+      className={`bg-white rounded-xl border border-[#FFF1B5] p-3 cursor-pointer transition-all hover:shadow-sm ${dragging ? 'opacity-40' : ''} ${task.column === 'hecho' ? 'opacity-60' : ''}`}
     >
-      {/* Title */}
-      <div className="flex items-start justify-between gap-2 mb-2">
-        <p className="text-[13px] font-medium text-[#1a1a1a] line-clamp-2 flex-1 leading-snug">
+      <div className="flex items-start justify-between gap-2 mb-1.5">
+        <p className={`text-[13px] font-medium text-[#1a1a1a] line-clamp-2 flex-1 leading-snug ${task.column === 'hecho' ? 'line-through' : ''}`}>
           {task.title}
         </p>
         <span
@@ -43,68 +38,38 @@ export default function TaskCard({ task, project, assignee, onClick, dragging }:
         />
       </div>
 
-      {/* Project badge */}
-      {project && (
-        <div className="mb-2">
-          <span
-            className="inline-block rounded-full px-2 py-0.5 text-[10px] text-white font-medium"
-            style={{ background: project.color }}
-          >
-            {project.name}
+      {/* Goal badge */}
+      {goal && (
+        <div className="mb-1.5">
+          <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9.5px] text-[#7A1832] font-medium bg-[#FFF1B5]">
+            <Target size={8} /> {goal.title}
           </span>
         </div>
       )}
 
-      {/* Meta rows */}
-      <div className="space-y-1">
+      {/* Meta */}
+      <div className="flex items-center gap-3 flex-wrap">
         {task.estimatedMinutes !== null && task.estimatedMinutes > 0 && (
-          <div className="flex items-center gap-1 text-[11px] text-[#8a8680]">
-            <Clock size={11} />
-            <span>{task.estimatedMinutes}min</span>
-          </div>
+          <span className="flex items-center gap-1 text-[10.5px] text-[#8a8680]">
+            <Clock size={10} /> {task.estimatedMinutes}min
+          </span>
         )}
         {task.dueDate && (
-          <div
-            className="flex items-center gap-1 text-[11px]"
-            style={{ color: isOverdue ? '#e03131' : '#8a8680' }}
-          >
-            <Calendar size={11} />
-            <span>
-              {new Date(task.dueDate).toLocaleDateString('es-ES', {
-                day: 'numeric',
-                month: 'short',
-              })}
-            </span>
-          </div>
+          <span className="flex items-center gap-1 text-[10.5px]" style={{ color: isOverdue ? '#e03131' : '#8a8680' }}>
+            <Calendar size={10} /> {new Date(task.dueDate).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
+          </span>
         )}
         {subtaskTotal > 0 && (
-          <div className="flex items-center gap-1 text-[11px] text-[#8a8680]">
-            <CheckSquare size={11} />
-            <span>
-              {subtaskDone}/{subtaskTotal}
-            </span>
-          </div>
+          <span className="flex items-center gap-1 text-[10.5px] text-[#8a8680]">
+            <CheckSquare size={10} /> {subtaskDone}/{subtaskTotal}
+          </span>
         )}
         {task.postponeCount > 0 && (
-          <div className="flex items-center gap-1 text-[11px] text-[#f08c00]">
-            <AlertCircle size={11} />
-            <span>Adelantada {task.postponeCount}x</span>
-          </div>
+          <span className="flex items-center gap-1 text-[10.5px] text-[#f08c00]">
+            <AlertCircle size={10} /> {task.postponeCount}x
+          </span>
         )}
       </div>
-
-      {/* Assignee avatar */}
-      {assignee && (
-        <div className="mt-2 pt-2 border-t border-[#FFF1B5]/60 flex items-center justify-end">
-          <div
-            className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] text-white font-bold"
-            style={{ background: assignee.color }}
-            title={assignee.name}
-          >
-            {assignee.avatar}
-          </div>
-        </div>
-      )}
     </div>
   )
 }

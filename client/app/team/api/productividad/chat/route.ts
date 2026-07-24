@@ -3,20 +3,18 @@ import { resolveActor } from '@/lib/team/api-helpers'
 import {
   buildProductividadPrompt,
   summarizeTasksForPrompt,
-  summarizeProjectsForPrompt,
-  summarizeWeeklyStats,
+  summarizeGoalsForPrompt,
   type ProductividadContext,
 } from '@/lib/team/ai/productividad-prompt'
 import { serverGenerateAIContent } from '@/lib/ai/server-generate'
-import type { ProductivityTask, Project, DailyStats } from '@/lib/team/types'
+import type { ProductivityTask, Goal } from '@/lib/team/types'
 
 /**
  * POST /team/api/productividad/chat
- * Body: { actorId, message, context: { tasks, projects, inboxCount, dailyStats, focusModeActive } }
+ * Body: { actorId, message, context: { goals, tasks, focusSessionsCount, focusModeActive } }
  *
- * Asistente IA de productividad. Construye el contexto (tablero + proyectos +
- * bandeja + stats semanales), llama a la IA (no streaming) y devuelve la respuesta.
- * Todos los roles pueden usar este asistente (no requiere canManageStrategy).
+ * Asistente IA de productividad v2. Contexto simplificado: objetivos + tareas.
+ * Todos los roles pueden usar este asistente.
  */
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}))
@@ -28,10 +26,9 @@ export async function POST(req: NextRequest) {
     actorId?: string
     message?: string
     context?: {
+      goals?: Goal[]
       tasks?: ProductivityTask[]
-      projects?: Project[]
-      inboxCount?: number
-      dailyStats?: DailyStats[]
+      focusSessionsCount?: number
       focusModeActive?: boolean
     }
   }
@@ -46,18 +43,16 @@ export async function POST(req: NextRequest) {
   }
 
   const tasks = context?.tasks || []
-  const projects = context?.projects || []
-  const inboxCount = context?.inboxCount ?? 0
-  const dailyStats = context?.dailyStats || []
+  const goals = context?.goals || []
+  const focusSessionsCount = context?.focusSessionsCount ?? 0
   const focusModeActive = context?.focusModeActive ?? false
 
   const ctx: ProductividadContext = {
     userName: actor.name,
     userRole: actor.role,
-    tasksSummary: summarizeTasksForPrompt(tasks, projects),
-    projectsSummary: summarizeProjectsForPrompt(projects, tasks),
-    inboxCount,
-    weeklyStats: summarizeWeeklyStats(dailyStats),
+    goalsSummary: summarizeGoalsForPrompt(goals, tasks),
+    tasksSummary: summarizeTasksForPrompt(tasks),
+    focusSessionsCount,
     focusModeActive,
   }
 

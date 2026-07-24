@@ -504,7 +504,7 @@ export default function EstrategiaDetail({ client, onBack }: { client: Client; o
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <div className="flex items-center gap-1.5">
                         <span className="text-[10.5px] uppercase tracking-wide font-medium px-2 py-0.5 rounded-full bg-[#f4f3f1] text-[#8a8680]">
-                          Huérfano
+                          Sin idea
                         </span>
                         <span className="text-[10.5px] text-[#8a8680] uppercase">{TYPE_LABELS[item.type] || item.type}</span>
                       </div>

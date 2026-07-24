@@ -49,12 +49,13 @@ export async function POST(req: NextRequest, ctx: { params: { id: string } }) {
     return NextResponse.json({ error: 'La idea debe estar confirmada' }, { status: 400 })
   }
 
-  // 2) Construir content_json del guion
-  const contentJson: Record<string, unknown> = {}
-  if (hook) contentJson.hook = hook
-  if (context) contentJson.context = context
-  if (solution) contentJson.solution = solution
-  if (cta) contentJson.cta = cta
+  // 2) Construir content_json del guion (formato anulado { script: { ... } })
+  const scriptObj: Record<string, string> = {}
+  if (hook) scriptObj.hook = hook
+  if (context) scriptObj.context = context
+  if (solution) scriptObj.solution = solution
+  if (cta) scriptObj.cta = cta
+  const contentJson: Record<string, unknown> = { script: scriptObj }
 
   const contentType = idea.type === 'carrusel' ? 'carrusel' : 'reel'
 

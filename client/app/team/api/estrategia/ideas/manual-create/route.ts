@@ -64,12 +64,13 @@ export async function POST(req: NextRequest) {
     // type: override explícito > IA > default reel
     const validType = type === 'carrusel' ? 'carrusel' : type === 'reel' ? 'reel' : s.type
 
-    // Construir content_json del guion
-    const contentJson: Record<string, unknown> = {}
-    if (s.hook) contentJson.hook = s.hook
-    if (s.context) contentJson.context = s.context
-    if (s.solution) contentJson.solution = s.solution
-    if (s.cta) contentJson.cta = s.cta
+    // Construir content_json del guion (formato anidado { script: { ... } })
+    const scriptObj: Record<string, string> = {}
+    if (s.hook) scriptObj.hook = s.hook
+    if (s.context) scriptObj.context = s.context
+    if (s.solution) scriptObj.solution = s.solution
+    if (s.cta) scriptObj.cta = s.cta
+    const contentJson: Record<string, unknown> = { script: scriptObj }
 
     nextOrder += 1
 

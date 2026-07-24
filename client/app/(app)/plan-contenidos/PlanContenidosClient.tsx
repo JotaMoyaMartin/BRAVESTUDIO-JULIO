@@ -420,6 +420,13 @@ function IdeaScriptCard({
   const isDone = item.status === 'done'
   const formattedText = formatContentForCopy(item, 'visual')
   const Icon = ({ reel: Film, carrusel: LayoutGrid, story: FileText } as Record<string, typeof Film>)[item.type] || FileText
+
+  // Extract script data from content_json (supports nested and flat)
+  const json = (item.content_json || {}) as Record<string, unknown>
+  const scriptData = (json.script as Record<string, string> | undefined) ||
+    ((json.hook || json.context || json.solution || json.cta) ? json as Record<string, string> : null)
+  const hasScriptBlocks = scriptData && (scriptData.hook || scriptData.context || scriptData.solution || scriptData.cta)
+
   return (
     <div
       className="rounded-[var(--radius-md)] p-4 bg-white shadow-soft"
@@ -454,9 +461,39 @@ function IdeaScriptCard({
         )}
       </div>
 
-      <div className="rounded-[var(--radius-sm)] p-3 mb-2 whitespace-pre-wrap text-sm leading-relaxed" style={{ background: 'var(--color-cream)', border: '1px solid rgba(255,241,181,0.5)', color: 'var(--color-ink)' }}>
-        {formattedText}
-      </div>
+      {/* Guion en bloques estructurados */}
+      {hasScriptBlocks ? (
+        <div className="rounded-[var(--radius-sm)] p-3 mb-2 space-y-2" style={{ background: 'var(--color-cream)', border: '1.5px solid var(--color-cherry)' }}>
+          <div className="flex items-center justify-between pb-2 border-b border-[rgba(255,241,181,0.5)]">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-cherry flex items-center gap-1.5">
+              <Film size={12} /> Guion del Reel
+            </span>
+            <button
+              onClick={() => onCopy(formattedText, item.id + '-full')}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[var(--radius-sm)] text-[11px] font-semibold text-white"
+              style={{ background: 'var(--color-cherry)', minHeight: 28 }}
+            >
+              {copied === item.id + '-full' ? <><Check size={11} /> Copiado</> : <><Copy size={11} /> Copiar guion completo</>}
+            </button>
+          </div>
+          {scriptData!.hook && <GuionBlock label="Gancho" text={scriptData!.hook} color="#7A1832" onCopy={onCopy} copied={copied} copyId={item.id + '-hook'} />}
+          {scriptData!.context && <GuionBlock label="Contexto" text={scriptData!.context} color="#1971c2" onCopy={onCopy} copied={copied} copyId={item.id + '-context'} />}
+          {scriptData!.solution && <GuionBlock label="Solución" text={scriptData!.solution} color="#2f9e44" onCopy={onCopy} copied={copied} copyId={item.id + '-solution'} />}
+          {scriptData!.cta && <GuionBlock label="CTA" text={scriptData!.cta} color="#9c36b5" onCopy={onCopy} copied={copied} copyId={item.id + '-cta'} />}
+          {item.visual_idea && (
+            <div className="rounded-[var(--radius-sm)] p-2.5" style={{ background: 'rgba(122,24,50,0.05)' }}>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-cherry opacity-70 mb-1 flex items-center gap-1.5">
+                <Film size={11} /> Idea visual
+              </div>
+              <p className="text-xs text-cherry-dark leading-relaxed">{item.visual_idea}</p>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="rounded-[var(--radius-sm)] p-3 mb-2 whitespace-pre-wrap text-sm leading-relaxed" style={{ background: 'var(--color-cream)', border: '1px solid rgba(255,241,181,0.5)', color: 'var(--color-ink)' }}>
+          {formattedText}
+        </div>
+      )}
 
       <div className="flex gap-2">
         <button
@@ -480,6 +517,24 @@ function IdeaScriptCard({
           {copied === item.id ? '¡Copiado!' : 'Copiar'}
         </button>
       </div>
+    </div>
+  )
+}
+
+function GuionBlock({ label, text, color, onCopy, copied, copyId }: { label: string; text: string; color: string; onCopy: (t: string, id: string) => void; copied: string | null; copyId: string }) {
+  return (
+    <div className="rounded-[var(--radius-sm)] p-2.5" style={{ background: 'white', border: '1px solid var(--color-buttermilk)' }}>
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color }}>{label}</span>
+        <button
+          onClick={() => onCopy(text, copyId)}
+          className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold transition-all"
+          style={{ background: 'var(--color-warm-light)', color: 'var(--color-cherry-dark)', border: '1px solid var(--color-buttermilk)', minHeight: 22 }}
+        >
+          {copied === copyId ? <Check size={9} /> : <Copy size={9} />} Copiar
+        </button>
+      </div>
+      <p className="text-xs text-cherry-dark whitespace-pre-wrap leading-relaxed">{text}</p>
     </div>
   )
 }

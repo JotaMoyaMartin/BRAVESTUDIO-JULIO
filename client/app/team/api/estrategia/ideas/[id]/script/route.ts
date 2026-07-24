@@ -73,7 +73,7 @@ export async function POST(req: NextRequest, ctx: { params: { id: string } }) {
       type: contentType,
       title: idea.title,
       service: idea.service || null,
-      content_json: reel.script as Record<string, unknown>,
+      content_json: { script: reel.script } as Record<string, unknown>,
       visual_idea: reel.visualIdea || null,
       caption_with_hashtags: reel.captionWithHashtags || null,
       tag: 'premium-script',

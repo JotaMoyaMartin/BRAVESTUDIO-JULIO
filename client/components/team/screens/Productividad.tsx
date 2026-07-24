@@ -158,6 +158,11 @@ export default function Productividad() {
         tasks={scopedTasks}
         focusSessionsCount={state.focusSessions.length}
         focusModeActive={!!focusTaskId}
+        onCreateTask={createTask}
+        onMoveTask={moveTask}
+        onUpdateTask={updateTask}
+        onLinkGoal={linkTaskToGoal}
+        onDeleteTask={deleteTask}
       />
     </div>
   )

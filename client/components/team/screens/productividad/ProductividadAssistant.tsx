@@ -1,8 +1,9 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
 import { useAuth } from '@/lib/team/auth-context'
-import type { Goal, ProductivityTask } from '@/lib/team/types'
-import { Sparkles, Loader2, ArrowUp, X } from 'lucide-react'
+import type { Goal, ProductivityTask, ProductivityColumn, ProductivityPriority } from '@/lib/team/types'
+import type { ProductividadAction } from '@/lib/team/ai/productividad-prompt'
+import { Sparkles, Loader2, ArrowUp, X, Zap, Check, AlertCircle } from 'lucide-react'
 import VoiceButton from '@/components/VoiceButton'
 
 interface ChatMessage { role: 'user' | 'assistant'; content: string }
@@ -12,13 +13,19 @@ interface Props {
   tasks: ProductivityTask[]
   focusSessionsCount: number
   focusModeActive: boolean
+  // Store actions for agentic execution
+  onCreateTask: (input: { title: string; description?: string; column?: ProductivityColumn; priority?: ProductivityPriority; goalId?: string | null; estimatedMinutes?: number | null }) => ProductivityTask
+  onMoveTask: (taskId: string, toColumn: ProductivityColumn) => void
+  onUpdateTask: (taskId: string, patch: Partial<ProductivityTask>) => void
+  onLinkGoal: (taskId: string, goalId: string | null) => void
+  onDeleteTask: (taskId: string) => void
 }
 
 const QUICK_COMMANDS = [
+  '¿Qué debería hacer hoy?',
+  'Crea tareas para preparar el lanzamiento del webinar',
+  'Organízame la semana según prioridades',
   '¿Voy bien con mis objetivos?',
-  'Organízame la semana',
-  '¿Qué bloquea mi progreso?',
-  '¿Qué tarea debería hacer ahora?',
 ]
 
 const HISTORY_KEY = 'brave_content_productividad_chat_v2'
@@ -36,7 +43,17 @@ function saveHistory(msgs: ChatMessage[]): void {
   try { localStorage.setItem(HISTORY_KEY, JSON.stringify(msgs)) } catch { /* ignore */ }
 }
 
-export default function ProductividadAssistant({ goals, tasks, focusSessionsCount, focusModeActive }: Props) {
+function actionLabel(a: ProductividadAction): string {
+  switch (a.type) {
+    case 'create_task': return `Tarea creada: "${a.title}"`
+    case 'move_task': return `Movida a ${a.column === 'ahora' ? 'Ahora' : a.column === 'esta_semana' ? 'Esta semana' : 'Hecho'}`
+    case 'set_priority': return `Prioridad: ${a.priority}`
+    case 'link_goal': return 'Vinculada a objetivo'
+    case 'delete_task': return 'Tarea eliminada'
+  }
+}
+
+export default function ProductividadAssistant({ goals, tasks, focusSessionsCount, focusModeActive, onCreateTask, onMoveTask, onUpdateTask, onLinkGoal, onDeleteTask }: Props) {
   const { user } = useAuth()
   const actorId = user!.id
   const [open, setOpen] = useState(false)
@@ -44,6 +61,7 @@ export default function ProductividadAssistant({ goals, tasks, focusSessionsCoun
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [actionLog, setActionLog] = useState<string[]>([])
   const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -52,7 +70,51 @@ export default function ProductividadAssistant({ goals, tasks, focusSessionsCoun
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight
-  }, [messages, sending, open])
+  }, [messages, sending, open, actionLog])
+
+  function executeActions(actions: ProductividadAction[]): string[] {
+    const log: string[] = []
+    for (const a of actions) {
+      try {
+        if (a.type === 'create_task') {
+          const t = onCreateTask({
+            title: a.title,
+            description: a.description,
+            column: a.column,
+            priority: a.priority,
+            goalId: a.goalId,
+            estimatedMinutes: a.estimatedMinutes,
+          })
+          log.push(`✅ Tarea creada: "${t.title}"`)
+        } else if (a.type === 'move_task') {
+          // If moving to "ahora", first move existing "ahora" task to "esta_semana"
+          if (a.column === 'ahora') {
+            const ahoraTask = tasks.find(t => t.column === 'ahora' && t.id !== a.taskId)
+            if (ahoraTask) {
+              onMoveTask(ahoraTask.id, 'esta_semana')
+              log.push(`↩️ "${ahoraTask.title}" movida a Esta semana`)
+            }
+          }
+          onMoveTask(a.taskId, a.column)
+          const colLabel = a.column === 'ahora' ? 'Ahora' : a.column === 'esta_semana' ? 'Esta semana' : 'Hecho'
+          log.push(`→ Movida a ${colLabel}`)
+        } else if (a.type === 'set_priority') {
+          onUpdateTask(a.taskId, { priority: a.priority })
+          log.push(`🎯 Prioridad ${a.priority}`)
+        } else if (a.type === 'link_goal') {
+          onLinkGoal(a.taskId, a.goalId)
+          const goal = goals.find(g => g.id === a.goalId)
+          log.push(`🔗 Vinculada a "${goal?.title ?? 'objetivo'}"`)
+        } else if (a.type === 'delete_task') {
+          onDeleteTask(a.taskId)
+          log.push(`🗑️ Eliminada`)
+        }
+      } catch (e) {
+        log.push(`⚠️ Error: ${actionLabel(a)}`)
+      }
+    }
+    return log
+  }
 
   async function send(text?: string) {
     const msg = (text || input).trim()
@@ -60,6 +122,7 @@ export default function ProductividadAssistant({ goals, tasks, focusSessionsCoun
     setSending(true)
     setError(null)
     setInput('')
+    setActionLog([])
     const userMsg: ChatMessage = { role: 'user', content: msg }
     const next = [...messages, userMsg]
     setMessages(next)
@@ -76,6 +139,16 @@ export default function ProductividadAssistant({ goals, tasks, focusSessionsCoun
       })
       const j = await res.json()
       if (!res.ok) throw new Error(j.error || 'Error al enviar')
+
+      // Execute actions if present
+      let actionResults: string[] = []
+      if (j.actions && Array.isArray(j.actions) && j.actions.length > 0) {
+        actionResults = executeActions(j.actions)
+        if (actionResults.length > 0) {
+          setActionLog(actionResults)
+        }
+      }
+
       const replyMsg: ChatMessage = { role: 'assistant', content: j.reply }
       const withReply = [...next, replyMsg]
       setMessages(withReply)
@@ -94,6 +167,7 @@ export default function ProductividadAssistant({ goals, tasks, focusSessionsCoun
   function clearHistory() {
     setMessages([])
     saveHistory([])
+    setActionLog([])
   }
 
   return (
@@ -116,8 +190,11 @@ export default function ProductividadAssistant({ goals, tasks, focusSessionsCoun
               <Sparkles size={15} />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-[13px] font-semibold text-[#1a1a1a] truncate">Asistente de productividad</div>
-              <div className="text-[10.5px] text-[#8a8680]">Conoce tus objetivos y tareas</div>
+              <div className="text-[13px] font-semibold text-[#1a1a1a] truncate flex items-center gap-1.5">
+                Asesora de productividad
+                <Zap size={11} className="text-[#9c36b5]" />
+              </div>
+              <div className="text-[10.5px] text-[#8a8680]">Crea tareas, organiza y prioriza por ti</div>
             </div>
             <button onClick={clearHistory} className="p-1.5 rounded-md hover:bg-[#FFF1B5] text-[#8a8680] text-[10px]">Limpiar</button>
             <button onClick={() => setOpen(false)} className="p-1.5 rounded-md hover:bg-[#FFF1B5] text-[#8a8680]"><X size={16} /></button>
@@ -127,7 +204,7 @@ export default function ProductividadAssistant({ goals, tasks, focusSessionsCoun
             {messages.length === 0 ? (
               <div className="text-center text-[#8a8680] text-[12px] py-6 px-3">
                 <Sparkles className="mx-auto mb-2 text-[#7A1832]" />
-                Soy tu asistente. Puedo ayudarte con tus objetivos, organizar tu semana o detectar bloqueos.
+                Soy tu asesora de productividad. Explicame lo que quieres lograr y creo las tareas, las organizo por prioridad y te recomiendo en qué enfocarte.
               </div>
             ) : (
               messages.map((m, i) => (
@@ -145,6 +222,19 @@ export default function ProductividadAssistant({ goals, tasks, focusSessionsCoun
                 </div>
               ))
             )}
+
+            {/* Action log — shows what actions were executed */}
+            {actionLog.length > 0 && (
+              <div className="bg-[#EBFBEE] border border-[#2f9e44]/30 rounded-lg p-2.5 space-y-1">
+                <div className="text-[10.5px] font-semibold text-[#2f9e44] flex items-center gap-1">
+                  <Check size={11} /> Acciones ejecutadas:
+                </div>
+                {actionLog.map((log, i) => (
+                  <div key={i} className="text-[11px] text-[#1a1a1a]">{log}</div>
+                ))}
+              </div>
+            )}
+
             {sending && (
               <div className="flex justify-start">
                 <div className="w-6 h-6 rounded-full bg-[#7A1832] flex items-center justify-center text-white shrink-0 mr-1.5 mt-0.5"><Sparkles size={11} /></div>
@@ -155,7 +245,7 @@ export default function ProductividadAssistant({ goals, tasks, focusSessionsCoun
             )}
           </div>
 
-          {error && <div className="px-3 py-1.5 text-[11px] text-[#e03131] border-t border-[#FFF5F5] bg-[#FFF5F5]">{error}</div>}
+          {error && <div className="px-3 py-1.5 text-[11px] text-[#e03131] border-t border-[#FFF5F5] bg-[#FFF5F5] flex items-center gap-1"><AlertCircle size={12} /> {error}</div>}
 
           {messages.length === 0 && (
             <div className="px-3 pb-2 flex flex-wrap gap-1.5 border-t border-[#FFF1B5] bg-white pt-2">
@@ -174,7 +264,7 @@ export default function ProductividadAssistant({ goals, tasks, focusSessionsCoun
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
                 rows={1}
-                placeholder="Escribe o dicta…"
+                placeholder="Explícame qué quieres hacer…"
                 className="flex-1 px-2.5 py-2 text-[12px] rounded-lg border border-[#e8e6e3] bg-[#FFFDF5] focus:outline-none focus:border-[#7A1832] resize-none max-h-28"
                 style={{ minHeight: 36 }}
               />

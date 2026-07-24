@@ -67,3 +67,34 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({ ideas: ideas || [], scripts })
 }
+
+/**
+ * DELETE /team/api/estrategia/ideas/list?clientId=...&actorId=...
+ * Body: { actorId }
+ *
+ * Borra TODAS las ideas de una clienta (limpiar plan). Solo admin/CM.
+ */
+export async function DELETE(req: NextRequest) {
+  const url = new URL(req.url)
+  const clientId = url.searchParams.get('clientId')
+  const body = await req.json().catch(() => ({}))
+  const { actorId } = body as { actorId?: string }
+
+  const actor = resolveActor(actorId)
+  if (!canManageStrategy(actor)) {
+    return NextResponse.json({ error: 'Sin permisos' }, { status: 403 })
+  }
+  if (!clientId) {
+    return NextResponse.json({ error: 'clientId required' }, { status: 400 })
+  }
+
+  const supabaseUserId = findClientSupabaseId(clientId)
+  if (!supabaseUserId) {
+    return NextResponse.json({ error: 'Cliente no mapeado a cuenta premium' }, { status: 400 })
+  }
+
+  const admin = createAdminClient()
+  const { error } = await admin.from('content_ideas').delete().eq('user_id', supabaseUserId)
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ ok: true })
+}

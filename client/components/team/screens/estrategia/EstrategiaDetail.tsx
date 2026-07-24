@@ -3,9 +3,9 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/lib/team/auth-context'
 import type { Client } from '@/lib/team/types'
 import {
-  Sparkles, Check, X, Pencil, FileText,
+  Sparkles, Check, X, Pencil, FileText, Film, Video,
   Loader2, Plus, RefreshCw, AlertCircle, MessageSquare,
-  ChevronDown, ChevronUp,
+  ChevronDown, ChevronUp, Copy, Trash2, ArrowLeft,
 } from 'lucide-react'
 
 interface Idea {
@@ -44,7 +44,7 @@ const STATUS_STYLES: Record<string, { label: string; color: string; bg: string }
   hecha:            { label: 'Hecha',             color: '#2f9e44', bg: '#D3F9D8' },
 }
 
-export default function EstrategiaDetail({ client }: { client: Client }) {
+export default function EstrategiaDetail({ client, onBack }: { client: Client; onBack?: () => void }) {
   const { user } = useAuth()
   const [ideas, setIdeas] = useState<Idea[]>([])
   const [scripts, setScripts] = useState<Record<string, Script>>({})
@@ -62,6 +62,9 @@ export default function EstrategiaDetail({ client }: { client: Client }) {
   const [showExternal, setShowExternal] = useState(false)
   const [externalText, setExternalText] = useState('')
   const [savingExternal, setSavingExternal] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [confirmClearAll, setConfirmClearAll] = useState(false)
+  const [clearingAll, setClearingAll] = useState(false)
 
   const actorId = user!.id
 
@@ -127,6 +130,48 @@ export default function EstrategiaDetail({ client }: { client: Client }) {
   async function handleSaveEdit(i: Idea) {
     await patchIdea(i.id, { title: editDraft.title, hook_idea: editDraft.hook_idea })
     setEditingId(null)
+  }
+
+  async function handleDeleteIdea(i: Idea) {
+    setDeletingId(i.id)
+    setError(null)
+    try {
+      const res = await fetch(`/team/api/estrategia/ideas/${i.id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ actorId }),
+      })
+      const j = await res.json()
+      if (!res.ok) throw new Error(j.error || 'Error al borrar')
+      setIdeas(prev => prev.filter(x => x.id !== i.id))
+      setInfo('Idea eliminada.')
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Error desconocido')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  async function handleClearAll() {
+    setClearingAll(true)
+    setError(null)
+    try {
+      const res = await fetch(`/team/api/estrategia/ideas/list?clientId=${encodeURIComponent(client.id)}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ actorId }),
+      })
+      const j = await res.json()
+      if (!res.ok) throw new Error(j.error || 'Error al limpiar')
+      setIdeas([])
+      setScripts({})
+      setConfirmClearAll(false)
+      setInfo('Plan limpiado por completo.')
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Error desconocido')
+    } finally {
+      setClearingAll(false)
+    }
   }
 
   async function handleSaveManualScript(i: Idea) {
@@ -211,8 +256,43 @@ export default function EstrategiaDetail({ client }: { client: Client }) {
 
   return (
     <div className="space-y-4">
-      {/* Acciones */}
-      <div className="flex items-center gap-2 justify-end">
+      {/* Header con back + acciones */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] text-[#8a8680] hover:bg-[#FFFDF5] hover:text-[#7A1832]"
+          >
+            <ArrowLeft size={14} /> Volver
+          </button>
+        )}
+        <div className="flex-1" />
+        {ideas.length > 0 && !confirmClearAll && (
+          <button
+            onClick={() => setConfirmClearAll(true)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#e03131] text-[#e03131] text-[12.5px] font-medium hover:bg-[#FFF5F5]"
+          >
+            <Trash2 size={13} /> Limpiar todos
+          </button>
+        )}
+        {confirmClearAll && (
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#FFF5F5] border border-[#e03131]">
+            <span className="text-[12px] text-[#e03131] font-medium">¿Borrar las {ideas.length} ideas?</span>
+            <button
+              onClick={handleClearAll}
+              disabled={clearingAll}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-[#e03131] text-white text-[11px] font-medium hover:bg-[#c92a2a] disabled:opacity-50"
+            >
+              {clearingAll ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />} Sí, borrar
+            </button>
+            <button
+              onClick={() => setConfirmClearAll(false)}
+              className="px-2.5 py-1 rounded-md text-[#8a8680] text-[11px] hover:bg-white"
+            >
+              Cancelar
+            </button>
+          </div>
+        )}
         <button
           onClick={() => setShowExternal(true)}
           className="flex items-center gap-2 px-4 py-2 rounded-lg border border-[#7A1832] text-[#7A1832] text-[13px] font-medium hover:bg-[#FFF1B5]"
@@ -293,6 +373,8 @@ export default function EstrategiaDetail({ client }: { client: Client }) {
                   onDraft={setEditDraft}
                   onConfirm={() => handleConfirm(i)}
                   onDiscard={() => handleDiscard(i)}
+                  onDelete={() => handleDeleteIdea(i)}
+                  deleting={deletingId === i.id}
                 />
               ))}
             </Section>
@@ -309,6 +391,8 @@ export default function EstrategiaDetail({ client }: { client: Client }) {
                     generatingScript={generatingScriptId === i.id}
                     onGenerateScript={() => handleGenerateScript(i)}
                     onDiscard={() => handleDiscard(i)}
+                    onDelete={() => handleDeleteIdea(i)}
+                    deleting={deletingId === i.id}
                     showPasteScript
                     onPasteScript={() => { setManualPasteId(i.id); setManualDraft({ hook: '', context: '', solution: '', cta: '', visual_idea: '', caption: '' }) }}
                   />
@@ -336,6 +420,8 @@ export default function EstrategiaDetail({ client }: { client: Client }) {
                   script={i.script_id ? scripts[i.script_id] : undefined}
                   expanded={expandedId === i.id}
                   onToggleExpand={() => setExpandedId(prev => prev === i.id ? null : i.id)}
+                  onDelete={() => handleDeleteIdea(i)}
+                  deleting={deletingId === i.id}
                 />
               ))}
             </Section>
@@ -351,6 +437,8 @@ export default function EstrategiaDetail({ client }: { client: Client }) {
                   script={i.script_id ? scripts[i.script_id] : undefined}
                   expanded={expandedId === i.id}
                   onToggleExpand={() => setExpandedId(prev => prev === i.id ? null : i.id)}
+                  onDelete={() => handleDeleteIdea(i)}
+                  deleting={deletingId === i.id}
                 />
               ))}
             </Section>
@@ -360,7 +448,7 @@ export default function EstrategiaDetail({ client }: { client: Client }) {
           {descartadas.length > 0 && (
             <Section title="Descartadas" subtitle={`${descartadas.length} ideas`} muted>
               {descartadas.map(i => (
-                <IdeaCard key={i.id} idea={i} readOnly />
+                <IdeaCard key={i.id} idea={i} readOnly onDelete={() => handleDeleteIdea(i)} deleting={deletingId === i.id} />
               ))}
             </Section>
           )}
@@ -418,6 +506,8 @@ function IdeaCard({
   onToggleExpand,
   showPasteScript,
   onPasteScript,
+  onDelete,
+  deleting,
 }: {
   idea: Idea
   editing?: boolean
@@ -437,10 +527,16 @@ function IdeaCard({
   onToggleExpand?: () => void
   showPasteScript?: boolean
   onPasteScript?: () => void
+  onDelete?: () => void
+  deleting?: boolean
 }) {
   const st = STATUS_STYLES[idea.status] || STATUS_STYLES.propuesta
   const hasScript = script && script.content_json
-  const scriptData = hasScript ? script!.content_json as { hook?: string; context?: string; solution?: string; cta?: string } : null
+  const scriptData = hasScript ? script!.content_json as { hook?: string; context?: string; solution?: string; cta?: string; script?: { hook?: string; context?: string; solution?: string; cta?: string } } : null
+  // Script may be nested under .script or flat
+  const guion = scriptData
+    ? (scriptData.script ?? scriptData)
+    : null
 
   return (
     <div className={`bg-white rounded-xl border border-[#FFF1B5] p-4 ${readOnly && idea.status === 'descartada' ? 'opacity-60' : ''}`}>
@@ -456,6 +552,16 @@ function IdeaCard({
             {onEdit && (
               <button onClick={onEdit} className="p-1 rounded hover:bg-[#FFF1B5] text-[#8a8680]" title="Editar">
                 <Pencil size={12} />
+              </button>
+            )}
+            {onDelete && (
+              <button
+                onClick={onDelete}
+                disabled={deleting}
+                className="p-1 rounded hover:bg-[#FFF5F5] text-[#8a8680] hover:text-[#e03131] disabled:opacity-50"
+                title="Borrar"
+              >
+                {deleting ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
               </button>
             )}
           </div>
@@ -494,38 +600,49 @@ function IdeaCard({
             {idea.service && <Tag label={idea.service} />}
           </div>
 
-          {/* Guion expandible */}
-          {hasScript && scriptData && (
+          {/* Guion expandible — estilo app alumnos, sin copy de publicación */}
+          {hasScript && guion && (
             <div className="mt-2">
               <button
                 onClick={onToggleExpand}
-                className="w-full flex items-center justify-between gap-1.5 px-2.5 py-1.5 rounded-md bg-[#F8F0FC] text-[#9c36b5] text-[11.5px] font-medium hover:bg-[#f3e8ff] transition-colors"
+                className="w-full flex items-center justify-between gap-1.5 px-3 py-2 rounded-lg bg-[#F8F0FC] text-[#9c36b5] text-[12px] font-semibold hover:bg-[#f3e8ff] transition-colors"
               >
                 <span className="flex items-center gap-1.5">
-                  <FileText size={12} /> Ver guion completo
+                  <Film size={13} /> Ver guion
                 </span>
                 {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
               </button>
+
               {expanded && (
-                <div className="mt-2 space-y-2.5 border-l-2 border-[#F8F0FC] pl-3">
-                  {scriptData.hook && (
-                    <ScriptBlock label="Gancho (3-5s)" text={scriptData.hook} color="#7A1832" />
-                  )}
-                  {scriptData.context && (
-                    <ScriptBlock label="Contexto (5-10s)" text={scriptData.context} color="#1971c2" />
-                  )}
-                  {scriptData.solution && (
-                    <ScriptBlock label="Solución (20-30s)" text={scriptData.solution} color="#2f9e44" />
-                  )}
-                  {scriptData.cta && (
-                    <ScriptBlock label="CTA (3-5s)" text={scriptData.cta} color="#9c36b5" />
-                  )}
+                <div className="mt-2.5 rounded-xl p-3.5 space-y-2.5" style={{ background: '#FFFDF5', border: '2px solid #7A1832' }}>
+                  {/* Cabecera guion */}
+                  <div className="flex items-center justify-between pb-2 border-b border-[#FFF1B5]">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#7A1832] flex items-center gap-1.5">
+                      <Film size={12} /> Guion {idea.type === 'reel' ? 'del Reel' : 'del Carrusel'}
+                    </span>
+                    <CopyScriptButton script={script!} guion={guion} />
+                  </div>
+
+                  {guion.hook && <ScriptBlock label="Gancho" text={guion.hook} color="#7A1832" />}
+                  {guion.context && <ScriptBlock label="Contexto" text={guion.context} color="#1971c2" />}
+                  {guion.solution && <ScriptBlock label="Solución" text={guion.solution} color="#2f9e44" />}
+                  {guion.cta && <ScriptBlock label="CTA" text={guion.cta} color="#9c36b5" />}
+
                   {script!.visual_idea && (
-                    <ScriptBlock label="Idea visual" text={script!.visual_idea} color="#8a8680" />
+                    <div className="rounded-lg p-2.5" style={{ background: 'rgba(122,24,50,0.05)' }}>
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-[#7A1832] opacity-70 mb-1 flex items-center gap-1.5">
+                        <Video size={11} /> Idea visual
+                      </div>
+                      <p className="text-[12px] text-[#1a1a1a] leading-relaxed">{script!.visual_idea}</p>
+                    </div>
                   )}
-                  {script!.caption_with_hashtags && (
-                    <ScriptBlock label="Copy + hashtags" text={script!.caption_with_hashtags} color="#8a8680" />
-                  )}
+
+                  <button
+                    onClick={onToggleExpand}
+                    className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-md text-[#8a8680] text-[11px] font-medium hover:bg-[#FFF1B5]"
+                  >
+                    Ver menos <ChevronDown size={12} style={{ transform: 'rotate(180deg)' }} />
+                  </button>
                 </div>
               )}
             </div>
@@ -570,11 +687,52 @@ function IdeaCard({
 }
 
 function ScriptBlock({ label, text, color }: { label: string; text: string; color: string }) {
+  const [copied, setCopied] = useState(false)
+  function copy() {
+    navigator.clipboard?.writeText(text).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    }).catch(() => {})
+  }
   return (
-    <div>
-      <div className="text-[10px] uppercase tracking-wide font-semibold mb-0.5" style={{ color }}>{label}</div>
-      <div className="text-[12px] text-[#3d3d3d] leading-relaxed">{text}</div>
+    <div className="rounded-lg p-2.5" style={{ background: 'white', border: '1px solid #FFF1B5' }}>
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color }}>{label}</span>
+        <button
+          onClick={copy}
+          className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold transition-all"
+          style={{ background: '#FFFDF5', color: '#7A1832', border: '1px solid #FFF1B5', minHeight: 22 }}
+        >
+          {copied ? <Check size={9} /> : <Copy size={9} />} Copiar
+        </button>
+      </div>
+      <p className="text-[12px] text-[#1a1a1a] whitespace-pre-wrap leading-relaxed">{text}</p>
     </div>
+  )
+}
+
+function CopyScriptButton({ script, guion }: { script: Script; guion: { hook?: string; context?: string; solution?: string; cta?: string } }) {
+  const [copied, setCopied] = useState(false)
+  function copyFull() {
+    const parts: string[] = []
+    if (guion.hook) parts.push(`GANCHO: ${guion.hook}`)
+    if (guion.context) parts.push(`CONTEXTO: ${guion.context}`)
+    if (guion.solution) parts.push(`SOLUCIÓN: ${guion.solution}`)
+    if (guion.cta) parts.push(`CTA: ${guion.cta}`)
+    if (script.visual_idea) parts.push(`IDEA VISUAL: ${script.visual_idea}`)
+    navigator.clipboard?.writeText(parts.join('\n\n')).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }).catch(() => {})
+  }
+  return (
+    <button
+      onClick={copyFull}
+      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold text-white transition-all"
+      style={{ background: '#7A1832', minHeight: 28 }}
+    >
+      {copied ? <><Check size={11} /> Copiado</> : <><Copy size={11} /> Copiar guion completo</>}
+    </button>
   )
 }
 

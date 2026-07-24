@@ -211,13 +211,29 @@ export default function EstrategiaDetail({ client, onBack }: { client: Client; o
       })
       const j = await res.json()
       if (!res.ok) throw new Error(j.error || 'Error al crear el guion')
-      setIdeas(prev => [...prev, j.idea].sort((a, b) => a.order_idx - b.order_idx))
-      if (j.item) {
-        setScripts(prev => ({ ...prev, [j.item.id]: j.item }))
+      const newIdeas = (j.ideas || []) as Idea[]
+      const newItems = (j.items || []) as Script[]
+      setIdeas(prev => [...prev, ...newIdeas].sort((a, b) => a.order_idx - b.order_idx))
+      if (newItems.length > 0) {
+        setScripts(prev => {
+          const next = { ...prev }
+          for (const it of newItems) next[it.id] = it
+          return next
+        })
       }
       setShowExternal(false)
       setExternalText('')
-      setInfo(j.mock ? 'IA no configurada — guion guardado sin estructurar.' : 'Guion interpretado y añadido al plan.')
+      const n = newIdeas.length
+      if (j.mock) {
+        setInfo(n > 1 ? `IA no configurada — ${n} guiones guardados sin estructurar.` : 'IA no configurada — guion guardado sin estructurar.')
+      } else if (n > 1) {
+        setInfo(`${n} guiones interpretados y añadidos al plan.`)
+      } else {
+        setInfo('Guion interpretado y añadido al plan.')
+      }
+      if (j.errors && j.errors.length > 0) {
+        setError(`Algunos guiones no se pudieron crear: ${j.errors.join('; ')}`)
+      }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Error desconocido')
     } finally {
@@ -832,13 +848,13 @@ function ExternalScriptBox({
         </button>
       </div>
       <p className="text-[12px] text-[#8a8680]">
-        Pega aquí el guion completo tal cual lo traes. La IA de la aplicación lo interpreta y crea la tarjeta con toda la información estructurada para mostrar al cliente.
+        Pega aquí uno o varios guiones tal cual los traes. La IA detecta cuántas ideas distintas hay y crea una tarjeta por cada guion. Sepáralos con "GUION 1", "---", números o saltos de bloque.
       </p>
       <textarea
         value={text}
         onChange={e => onText(e.target.value)}
         rows={14}
-        placeholder={"Pega el guion entero aquí…\n\nEjemplo:\n\nGANCHO: ¿Por qué tu rubio se vuelve naranja?\nCONTEXTO: El problema no es tu peluquero, es el lavado en casa…\nSOLUCIÓN: Usa agua fría los primeros 15 días y este champú morado…\nCTA: Reserva tu retoque de raíz aquí en el link de mi bio…\n\nIdea visual: primer plano del mechón amarillo → antes/después\nCaption: Tu rubio merece durar. #balayage #rubio #cuidadodelpelo"}
+        placeholder={"Pega uno o varios guiones aquí…\n\nEjemplo con varios:\n\nGUION 1\nGANCHO: ¿Por qué tu rubio se vuelve naranja?\nCONTEXTO: El problema no es tu peluquero, es el lavado en casa…\nSOLUCIÓN: Usa agua fría los primeros 15 días y este champú morado…\nCTA: Reserva tu retoque de raíz aquí en el link de mi bio…\nIdea visual: primer plano del mechón amarillo → antes/después\n\n---\n\nGUION 2\nGANCHO: 3 errores que estropean tu balayage\nCONTEXTO: …\nSOLUCIÓN: …\nCTA: …"}
         className="w-full px-3 py-2.5 text-[12.5px] rounded-lg border border-[#e8e6e3] bg-white focus:outline-none focus:border-[#7A1832] resize-y font-mono leading-relaxed"
       />
       <div className="flex items-center gap-2">
@@ -848,7 +864,7 @@ function ExternalScriptBox({
           className="flex items-center gap-1.5 px-4 py-2 rounded-md bg-[#7A1832] text-white text-[13px] font-medium disabled:opacity-50"
         >
           {saving ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-          Interpretar y crear tarjeta
+          Interpretar y crear tarjetas
         </button>
         <button
           onClick={onCancel}

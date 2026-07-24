@@ -66,7 +66,7 @@ ${completedBlock}${confirmedBlock}
 Reglas del manual BRÄVE:
 - El gancho (hook_idea) está basado en dolor, error, falso mito, deseo u objeción — PROHIBIDO usar frases hechas como "No vas a creer esto", "El secreto mejor guardado", "Tienes que ver esto".
 - Balancea los pilares de contenido definidos en la estrategia (no te centres solo en uno).
-- Balancea el tipo: aproximadamente 60% reel y 40% carrusel. NO generes stories.
+- TODAS las ideas deben ser de tipo "reel". NUNCA generes "carrusel" ni "story".
 - Cada título debe ser concreto y específico del salón/servicio de esta estilista (no genérico).
 - En hook_idea: 3 a 8 palabras, ángulo breve (no es el guion, solo el ángulo del gancho).
 
@@ -75,7 +75,7 @@ Devuelve EXACTAMENTE este JSON sin texto adicional:
   "ideas": [
     {
       "title": "título concreto de la pieza",
-      "type": "reel" | "carrusel",
+      "type": "reel",
       "pillar": "nombre del pilar (de los definidos en la estrategia)",
       "objective": "educacion" | "autoridad" | "inspiracion" | "venta" | "deseo" | "dolor" | "objecion" | "testimonio" | "caso_exito" | "viralidad",
       "service": "nombre del servicio",
@@ -95,7 +95,6 @@ export function generateMockIdeas(input: IdeasInput): IdeaItem[] {
   const pillars = ['Autoridad', 'Educación', 'Inspiración', 'Transformación', 'Testimonio']
   const objectives = ['autoridad', 'educacion', 'inspiracion', 'caso_exito', 'testimonio'] as const
   const services = ['Balayage', 'Corte', 'Color', 'Keratina', 'Tratamiento']
-  const types: IdeaType[] = ['reel', 'carrusel']
 
   const templates: string[] = [
     'El error más común al lavar el pelo en casa',
@@ -120,7 +119,7 @@ export function generateMockIdeas(input: IdeasInput): IdeaItem[] {
     if (!used.has(tpl)) {
       ideas.push({
         title: tpl,
-        type: types[i % types.length],
+        type: 'reel' as IdeaType,
         pillar: pillars[i % pillars.length],
         objective: objectives[i % objectives.length],
         service: services[i % services.length],
@@ -155,7 +154,7 @@ export async function generateIdeas(input: IdeasInput): Promise<{ ideas: IdeaIte
     ) {
       const ideas: IdeaItem[] = parsed.ideas.map(it => ({
         title: it.title,
-        type: it.type,
+        type: 'reel' as IdeaType,
         pillar: it.pillar,
         objective: VALID_OBJECTIVES.includes(it.objective) ? it.objective : 'autoridad',
         service: it.service,

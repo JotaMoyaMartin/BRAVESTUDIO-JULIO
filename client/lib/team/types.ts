@@ -162,3 +162,109 @@ export interface Task {
   updatedAt: string
   dueDate?: string | null
 }
+
+// ── Tareas y Productividad (módulo independiente) ──
+export type ProductivityColumn = 'ahora' | 'hoy' | 'esta_semana' | 'despues' | 'hecho'
+export type ProductivityPriority = 'alta' | 'media' | 'baja'
+
+export interface Subtask {
+  id: string
+  title: string
+  done: boolean
+}
+
+export interface TaskComment {
+  id: string
+  authorId: string   // memberId
+  text: string
+  createdAt: string
+}
+
+export interface TaskHistoryEntry {
+  id: string
+  action: string
+  at: string
+  by: string   // memberId or 'system'
+}
+
+export interface ProductivityTask {
+  id: string
+  projectId: string
+  title: string
+  description: string
+  column: ProductivityColumn
+  priority: ProductivityPriority
+  assignedTo: string | null       // memberId
+  estimatedMinutes: number | null
+  actualMinutes: number
+  dueDate: string | null
+  subtasks: Subtask[]
+  attachments: string[]            // base64 data URLs
+  referenceLinks: string[]
+  comments: TaskComment[]
+  history: TaskHistoryEntry[]
+  postponeCount: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface Project {
+  id: string
+  name: string
+  description: string
+  color: string
+  nextAction: string | null
+  status: 'activo' | 'pausado' | 'completado'
+  createdAt: string
+  updatedAt: string
+}
+
+export interface InboxEntry {
+  id: string
+  rawText: string
+  source: 'texto' | 'audio'
+  createdAt: string
+  convertedToTaskId: string | null
+  suggestedProjectId: string | null
+  suggestedPriority: ProductivityPriority | null
+  suggestedDueDate: string | null
+}
+
+export type FocusSessionStatus = 'completada' | 'pausada' | 'interrumpida'
+
+export interface FocusSession {
+  id: string
+  taskId: string
+  startedAt: string
+  endedAt: string | null
+  plannedMinutes: number
+  actualMinutes: number
+  interruptions: number
+  status: FocusSessionStatus
+}
+
+export interface DailyStats {
+  date: string             // YYYY-MM-DD
+  completedCount: number
+  prioritiesMet: number
+  focusMinutes: number
+  interruptions: number
+  postponedCount: number
+}
+
+export interface ProductivitySettings {
+  pomodoroPresets: number[]
+  defaultPreset: number
+  focusRemindersEnabled: boolean
+  multiTaskAlertEnabled: boolean
+  postponeAlertThreshold: number
+}
+
+export interface ProductivityState {
+  tasks: ProductivityTask[]
+  projects: Project[]
+  inbox: InboxEntry[]
+  focusSessions: FocusSession[]
+  dailyStats: DailyStats[]
+  settings: ProductivitySettings
+}

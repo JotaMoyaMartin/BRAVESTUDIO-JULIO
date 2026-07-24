@@ -9,6 +9,7 @@ import Production from '@/components/team/screens/Production'
 import Clientes from '@/components/team/screens/Clientes'
 import Planificacion from '@/components/team/screens/Planificacion'
 import Tareas from '@/components/team/screens/Tareas'
+import Productividad from '@/components/team/screens/Productividad'
 import Equipo from '@/components/team/screens/Equipo'
 import Notificaciones from '@/components/team/screens/Notificaciones'
 import Config from '@/components/team/screens/Config'
@@ -20,6 +21,7 @@ const TITLES: Record<NavKey, string> = {
   clientes: 'Clientes',
   planificacion: 'Planificación semanal',
   tareas: 'Tareas del equipo',
+  productividad: 'Tareas y Productividad',
   equipo: 'Equipo',
   notificaciones: 'Notificaciones',
   config: 'Configuración',
@@ -48,6 +50,7 @@ export default function TeamShell() {
           {active === 'clientes' && <Clientes />}
           {active === 'planificacion' && <Planificacion />}
           {active === 'tareas' && <Tareas />}
+          {active === 'productividad' && <Productividad />}
           {active === 'equipo' && <Equipo />}
           {active === 'notificaciones' && <Notificaciones />}
           {active === 'config' && <Config />}

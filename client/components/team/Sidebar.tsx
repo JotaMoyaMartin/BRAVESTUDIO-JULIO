@@ -3,11 +3,11 @@ import { useAuth } from '@/lib/team/auth-context'
 import { ROLE_LABELS } from '@/lib/team/mock-data'
 import {
   LayoutDashboard, Video, Users, Calendar, UserSquare,
-  Bell, Settings, LogOut, FolderKanban, CheckSquare, BarChart3,
+  Bell, Settings, LogOut, FolderKanban, CheckSquare, BarChart3, Zap,
 } from 'lucide-react'
 import { useState } from 'react'
 
-export type NavKey = 'dashboard' | 'production' | 'clientes' | 'planificacion' | 'tareas' | 'equipo' | 'notificaciones' | 'config' | 'finanzas'
+export type NavKey = 'dashboard' | 'production' | 'clientes' | 'planificacion' | 'tareas' | 'productividad' | 'equipo' | 'notificaciones' | 'config' | 'finanzas'
 
 const NAV: { key: NavKey; label: string; icon: any; roles?: string[] }[] = [
   { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -15,6 +15,7 @@ const NAV: { key: NavKey; label: string; icon: any; roles?: string[] }[] = [
   { key: 'clientes', label: 'Clientes', icon: UserSquare },
   { key: 'planificacion', label: 'Planificación', icon: Calendar },
   { key: 'tareas', label: 'Tareas', icon: CheckSquare },
+  { key: 'productividad', label: 'Productividad', icon: Zap },
   { key: 'equipo', label: 'Equipo', icon: Users, roles: ['admin'] },
   { key: 'notificaciones', label: 'Notificaciones', icon: Bell },
   { key: 'config', label: 'Configuración', icon: Settings, roles: ['admin'] },

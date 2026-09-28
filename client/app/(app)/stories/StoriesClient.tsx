@@ -1,7 +1,9 @@
 'use client'
 import { useState, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { demoSavePlan } from '@/lib/demo-store'
+import { openTeleprompter } from '@/lib/teleprompter/input'
 import {
   generateStories,
   generateQuestions,
@@ -34,6 +36,7 @@ import {
   Eye,
   FileText,
   Plus,
+  Clapperboard,
 } from 'lucide-react'
 import type { ContentItem } from '@/types/database'
 
@@ -91,6 +94,7 @@ export default function StoriesClient({ userId, brandFull }: { userId: string; b
 
 function StoriesCreator({ userId, brandFull }: { userId: string; brandFull: BrandFullContextInput | null }) {
   const isDemoMode = userId === 'demo'
+  const router = useRouter()
   const hasBrand = hasBrandContext(brandFull)
   const [useMiMarca, setUseMiMarca] = useSessionState<boolean>(`u:${userId}:stories:useMiMarca`, hasBrand)
   const brandContext = useMemo(() => {
@@ -125,6 +129,25 @@ function StoriesCreator({ userId, brandFull }: { userId: string; brandFull: Bran
     })
     setResult(out)
     setGenerating(false)
+  }
+
+  // Teleprompter con SOLO el texto de esa story (nunca la secuencia fusionada).
+  // La secuencia completa viaja en el payload para "Continuar con Story N+1".
+  function openStoryInTeleprompter(storyNumber: number) {
+    if (!result) return
+    const idx = result.stories.findIndex(s => s.number === storyNumber)
+    if (idx < 0) return
+    const items = result.stories.map(s => ({ label: `Story ${s.number} de ${result.stories.length}`, text: s.text }))
+    openTeleprompter(
+      {
+        script: items[idx].text,
+        title: items[idx].label,
+        source: 'stories',
+        returnUrl: '/stories',
+        sequence: { current: idx, total: items.length, items },
+      },
+      router,
+    )
   }
 
   function handleCopy(text: string, key: string) {
@@ -289,6 +312,13 @@ Visual: ${s.visualIdea}`
             {result.stories.map(story => (
               <StoryMockup key={story.number} story={story} index={story.number}>
                 <button
+                  onClick={() => openStoryInTeleprompter(story.number)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                  style={{ background: '#7A1832', color: 'white' }}
+                >
+                  <Clapperboard size={12} /> Grabar
+                </button>
+                <button
                   onClick={() => handleCopy(story.text, `story-${story.number}`)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
                   style={{ background: copied === `story-${story.number}` ? '#7A1832' : '#FFF1B5', color: copied === `story-${story.number}` ? 'white' : '#591427' }}
@@ -357,6 +387,13 @@ Visual: ${s.visualIdea}`
                     </p>
                   )}
                   <div className="flex gap-2">
+                    <button
+                      onClick={() => openStoryInTeleprompter(story.number)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                      style={{ background: '#7A1832', color: 'white' }}
+                    >
+                      <Clapperboard size={12} /> Grabar
+                    </button>
                     <button
                       onClick={() => handleCopy(story.text, `story-text-${story.number}`)}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"

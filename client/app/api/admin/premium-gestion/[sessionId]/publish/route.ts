@@ -52,9 +52,12 @@ export async function POST(_request: NextRequest, { params }: { params: { sessio
   }
 
   // Upsert into brand_profiles
+  // Fase 1: merge a nivel app — main_priority/shows_face son del Brain del
+  // wizard; si ya existen, el admin NO los pisa (contrato gestionado solo
+  // para los strategy fields).
   const { data: existing } = await auth.admin
     .from('brand_profiles')
-    .select('id')
+    .select('id, main_priority, shows_face')
     .eq('user_id', sessionRow.user_id)
     .maybeSingle()
 
@@ -62,7 +65,11 @@ export async function POST(_request: NextRequest, { params }: { params: { sessio
     const { error } = await auth.admin.from('brand_profiles').update(payload).eq('user_id', sessionRow.user_id)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   } else {
-    const { error } = await auth.admin.from('brand_profiles').insert(payload)
+    const { error } = await auth.admin.from('brand_profiles').insert({
+      ...payload,
+      main_priority: null,
+      shows_face: null,
+    })
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   }
 

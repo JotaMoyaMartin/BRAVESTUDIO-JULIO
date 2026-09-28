@@ -49,6 +49,15 @@ const CAROUSEL_PROMPT_STRUCTURES: Record<number, string[]> = {
     'Slide 5: Solución / resultado — muestra el resultado correcto',
     'Slide 6: CTA — invita a reservar, escribir o guardar',
   ],
+  7: [
+    'Slide 1: Gancho — capta atención en el primer vistazo',
+    'Slide 2: Contexto — explica la situación o problema',
+    'Slide 3: Error común — muestra el error más repetido',
+    'Slide 4: Explicación profesional — da el criterio experto',
+    'Slide 5: Dato clave — da un dato o consejo que sorprenda y aporte autoridad',
+    'Slide 6: Solución / resultado — muestra el resultado correcto',
+    'Slide 7: CTA — invita a reservar, escribir o guardar',
+  ],
 }
 
 export function buildCarouselPrompt(input: CarouselInput): string {
@@ -99,6 +108,7 @@ function buildSlide(role: string, service: string): { role: string; text: string
     'Explicación profesional': `En consulta analizo el estado del cabello antes de hacer ${l.el}. Así elijo la técnica y el producto adecuados para cada caso.`,
     'Solución / resultado': `Con el protocolo correcto, ${l.el} luce mejor y ${l.dura} mucho más. Diagnóstico + técnica + mantenimiento en casa.`,
     'Desarrollo / valor': `La clave de ${l.el} está en el diagnóstico previo y en usar el producto adecuado para tu tipo de cabello. No hay fórmulas mágicas, hay criterio.`,
+    'Dato clave': `Un dato: ${l.el} bien cuidado se nota desde la primera semana. La constancia en casa vale tanto como el trabajo en el salón.`,
     CTA: `¿Quieres que hablemos de ${l.el}? Escríbeme y te ayudo a decidir. 💌`,
   }
   return { role, text: blocks[role] || `Todo lo que necesitas saber sobre ${l.el}.` }
@@ -110,6 +120,7 @@ const CAROUSEL_STRUCTURES: Record<number, string[]> = {
   4: ['Gancho', 'Contexto', 'Solución / resultado', 'CTA'],
   5: ['Gancho', 'Contexto', 'Error común', 'Solución / resultado', 'CTA'],
   6: ['Gancho', 'Contexto', 'Error común', 'Explicación profesional', 'Solución / resultado', 'CTA'],
+  7: ['Gancho', 'Contexto', 'Error común', 'Explicación profesional', 'Dato clave', 'Solución / resultado', 'CTA'],
 }
 
 export function getMockCarousel(input: CarouselInput): CarouselOutput {

@@ -1,14 +1,16 @@
 'use client'
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { saveToLibrary } from '@/lib/content-utils'
 import { generateReel, ReelOutput, ContentObjective } from '@/lib/ai/prompts/reels'
 import { generateCarousel, CarouselOutput } from '@/lib/ai/prompts/carousels'
 import { useSessionState, clearSectionState } from '@/lib/session-store'
 import { buildBrandFullContext, hasBrandContext, BrandFullContextInput } from '@/lib/ai/brand-context'
+import { openTeleprompter, composeReelSpokenScript } from '@/lib/teleprompter/input'
 import UsarMiMarcaToggle from '@/components/ui/UsarMiMarcaToggle'
 import BraviGuide from '@/components/bravi/BraviGuide'
-import { Film, LayoutGrid, Copy, BookOpen, Calendar, RefreshCw, Trash2, Check, ArrowRight } from 'lucide-react'
+import { Film, LayoutGrid, Copy, BookOpen, Calendar, RefreshCw, Trash2, Check, ArrowRight, Clapperboard } from 'lucide-react'
 
 const SERVICES = ['Balayage', 'Rubios', 'Canas', 'Alisados', 'Tratamientos', 'Corte', 'Color', 'General']
 
@@ -31,6 +33,7 @@ export default function CrearContenidoClient({
   initialContexto?: string | null
 }) {
   const isDemoMode = userId === 'demo'
+  const router = useRouter()
   const hasBrand = hasBrandContext(brandFull)
   const [useMiMarca, setUseMiMarca] = useSessionState<boolean>(`u:${userId}:crear:useMiMarca`, hasBrand)
 
@@ -346,6 +349,17 @@ export default function CrearContenidoClient({
           onSave={saveToLibraryHandler}
           onSchedule={scheduleHandler}
           onNew={reset}
+          onRecord={() =>
+            openTeleprompter(
+              {
+                script: composeReelSpokenScript(reelResult.script),
+                title: reelResult.title,
+                source: 'reel',
+                returnUrl: '/crear-contenido',
+              },
+              router,
+            )
+          }
           saving={saving}
           savedPlan={savedPlan}
           scheduling={scheduling}
@@ -380,12 +394,13 @@ export default function CrearContenidoClient({
   )
 }
 
-function ReelResult({ result, onRegenerate, onSave, onSchedule, onNew, saving, savedPlan, scheduling, setScheduling, scheduledDate, setScheduledDate, savedScheduled, CopyBtn, generating }: {
+function ReelResult({ result, onRegenerate, onSave, onSchedule, onNew, onRecord, saving, savedPlan, scheduling, setScheduling, scheduledDate, setScheduledDate, savedScheduled, CopyBtn, generating }: {
   result: ReelOutput
   onRegenerate: () => void
   onSave: () => void
   onSchedule: () => void
   onNew: () => void
+  onRecord: () => void
   saving: boolean
   savedPlan: boolean
   scheduling: boolean
@@ -471,6 +486,9 @@ function ReelResult({ result, onRegenerate, onSave, onSchedule, onNew, saving, s
       <div className="flex flex-wrap gap-2 items-center">
         <button onClick={onSave} disabled={saving || savedPlan} className="btn-primary text-sm">
           <BookOpen size={15} /> {saving ? 'Guardando...' : savedPlan ? '✓ Guardado' : 'Guardar en biblioteca'}
+        </button>
+        <button onClick={onRecord} className="btn-secondary text-sm">
+          <Clapperboard size={15} /> Grabar con teleprompter
         </button>
         {!savedPlan && (
           <button onClick={() => setScheduling(!scheduling)} disabled={saving} className="btn-ghost text-sm">

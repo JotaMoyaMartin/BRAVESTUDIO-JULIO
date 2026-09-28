@@ -107,6 +107,8 @@ export interface Database {
           differentiation: string | null
           specialty: string | null
           content_topics: string[] | null
+          shows_face: 'talk' | 'appear' | 'work_only' | 'no' | null
+          main_priority: 'citas' | 'descubrir' | 'reconocimiento' | 'servicio' | 'constancia' | 'valor' | null
           optimized_summary: string | null
           strategy_json: Record<string, unknown> | null
           roadmap_json: Record<string, unknown> | null
@@ -136,6 +138,8 @@ export interface Database {
           differentiation?: string | null
           specialty?: string | null
           content_topics?: string[] | null
+          shows_face?: 'talk' | 'appear' | 'work_only' | 'no' | null
+          main_priority?: 'citas' | 'descubrir' | 'reconocimiento' | 'servicio' | 'constancia' | 'valor' | null
           optimized_summary?: string | null
           strategy_json?: Record<string, unknown> | null
           roadmap_json?: Record<string, unknown> | null
@@ -162,6 +166,8 @@ export interface Database {
           differentiation?: string | null
           specialty?: string | null
           content_topics?: string[] | null
+          shows_face?: 'talk' | 'appear' | 'work_only' | 'no' | null
+          main_priority?: 'citas' | 'descubrir' | 'reconocimiento' | 'servicio' | 'constancia' | 'valor' | null
           optimized_summary?: string | null
           strategy_json?: Record<string, unknown> | null
           roadmap_json?: Record<string, unknown> | null
@@ -169,6 +175,26 @@ export interface Database {
           raw_input?: string | null
           updated_at?: string
         }
+      }
+      brain_observations: {
+        Row: {
+          id: string
+          user_id: string
+          kind: 'learning' | 'integration' | 'manual'
+          observation: string
+          source: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          kind: 'learning' | 'integration' | 'manual'
+          observation: string
+          source?: string | null
+          created_at?: string
+        }
+        // Append-only en RLS (sin update/delete) — supabase-js exige la clave.
+        Update: Record<string, never>
       }
       content_items: {
         Row: {
@@ -695,3 +721,4 @@ export type AcademiaModule = Database['public']['Tables']['academia_modules']['R
 export type AcademiaLesson = Database['public']['Tables']['academia_lessons']['Row']
 export type AcademiaLessonProgress = Database['public']['Tables']['academia_lesson_progress']['Row']
 export type PremiumStrategySession = Database['public']['Tables']['premium_strategy_sessions']['Row']
+export type BrainObservation = Database['public']['Tables']['brain_observations']['Row']

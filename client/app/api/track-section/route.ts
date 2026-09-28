@@ -14,9 +14,15 @@ const VALID_SECTIONS = [
   'reto-10k',
   'mi-estrategia',
   'plan-contenidos',
+  'teleprompter',
+  'carrusel',
 ]
 
 export async function POST(request: NextRequest) {
+  // Modo demo (sin credenciales): nada que trackear.
+  if (!(process.env.NEXT_PUBLIC_SUPABASE_URL || '').startsWith('http')) {
+    return NextResponse.json({ ok: true })
+  }
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ ok: true })

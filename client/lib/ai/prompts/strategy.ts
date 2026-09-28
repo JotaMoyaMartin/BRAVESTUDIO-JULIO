@@ -1,15 +1,16 @@
 /**
  * AI prompt for generating a 13-section strategy document.
  * Shared between Mi Marca (self-service) and admin premium strategy generation.
+ *
+ * Fase 1: la variante BRAIN_STRATEGY_PROMPT alimenta la estrategia
+ * post-onboarding (la "ficha" la compone el server con los datos verificados
+ * del wizard). El cuerpo (estructura JSON + reglas) es BYTE-IDÉNTICO en las
+ * dos variantes — solo cambia la cabecera y el bloque de entrada.
  */
-export const STRATEGY_PROMPT = (text: string) => `Eres un estratega de marketing experto para salones de belleza y peluquería en España. Analiza el texto que una estilista ha escrito sobre su salón y genera un documento estratégico completo y profesional.
 
-Texto de la estilista:
-"""
-${text}
-"""
+const STRATEGY_HEADER = `Eres un estratega de marketing experto para salones de belleza y peluquería en España.`
 
-Responde SOLO con un JSON válido, sin texto adicional ni explicaciones, con esta estructura EXACTA:
+const STRATEGY_BODY = `Responde SOLO con un JSON válido, sin texto adicional ni explicaciones, con esta estructura EXACTA:
 {
   "perfil_brave": "descripción de la marca en 2-3 frases potentes",
   "resumen_ejecutivo": "resumen ejecutivo de 4-6 líneas describiendo la situación actual, oportunidades y plan de acción",
@@ -62,6 +63,24 @@ Reglas:
 - Si un dato no está en el texto, infiérelo del contexto del sector o pon un valor razonable por defecto.
 - El resumen_para_ia es CRÍTICO: será usado como contexto para todas las generaciones de contenido.`
 
+export const STRATEGY_PROMPT = (text: string) => `${STRATEGY_HEADER} Analiza el texto que una estilista ha escrito sobre su salón y genera un documento estratégico completo y profesional.
+
+Texto de la estilista:
+"""
+${text}
+"""
+
+${STRATEGY_BODY}`
+
+export const BRAIN_STRATEGY_PROMPT = (ficha: string) => `${STRATEGY_HEADER} Analiza la ficha del salón que BRÄVE ha preparado con la estilista y genera un documento estratégico completo y profesional.
+
+FICHA DEL SALÓN — datos verificados:
+"""
+${ficha}
+"""
+
+${STRATEGY_BODY}`
+
 export const STRATEGY_REFINE_PROMPT = (currentStrategy: string, instruction: string) => `Eres un estratega de marketing experto para salones de belleza y peluquería en España.
 
 Tienes esta estrategia actual en JSON:
@@ -77,3 +96,55 @@ Reglas:
 - Los porcentajes de estrategia_contenido deben sumar 100.
 - Todo en español, profesional, concreto y accionable.
 - Mantén el resumen_para_ia actualizado si el cambio afecta al contexto permanente.`
+
+// ── AI prompt para Hoja de Ruta BRÄVE ─────────────────────────────────
+
+export const ROADMAP_PROMPT = (strategyJson: string, rawInput: string) => `Eres un mentor estratégico para estilistas y salones de belleza en España. Analiza la estrategia de marca ya generada y el texto original de la estilista, y diseña una HOJA DE RUTA personalizada en forma de camino ascendente de 5 a 7 fases.
+
+Estrategia de marca (JSON):
+"""
+${strategyJson}
+"""
+
+Texto original de la estilista:
+"""
+${rawInput}
+"""
+
+Responde SOLO con un JSON válido, sin texto adicional, con esta estructura EXACTA:
+{
+  "phases": [
+    {
+      "number": 1,
+      "name": "Bases Claras",
+      "description": "1-2 frases describiendo la fase",
+      "goal": "1 frase con el objetivo concreto de esta fase",
+      "icon": "emoji representativo",
+      "color": "cherry|cherry-dark|buttermilk|pastel-blue|pastel-green|warm-gray",
+      "status": "completed|in_progress|pending",
+      "tasks": [
+        {"id": "t1", "label": "tarea concreta y accionable", "done": false}
+      ],
+      "bravi_message": "mensaje breve de Bravi como mentor para esta fase (opcional)"
+    }
+  ]
+}
+
+Reglas CRÍTICAS de personalización:
+- Adapta las fases y tareas a lo que detectes en el texto de la estilista. NO uses fases genéricas.
+- Si detecta que NO habla a cámara → añade una tarea específica en la fase correspondiente.
+- Si no tiene diferenciación clara → añade una fase/tarea de posicionamiento.
+- Si vende solo por precio → añade tareas de percepción de valor.
+- Si no publica con frecuencia → añade tareas de planificación y frecuencia.
+- Si no tiene testimonios → añade una tarea de casos reales.
+- Asigna el estado según la información detectada:
+  - "completed" si la estilista ya cumple esa fase según lo que escribió.
+  - "in_progress" a UNA sola fase que sea el siguiente paso natural (la prioridad #1 ahora mismo).
+  - "pending" al resto, en orden lógico ascendente.
+- La primera fase debe ser siempre la base (Bases Claras / Posicionamiento) y la última la cima (Escala / Marca personal consolidada).
+- Entre 5 y 7 fases. Entre 3 y 6 tareas por fase.
+- Cada tarea debe ser concreta, accionable y verificable (que la estilista pueda marcarla como hecha).
+- Los "id" de tareas deben ser únicos dentro de su fase (t1, t2, t3...).
+- "color" debe variar entre fases para dar ritmo visual, rotando entre los 6 colores disponibles.
+- "bravi_message" solo en 1-2 fases clave (la primera y la fase "in_progress" son buenas candidatas). Mensaje corto, en segunda persona, tono mentor cercano.
+- Todo en español, profesional, motivador y concreto.`

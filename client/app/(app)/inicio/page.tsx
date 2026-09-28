@@ -1,8 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
 import InicioClient from './InicioClient'
-import { Profile, BrandProfile, ContentItem, ReelInspiration, ReelTransition } from '@/types/database'
-import { Reto10kProgress } from '@/types/reto10k'
+import { Profile, BrandProfile, ContentItem } from '@/types/database'
+import { Reto10kProgress, Reto10kConfig } from '@/types/reto10k'
+import { computeCurrentDay } from '@/lib/reto-plan'
+import { TodayInput, localISODate, getWeekKey, pickLastPendingItem, pickRetoTodayStatus } from '@/lib/home-today'
 
 const IS_CONFIGURED = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').startsWith('http')
 
@@ -21,7 +23,7 @@ const DEMO_PROFILE: Profile = {
 
 export default async function InicioPage() {
   if (!IS_CONFIGURED) {
-    return <InicioClient profile={DEMO_PROFILE} brand={null} contentItems={[]} inspirations={[]} transitions={[]} retoProgress={null} retoItemsCount={0} isPremium={false} />
+    return <InicioClient profile={DEMO_PROFILE} todayInput={null} isPremium={false} />
   }
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -33,30 +35,19 @@ export default async function InicioPage() {
   const realRole = (profile as { role?: string } | null)?.role
   const isPremium = realRole === 'premium' || (previewPremium && (realRole === 'admin' || realRole === 'superadmin'))
 
-  const { data: brand } = await supabase.from('brand_profiles').select('completion_status, salon_name').eq('user_id', user!.id).maybeSingle()
+  const { data: brand } = await supabase
+    .from('brand_profiles')
+    .select('completion_status, salon_name, main_priority, main_services, service_to_promote')
+    .eq('user_id', user!.id)
+    .maybeSingle()
   const { data: items } = await supabase
     .from('content_items')
-    .select('id, type, title, status, scheduled_date, created_at, updated_at, tag')
+    .select('id, type, title, status, reto_status, scheduled_date, done_at, created_at, updated_at, tag')
     .eq('user_id', user!.id)
     .order('updated_at', { ascending: false })
 
-  const { data: inspirationsData } = await supabase
-    .from('reel_inspirations')
-    .select('id, title, short_description, cover_image')
-    .eq('status', 'active')
-    .order('created_at', { ascending: false })
-    .limit(20)
-
-  const { data: transitionsData } = await supabase
-    .from('reel_transitions')
-    .select('id, title, short_description, cover_image')
-    .eq('status', 'active')
-    .order('created_at', { ascending: false })
-    .limit(20)
-
   // Cargar progreso del Reto 10K solo para usuarios normales
-  let retoProgressRow = null
-  let retoItemsCount = 0
+  let retoProgressRow: Reto10kProgress | null = null
   if (!isPremium) {
     const { data: retoRow } = await supabase
       .from('reto_10k_progress')
@@ -64,24 +55,49 @@ export default async function InicioPage() {
       .eq('user_id', user!.id)
       .maybeSingle()
     retoProgressRow = retoRow
+  }
 
-    const { count } = await supabase
-      .from('content_items')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', user!.id)
-      .eq('tag', 'reto-10k')
-    retoItemsCount = count || 0
+  // Home "Hoy" — proyección determinista de estados existentes (ARCH §5.5).
+  const todayISO = localISODate(new Date())
+  const weekKey = getWeekKey(new Date())
+  const itemList = (items as Partial<ContentItem>[] | null) || []
+  const retoActive = !isPremium && retoProgressRow?.status === 'active'
+  const retoDay = retoActive ? computeCurrentDay(retoProgressRow!.started_at) : 0
+  let retoMissionTitle: string | null = null
+  if (retoActive) {
+    const { data: cfg } = await supabase
+      .from('reto_10k_config')
+      .select('config_json')
+      .eq('id', 'default')
+      .maybeSingle()
+    const config = (cfg?.config_json as unknown as Reto10kConfig | null) ?? null
+    retoMissionTitle = config?.missions?.find(m => m.day === retoDay)?.title ?? null
+  }
+  const inWeek = (iso: string | null | undefined) => !!iso && getWeekKey(new Date(iso)) === weekKey
+  const brandRow = (brand as Partial<BrandProfile> | null) ?? null
+  const todayInput: TodayInput = {
+    brandState: brandRow?.completion_status ?? null,
+    isPremium,
+    retoActive,
+    retoDay,
+    retoMissionTitle,
+    retoTodayItemStatus: retoActive ? pickRetoTodayStatus(itemList, retoDay) : null,
+    scheduledToday: itemList
+      .filter(i => i.scheduled_date === todayISO && i.status === 'scheduled')
+      .map(i => ({ id: String(i.id), title: i.title ?? null, type: i.type ?? null })),
+    lastPendingItem: pickLastPendingItem(itemList, (profile as Profile | null)?.last_visited_section ?? null),
+    mainPriority: brandRow?.main_priority ?? null,
+    starService: brandRow?.service_to_promote ?? (brandRow?.main_services?.[0] ?? null),
+    todayISO,
+    weekCreated: itemList.filter(i => inWeek(i.created_at)).length,
+    weekPublished: itemList.filter(i => (i.reto_status === 'publicado' || i.status === 'done') && inWeek(i.done_at || i.updated_at)).length,
+    weeklyTarget: retoActive ? (retoProgressRow?.posts_per_week ?? null) : null,
   }
 
   return (
     <InicioClient
       profile={profile as Profile | null}
-      brand={brand as Partial<BrandProfile> | null}
-      contentItems={(items as Partial<ContentItem>[]) || []}
-      inspirations={(inspirationsData as Pick<ReelInspiration, 'id' | 'title' | 'short_description' | 'cover_image'>[]) || []}
-      transitions={(transitionsData as Pick<ReelTransition, 'id' | 'title' | 'short_description' | 'cover_image'>[]) || []}
-      retoProgress={retoProgressRow as Reto10kProgress | null}
-      retoItemsCount={retoItemsCount}
+      todayInput={todayInput}
       isPremium={isPremium}
     />
   )

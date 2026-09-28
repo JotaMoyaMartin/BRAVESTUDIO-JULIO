@@ -1,0 +1,6 @@
+.env*
+.env.vercel
+.env.vercel-prod
+.env.local
+.playwright-mcp
+*.log

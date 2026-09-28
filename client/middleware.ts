@@ -1,12 +1,37 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { hasActiveAccess, ACCESS_REDIRECT } from '@/lib/access'
+import { verifyTeamRequest, isTeamApiPath } from '@/lib/team/guard'
+import { rateLimit } from '@/lib/rate-limit'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 const IS_CONFIGURED = SUPABASE_URL.startsWith('http')
 
 export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl
+
+  // ── Team API guard (Fase 0) ─────────────────────────────────────
+  // Se aplica SIEMPRE (también en demo): /team/api/* y /api/team/*.
+  // Autenticación por token (TEAM_API_TOKEN) o bloqueo cross-site.
+  if (isTeamApiPath(pathname)) {
+    const guard = verifyTeamRequest(request)
+    if (!guard.ok) {
+      return guard.res
+    }
+    // Rate limit básico por IP en operaciones no GET (freno de abuso).
+    if (request.method !== 'GET' && request.method !== 'HEAD') {
+      const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+      const rl = rateLimit(`team:${ip}`, 40, 60_000)
+      if (!rl.ok) {
+        return NextResponse.json(
+          { error: 'Too many requests', retryAfter: rl.retryAfterSec },
+          { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } }
+        )
+      }
+    }
+  }
+
   if (!IS_CONFIGURED) {
     return NextResponse.next({ request })
   }
@@ -14,7 +39,6 @@ export async function middleware(request: NextRequest) {
   // Redirect-only routes: skip Supabase auth/cookie refresh so the page's
   // redirect() produces a clean 307 with Location header instead of being
   // swallowed by the middleware's NextResponse.next() body.
-  const { pathname } = request.nextUrl
   if (pathname === '/access' || pathname === '/acceso-bloqueado') {
     return NextResponse.redirect(new URL('/access-blocked', request.url))
   }
@@ -108,10 +132,13 @@ export async function middleware(request: NextRequest) {
   // Billing/access endpoints: a logged-in user must be able to reach these
   // even WITHOUT active access — they are the means to obtain/manage it.
   // (Otherwise the access gate below redirects the checkout POST to /access.)
+  // /api/onboarding/complete: la usuaria completa su onboarding ANTES de
+  // tener acceso activo — sin esto, el POST recibiría un 307 (QA Fase 1).
   const isBillingRoute =
     pathname.startsWith('/api/stripe/create-checkout-session') ||
     pathname.startsWith('/api/stripe/create-portal-session') ||
-    pathname.startsWith('/api/promo/redeem')
+    pathname.startsWith('/api/promo/redeem') ||
+    pathname === '/api/onboarding/complete'
 
   if (isBillingRoute) {
     return supabaseResponse

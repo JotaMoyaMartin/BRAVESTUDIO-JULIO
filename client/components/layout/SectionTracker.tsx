@@ -16,6 +16,8 @@ const PATH_TO_SECTION: Record<string, string> = {
   '/reto-10k': 'reto-10k',
   '/mi-estrategia': 'mi-estrategia',
   '/plan-contenidos': 'plan-contenidos',
+  '/teleprompter': 'teleprompter',
+  '/carrusel': 'carrusel',
 }
 
 export default function SectionTracker() {

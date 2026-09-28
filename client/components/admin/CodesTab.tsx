@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Tag, Plus, Pencil, Trash2, AlertTriangle, X } from 'lucide-react'
 import { PromoCode } from '@/types/database'
-import { createAdminClient } from '@/lib/supabase/admin'
 import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
@@ -40,9 +39,17 @@ export default function CodesTab({ promoCodes: initial }: CodesTabProps) {
   async function toggleActive(promo: PromoCode) {
     setLoading(promo.id)
     try {
-      const admin = createAdminClient()
-      await admin.from('promo_codes').update({ is_active: !promo.is_active }).eq('id', promo.id)
-      setPromoCodes(prev => prev.map(p => p.id === promo.id ? { ...p, is_active: !promo.is_active } : p))
+      const res = await fetch('/api/admin/codes', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: promo.id, is_active: !promo.is_active }),
+      })
+      const json = await res.json().catch(() => null)
+      if (res.ok && json?.code) {
+        setPromoCodes(prev => prev.map(p => p.id === promo.id ? (json.code as PromoCode) : p))
+      } else {
+        setPromoCodes(prev => prev.map(p => p.id === promo.id ? { ...p, is_active: !promo.is_active } : p))
+      }
     } finally {
       setLoading(null)
     }
@@ -52,17 +59,20 @@ export default function CodesTab({ promoCodes: initial }: CodesTabProps) {
     e.preventDefault()
     setSaving(true)
     try {
-      const admin = createAdminClient()
-      const insert = {
-        code: newPromo.code.trim().toUpperCase(),
-        description: newPromo.description || null,
-        access_days: newPromo.access_days,
-        max_redemptions: newPromo.max_redemptions ? parseInt(newPromo.max_redemptions) : null,
-        expires_at: newPromo.expires_at || null,
-        code_type: newPromo.code_type,
-      }
-      const { data } = await admin.from('promo_codes').insert(insert).select().single()
-      if (data) setPromoCodes(prev => [data as PromoCode, ...prev])
+      const res = await fetch('/api/admin/codes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: newPromo.code.trim().toUpperCase(),
+          description: newPromo.description || null,
+          access_days: newPromo.access_days,
+          max_redemptions: newPromo.max_redemptions ? parseInt(newPromo.max_redemptions) : null,
+          expires_at: newPromo.expires_at || null,
+          code_type: newPromo.code_type,
+        }),
+      })
+      const json = await res.json().catch(() => null)
+      if (res.ok && json?.code) setPromoCodes(prev => [json.code as PromoCode, ...prev])
       setNewPromo({ code: '', description: '', access_days: 30, max_redemptions: '', expires_at: '', code_type: 'promo' })
       setShowCreate(false)
     } finally {
@@ -85,16 +95,22 @@ export default function CodesTab({ promoCodes: initial }: CodesTabProps) {
     if (!editPromo) return
     setSaving(true)
     try {
-      const admin = createAdminClient()
       const update = {
+        id: editPromo.id,
         description: editForm.description || null,
         access_days: editForm.access_days,
         max_redemptions: editForm.max_redemptions ? parseInt(editForm.max_redemptions) : null,
         expires_at: editForm.expires_at || null,
         code_type: editForm.code_type,
       }
-      await admin.from('promo_codes').update(update).eq('id', editPromo.id)
-      setPromoCodes(prev => prev.map(p => p.id === editPromo.id ? { ...p, ...update } : p))
+      const res = await fetch('/api/admin/codes', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(update),
+      })
+      const json = await res.json().catch(() => null)
+      const saved = (res.ok && json?.code ? json.code : { ...editPromo, ...update }) as PromoCode
+      setPromoCodes(prev => prev.map(p => p.id === editPromo.id ? saved : p))
       setEditPromo(null)
     } finally {
       setSaving(false)
@@ -105,8 +121,7 @@ export default function CodesTab({ promoCodes: initial }: CodesTabProps) {
     if (!deletePromo) return
     setSaving(true)
     try {
-      const admin = createAdminClient()
-      await admin.from('promo_codes').delete().eq('id', deletePromo.id)
+      await fetch(`/api/admin/codes?id=${encodeURIComponent(deletePromo.id)}`, { method: 'DELETE' })
       setPromoCodes(prev => prev.filter(p => p.id !== deletePromo.id))
       setDeletePromo(null)
     } finally {

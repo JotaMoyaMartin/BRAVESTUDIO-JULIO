@@ -1,89 +1,31 @@
 'use client'
 import Link from 'next/link'
 import { useState, useEffect, useMemo } from 'react'
-import { Sparkles, Film, LayoutGrid, Star, ArrowRight, Rocket, Clapperboard, Wand2, BookOpen, Calendar, BarChart3, GraduationCap } from 'lucide-react'
-import { Profile, BrandProfile, ContentItem, ReelInspiration, ReelTransition } from '@/types/database'
-import { Reto10kProgress } from '@/types/reto10k'
-import { demoGetPlan } from '@/lib/demo-store'
+import { Target, ArrowRight, Clapperboard, LayoutGrid, Film, Lightbulb, Plus } from 'lucide-react'
+import { Profile } from '@/types/database'
+import { ContentItem } from '@/types/database'
+import { demoGetPlan, demoGetBrand } from '@/lib/demo-store'
+import {
+  decideToday,
+  TodayInput,
+  localISODate,
+  getWeekKey,
+  pickLastPendingItem,
+  priorityDisplay,
+  buildBraviLine,
+} from '@/lib/home-today'
 import Bravi from '@/components/bravi/Bravi'
-import AppTile, { AppTileProps } from '@/components/home/AppTile'
-import ContinueCard from '@/components/home/ContinueCard'
-import LevelBar from '@/components/home/LevelBar'
-import InspirationPreview from '@/components/home/InspirationPreview'
-import TransitionsPreview from '@/components/home/TransitionsPreview'
+import TodayCard from '@/components/home/TodayCard'
 
-const SERVICES = ['Balayage', 'Rubios', 'Canas', 'Alisados', 'Tratamientos', 'Corte', 'Color']
+// HOME v2 — "BRÄVE me guía": una dirección, una señal de progreso, libertad debajo.
+// Sin catálogo (los tiles viven en /herramientas), sin XP/niveles, sin banners duales.
 
-// --- Mini-apps launcher (espejo del Sidebar) ---
-
-const TILES_NORMAL: AppTileProps[] = [
-  { href: '/reto-10k', icon: Rocket, label: 'Reto 10K', desc: 'Reto de 30 días', tone: 'cherry' },
-  { href: '/mi-marca', icon: Star, label: 'Mi Marca', desc: 'Perfil de tu salón', tone: 'buttermilk' },
-  { href: '/planificar', icon: Sparkles, label: 'Planificar', desc: 'Ideas para el mes', tone: 'pink' },
-  { href: '/crear-contenido', icon: Film, label: 'Crear Contenido', desc: 'Reel o carrusel ahora', tone: 'blue' },
-  { href: '/stories', icon: LayoutGrid, label: 'Stories BRÄVE', desc: 'Stories y encuestas', tone: 'green' },
-  { href: '/inspiracion-reels', icon: Clapperboard, label: 'Inspiración Reels', desc: 'Ideas de reels virales', tone: 'cream' },
-  { href: '/transiciones-reels', icon: Wand2, label: 'Transiciones Reels', desc: 'Efectos y transiciones', tone: 'pink' },
-  { href: '/biblioteca', icon: BookOpen, label: 'Biblioteca', desc: 'Todo tu contenido', tone: 'buttermilk' },
-  { href: '/calendario', icon: Calendar, label: 'Calendario', desc: 'Tu plan del mes', tone: 'green' },
+const FREEDOM_CHIPS = [
+  { href: '/crear-contenido?type=reel', icon: Clapperboard, label: 'Reel' },
+  { href: '/stories', icon: LayoutGrid, label: 'Stories' },
+  { href: '/crear-contenido?type=carrusel', icon: Film, label: 'Carrusel' },
+  { href: '/planificar', icon: Lightbulb, label: 'Ideas' },
 ]
-
-const TILES_PREMIUM: AppTileProps[] = [
-  { href: '/mi-estrategia', icon: Star, label: 'Mi Estrategia', desc: 'Tu ficha estratégica', tone: 'cherry' },
-  { href: '/plan-contenidos', icon: Sparkles, label: 'Plan de Contenidos', desc: 'Tus guiones asignados', tone: 'pink' },
-  { href: '/metricas', icon: BarChart3, label: 'Métricas', desc: 'Resultados y crecimiento', tone: 'blue' },
-  { href: '/crear-contenido', icon: Film, label: 'Crear Contenido', desc: 'Reel o carrusel ahora', tone: 'green' },
-  { href: '/biblioteca', icon: BookOpen, label: 'Biblioteca', desc: 'Todo tu contenido', tone: 'buttermilk' },
-  { href: '/stories', icon: LayoutGrid, label: 'Stories BRÄVE', desc: 'Stories y encuestas', tone: 'cream' },
-  { href: '/inspiracion-reels', icon: Clapperboard, label: 'Inspiración Reels', desc: 'Ideas de reels virales', tone: 'pink' },
-  { href: '/transiciones-reels', icon: Wand2, label: 'Transiciones Reels', desc: 'Efectos y transiciones', tone: 'buttermilk' },
-  { href: '/academia', icon: GraduationCap, label: 'Academia', desc: 'Formación BRÄVE', tone: 'cherry' },
-]
-
-// --- Levels (persisted in profile.xp_total) ---
-
-const LEVELS = [
-  { min: 0, max: 2, label: 'Empezando', emoji: '🌱' },
-  { min: 3, max: 7, label: 'Creadora', emoji: '✍️' },
-  { min: 8, max: 14, label: 'Constante', emoji: '⚡' },
-  { min: 15, max: 24, label: 'Experta BRÄVE', emoji: '🔥' },
-  { min: 25, max: 39, label: 'Maestra', emoji: '💎' },
-  { min: 40, max: Infinity, label: 'BRÄVE Pro', emoji: '👑' },
-]
-
-function getLevel(total: number) {
-  return LEVELS.find(l => total >= l.min && total <= l.max) || LEVELS[0]
-}
-
-function getLevelProgress(total: number) {
-  const level = getLevel(total)
-  const nextLevel = LEVELS[LEVELS.indexOf(level) + 1]
-  if (!nextLevel) return 100
-  const range = level.max - level.min + 1
-  const progress = total - level.min
-  return Math.max(0, Math.round((progress / range) * 100))
-}
-
-function getWeekKey(date: Date): string {
-  const d = new Date(date)
-  d.setHours(0, 0, 0, 0)
-  d.setDate(d.getDate() - d.getDay())
-  return d.toISOString().split('T')[0]
-}
-
-function getStreak(items: Partial<ContentItem>[]): number {
-  if (items.length === 0) return 0
-  const weekKeys = new Set(items.map(i => i.created_at ? getWeekKey(new Date(i.created_at)) : '').filter(Boolean))
-  let streak = 0
-  const now = new Date()
-  let check = new Date(now)
-  check.setDate(check.getDate() - check.getDay())
-  while (weekKeys.has(check.toISOString().split('T')[0])) {
-    streak++
-    check.setDate(check.getDate() - 7)
-  }
-  return streak
-}
 
 function greeting(hour: number): string {
   if (hour < 12) return 'Buenos días'
@@ -93,232 +35,185 @@ function greeting(hour: number): string {
 
 export default function InicioClient({
   profile,
-  brand,
-  contentItems,
-  inspirations,
-  transitions,
-  retoProgress,
-  retoItemsCount,
+  todayInput,
   isPremium = false,
 }: {
   profile: Profile | null
-  brand: Partial<BrandProfile> | null
-  contentItems: Partial<ContentItem>[]
-  inspirations: Pick<ReelInspiration, 'id' | 'title' | 'short_description' | 'cover_image'>[]
-  transitions: Pick<ReelTransition, 'id' | 'title' | 'short_description' | 'cover_image'>[]
-  retoProgress: Reto10kProgress | null
-  retoItemsCount: number
+  todayInput: TodayInput | null
   isPremium?: boolean
 }) {
-  const [items, setItems] = useState<Partial<ContentItem>[]>(contentItems)
+  const [demoPlan, setDemoPlan] = useState<Partial<ContentItem>[]>([])
+  const [demoBrand, setDemoBrand] = useState<Record<string, unknown> | null>(null)
   const isDemo = profile?.id === 'demo'
 
   useEffect(() => {
     if (isDemo) {
-      const stored = demoGetPlan() as unknown as Partial<ContentItem>[]
-      setItems(stored)
+      setDemoPlan(demoGetPlan() as unknown as Partial<ContentItem>[])
+      setDemoBrand(demoGetBrand() as Record<string, unknown> | null)
     }
   }, [isDemo])
 
-  // Use persisted XP if available, else fall back to item count
-  const xpTotal = profile?.xp_total ?? items.length
-  const level = getLevel(xpTotal)
-  const levelProgress = getLevelProgress(xpTotal)
-  const streak = getStreak(items)
+  const demoTodayInput: TodayInput | null = useMemo(() => {
+    if (!isDemo) return null
+    const todayISO = localISODate(new Date())
+    const wk = getWeekKey(new Date())
+    return {
+      brandState: (demoBrand?.completion_status as string | undefined) ?? null,
+      isPremium: false,
+      retoActive: false,
+      retoDay: 0,
+      retoMissionTitle: null,
+      retoTodayItemStatus: null,
+      scheduledToday: demoPlan
+        .filter(i => i.scheduled_date === todayISO && i.status === 'scheduled')
+        .map(i => ({ id: String(i.id), title: i.title ?? null, type: i.type ?? null })),
+      lastPendingItem: pickLastPendingItem(demoPlan, profile?.last_visited_section ?? null),
+      mainPriority: (demoBrand?.main_priority as string | undefined) ?? null,
+      starService: (demoBrand?.service_to_promote as string | undefined) ?? null,
+      todayISO,
+      weekCreated: demoPlan.filter(i => i.created_at && getWeekKey(new Date(i.created_at)) === wk).length,
+      weekPublished: demoPlan.filter(
+        i =>
+          (i.reto_status === 'publicado' || i.status === 'done') &&
+          i.updated_at &&
+          getWeekKey(new Date(i.updated_at)) === wk,
+      ).length,
+      weeklyTarget: null,
+    }
+  }, [isDemo, demoPlan, demoBrand, profile?.last_visited_section])
+
+  const effectiveInput = isDemo ? demoTodayInput : todayInput
+  const plan = effectiveInput ? decideToday(effectiveInput) : null
+  const priority = plan ? priorityDisplay(effectiveInput!.mainPriority, effectiveInput!.starService) : null
+  const braviLine = plan && effectiveInput ? buildBraviLine(effectiveInput.mainPriority, effectiveInput.starService, plan.primary.kind) : null
+
+  // Señal única de progreso (sin XP/niveles): real, nunca inventada.
+  const progressLine = useMemo(() => {
+    if (!effectiveInput) return null
+    if (effectiveInput.retoActive && effectiveInput.weeklyTarget) {
+      return `Esta semana · ${effectiveInput.weekPublished} de ${effectiveInput.weeklyTarget} acciones de tu reto`
+    }
+    if (effectiveInput.weekCreated > 0) {
+      return `Esta semana · ${effectiveInput.weekCreated} ${effectiveInput.weekCreated === 1 ? 'contenido creado' : 'contenidos creados'}`
+    }
+    return null
+  }, [effectiveInput])
+
   const firstName = profile?.full_name?.split(' ')[0] || 'guapa'
-  const brandComplete = brand?.completion_status === 'complete' || brand?.completion_status === 'partial'
-
   const hour = new Date().getHours()
+  const brainIncomplete = plan?.primary.kind === 'marca'
 
-  // Items created today
-  const todayStr = new Date().toDateString()
-  const itemsToday = items.filter(i => i.created_at && new Date(i.created_at).toDateString() === todayStr).length
-  const hasScheduled = items.some(i => i.scheduled_date && i.status === 'scheduled')
+  // --- Estado Brain incompleto: Home minimal (spec §9) ---
+  if (brainIncomplete && plan && effectiveInput) {
+    return (
+      <div className="max-w-2xl space-y-8">
+        <div>
+          <h1 className="text-3xl font-bold text-ink" style={{ letterSpacing: '-0.5px' }}>
+            {greeting(hour)}, {firstName} 👋
+          </h1>
+          <p className="mt-1 text-base text-cherry-dark opacity-80">Tu plan para hoy</p>
+        </div>
 
-  // Last content item for "continue"
-  const lastItem = useMemo(() => {
-    if (!items.length) return null
-    const sorted = [...items].sort((a, b) => {
-      const ta = a.updated_at ? new Date(a.updated_at).getTime() : 0
-      const tb = b.updated_at ? new Date(b.updated_at).getTime() : 0
-      return tb - ta
-    })
-    return sorted[0]
-  }, [items])
+        <TodayCard decision={plan.primary} />
 
-  const retoDay = retoProgress?.started_at ? Math.max(1, Math.min(30, Math.floor((Date.now() - new Date(retoProgress.started_at).getTime()) / 86400000) + 1)) : 0
-
-  const braviContext = {
-    lastSection: profile?.last_visited_section ?? null,
-    streak,
-    itemsToday,
-    hasScheduled,
-    hour,
-    retoActive: retoProgress?.status === 'active' || retoProgress?.status === 'completed',
-    retoStatus: retoProgress?.status,
-    retoDay,
-    retoItemsCount,
+        <div>
+          <p className="text-sm text-cherry-dark opacity-70">¿Quieres explorar mientras tanto?</p>
+          <div className="flex items-center gap-4 mt-2">
+            <Link
+              href="/crear-contenido"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-[var(--radius-sm)] text-sm font-semibold text-cherry-dark"
+              style={{ background: 'var(--color-warm-gray)' }}
+            >
+              <Plus size={14} /> Crear libremente
+            </Link>
+            <Link href="/herramientas" className="text-sm font-semibold text-cherry hover:underline">
+              Ver todas las herramientas →
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="space-y-6">
-      {/* 1. Saludo + Bravi */}
-      <div className="flex items-end justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-ink" style={{ letterSpacing: '-0.5px' }}>
-            {greeting(hour)}, {firstName}
-          </h1>
-          <p className="mt-1 text-base text-cherry-dark opacity-80">¿Qué creamos hoy?</p>
-        </div>
-        <Bravi size={88} context={braviContext} showMessage={false} />
+    <div className="max-w-2xl space-y-7">
+      {/* 1. Cabecera — BRÄVE dirige primero */}
+      <div>
+        <h1 className="text-3xl font-bold text-ink" style={{ letterSpacing: '-0.5px' }}>
+          {greeting(hour)}, {firstName} 👋
+        </h1>
+        <p className="mt-1 text-base text-cherry-dark opacity-80">Tu plan para hoy</p>
       </div>
 
-      {/* Bravi speech bubble — contextual message */}
-      <div
-        className="flex items-center gap-3 p-4 rounded-[var(--radius-md)]"
-        style={{ background: 'var(--color-buttermilk)', border: '1.5px solid rgba(122,24,50,0.12)' }}
-      >
-        <Bravi size={44} context={braviContext} showMessage={false} className="flex-shrink-0" />
-        <div>
-          <p className="text-xs font-bold uppercase tracking-wider mb-0.5 text-cherry opacity-60">Bravi dice</p>
-          <BraviMessage context={braviContext} />
+      {/* 2. Bravi — una línea con contexto real (o nada) */}
+      {braviLine && (
+        <div className="flex items-center gap-2.5">
+          <Bravi size={30} context={{ lastSection: profile?.last_visited_section ?? null, streak: 0, itemsToday: 0, hasScheduled: false, hour }} showMessage={false} className="flex-shrink-0" />
+          <p className="text-sm font-medium text-cherry-dark" style={{ lineHeight: 1.5 }}>{braviLine}</p>
         </div>
-      </div>
+      )}
 
-      {/* Brand warning */}
-      {!isPremium && !brandComplete && (
-        <div
-          className="p-4 rounded-[var(--radius-md)] flex items-start gap-3"
-          style={{ background: 'var(--color-buttermilk)', border: '1.5px solid rgba(122,24,50,0.15)' }}
-        >
-          <Bravi size={44} context={{ ...braviContext, lastSection: 'mi-marca' }} showMessage={false} className="flex-shrink-0" />
+      {/* 3. 🎯 Tu prioridad — solo con datos reales del Brain */}
+      {priority && (
+        <div className="flex items-center gap-3">
+          <div
+            className="w-9 h-9 rounded-[var(--radius-sm)] flex items-center justify-center flex-shrink-0"
+            style={{ background: 'var(--color-buttermilk)' }}
+          >
+            <Target size={17} style={{ color: 'var(--color-cherry)' }} />
+          </div>
           <div>
-            <p className="text-sm font-semibold text-cherry-dark">Bravi recomienda completar Tu Marca</p>
-            <p className="text-sm mt-0.5 text-cherry-dark opacity-80">
-              Rellénalo una vez y todo el contenido será mucho más personalizado para tu salón.
-            </p>
-            <Link href="/mi-marca" className="inline-flex items-center gap-1.5 mt-2 text-sm font-semibold text-cherry hover:underline">
-              Completar Mi Marca <ArrowRight size={14} />
-            </Link>
+            <p className="text-[11px] font-bold uppercase tracking-widest text-cherry opacity-60">Tu prioridad</p>
+            <p className="text-sm font-semibold text-cherry-dark">{priority}</p>
           </div>
         </div>
       )}
 
-      {/* Reto 10K Hero — solo para usuarios normales */}
-      {!isPremium && (
-        retoProgress?.status === 'active' ? (
-        <div
-          className="rounded-[var(--radius-md)] p-5"
-          style={{
-            background: 'linear-gradient(135deg, var(--color-buttermilk) 0%, var(--color-warm-light) 100%)',
-            border: '2px solid var(--color-cherry)',
-          }}
-        >
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-[var(--radius-sm)] flex items-center justify-center" style={{ background: 'var(--color-cherry)' }}>
-              <Rocket size={20} className="text-white" />
-            </div>
-            <div className="flex-1">
-              <p className="font-bold text-sm text-cherry-dark">Reto 10K en marcha</p>
-              <p className="text-xs text-cherry-dark opacity-70">Día {retoDay} de 30 · {retoItemsCount} contenidos creados</p>
-            </div>
-            <Link href="/reto-10k" className="text-xs font-bold text-cherry hover:underline">Ir al Reto</Link>
-          </div>
-          <div className="h-2 rounded-full overflow-hidden mb-3" style={{ background: 'var(--color-warm-gray)' }}>
-            <div
-              className="h-full rounded-full"
-              style={{ width: `${Math.round((retoDay / 30) * 100)}%`, background: 'linear-gradient(90deg, var(--color-cherry) 0%, var(--color-cherry-dark) 100%)' }}
-            />
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Link href="/reto-10k" className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-sm)] text-xs font-semibold text-white" style={{ background: 'var(--color-cherry)' }}>
-              <Sparkles size={13} /> Tu misión de hoy
-            </Link>
-            <Link href="/crear-contenido" className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-sm)] text-xs font-semibold text-cherry-dark" style={{ background: 'white', border: '1px solid var(--color-buttermilk)' }}>
-              <Film size={13} /> Crear contenido
-            </Link>
-            <Link href="/calendario" className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-sm)] text-xs font-semibold text-cherry-dark" style={{ background: 'white', border: '1px solid var(--color-buttermilk)' }}>
-              <ArrowRight size={13} /> Calendario
-            </Link>
-          </div>
-        </div>
-      ) : (
-        <div
-          className="rounded-[var(--radius-md)] p-5 flex items-center gap-4"
-          style={{ background: 'var(--color-buttermilk)', border: '1.5px solid rgba(122,24,50,0.15)' }}
-        >
-          <div className="w-12 h-12 rounded-[var(--radius-sm)] flex items-center justify-center flex-shrink-0" style={{ background: 'var(--color-cherry)' }}>
-            <Rocket size={24} className="text-white" />
-          </div>
-          <div className="flex-1">
-            <p className="font-bold text-sm text-cherry-dark">Empieza el Reto 10K</p>
-            <p className="text-xs text-cherry-dark opacity-70">30 días para transformar tu presencia en Instagram</p>
-          </div>
-          <Link href="/reto-10k" className="inline-flex items-center gap-1.5 px-4 py-2 rounded-[var(--radius-sm)] text-xs font-bold text-white glow-ready" style={{ background: 'var(--color-cherry)' }}>
-            Empezar <ArrowRight size={13} />
-          </Link>
-        </div>
-      ))}
+      {/* 4. Acción principal — domina la página */}
+      {plan && <TodayCard decision={plan.primary} retoNote={plan.retoNote} />}
 
-      {/* 2. Continuar donde lo dejaste */}
-      {lastItem && !isPremium && (
-        <ContinueCard item={lastItem} section={profile?.last_visited_section ?? null} />
-      )}
-
-      {/* 3. Launcher de mini-apps — 9 tiles */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
-        {(isPremium ? TILES_PREMIUM : TILES_NORMAL).map(tile => (
-          <AppTile key={tile.href} {...tile} />
-        ))}
-      </div>
-
-      {/* 3.5 Inspiración de Reels — portadas visuales rotativas */}
-      <InspirationPreview inspirations={inspirations} />
-
-      {/* 3.6 Transiciones de Reels — portadas visuales rotativas */}
-      <TransitionsPreview transitions={transitions} />
-
-      {/* 5. Nivel BRÄVE compacto — solo usuarios normales */}
-      {!isPremium && (
-        <LevelBar
-          level={LEVELS.indexOf(level) + 1}
-          levelLabel={level.label}
-          emoji={level.emoji}
-          total={xpTotal}
-          progress={levelProgress}
-        />
-      )}
-
-      {/* 7. Atajos de servicio — solo usuarios normales */}
-      {!isPremium && (
+      {/* 5. Después — máximo 2, solo reales */}
+      {plan && plan.after.length > 0 && (
         <div>
-          <h2 className="font-semibold text-sm mb-3 text-cherry-dark opacity-80">Crear Reel rápido sobre…</h2>
-          <div className="flex flex-wrap gap-2">
-            {SERVICES.map(s => (
-              <Link
-                key={s}
-                href={`/crear-contenido?service=${encodeURIComponent(s)}&type=reel`}
-                className="px-4 py-2 rounded-[var(--radius-sm)] text-sm font-medium transition-all hover:scale-105"
-                style={{ background: 'var(--color-buttermilk)', color: 'var(--color-cherry-dark)', border: '1.5px solid rgba(122,24,50,0.1)' }}
-              >
-                {s}
-              </Link>
+          <p className="text-[11px] font-bold uppercase tracking-widest text-cherry opacity-60 mb-2">Después</p>
+          <ul className="space-y-2">
+            {plan.after.map(a => (
+              <li key={a.href + a.label}>
+                <Link href={a.href} className="group inline-flex items-center gap-2.5 text-sm font-medium text-cherry-dark hover:text-cherry">
+                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ border: '1.5px solid var(--color-cherry)', opacity: 0.45 }} />
+                  {a.label}
+                  <ArrowRight size={13} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                </Link>
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
       )}
+
+      {/* 6. Progreso — una sola señal */}
+      {progressLine && (
+        <p className="text-sm text-cherry-dark opacity-60">{progressLine}</p>
+      )}
+
+      {/* 7. Libertad — accesos rápidos pequeños, nunca tarjetas gigantes */}
+      <div style={{ paddingTop: 8 }}>
+        <p className="text-sm text-cherry-dark opacity-70 mb-2.5">¿Quieres hacer otra cosa?</p>
+        <div className="flex flex-wrap gap-2">
+          {FREEDOM_CHIPS.map(c => (
+            <Link
+              key={c.label}
+              href={c.href}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-[var(--radius-sm)] text-sm font-medium transition-all hover:scale-105"
+              style={{ background: 'var(--color-buttermilk)', color: 'var(--color-cherry-dark)', border: '1.5px solid rgba(122,24,50,0.1)' }}
+            >
+              <c.icon size={14} /> {c.label}
+            </Link>
+          ))}
+        </div>
+        <Link href="/herramientas" className="inline-flex items-center gap-1.5 mt-4 text-sm font-semibold text-cherry hover:underline">
+          Ver todas las herramientas <ArrowRight size={14} />
+        </Link>
+      </div>
     </div>
   )
-}
-
-// Render Bravi's contextual message as text
-function BraviMessage({ context }: { context: { lastSection?: string | null; streak: number; itemsToday: number; hasScheduled: boolean; hour: number; retoActive?: boolean; retoStatus?: string; retoDay?: number; retoItemsCount?: number } }) {
-  // Use the same logic as Bravi but render only the text (SSR-safe via state)
-  const [text, setText] = useState('¡Hola! ¿Qué creamos hoy?')
-  useEffect(() => {
-    import('@/lib/bravi-messages').then(({ pickMessage }) => {
-      setText(pickMessage(context).text)
-    })
-  }, [context])
-  return <p className="text-sm font-medium text-cherry-dark" style={{ lineHeight: 1.5 }}>{text}</p>
 }

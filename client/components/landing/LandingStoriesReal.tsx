@@ -1,5 +1,4 @@
 'use client'
-import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { BALAYAGE_GRADIENTS } from './DeviceShowcase'
 
@@ -53,9 +52,9 @@ export default function LandingStoriesReal() {
             <p className="text-base leading-relaxed text-cherry-dark opacity-75 mb-6">
               Transforma un balayage en una secuencia estratégica de 3 Stories: Problema → Autoridad → Resultado + Acción. Con encuestas, cajas de preguntas y CTAs que hacen que tus clientas te escriban.
             </p>
-            <Link href="/signup" className="btn-primary">
-              Crear mis Stories
-            </Link>
+            <a href="#planes" className="btn-primary">
+              Crear mis Stories →
+            </a>
           </motion.div>
 
           {/* Right: 3 realistic story mockups */}

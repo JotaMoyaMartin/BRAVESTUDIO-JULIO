@@ -63,6 +63,27 @@ export function IMacMockup() {
                 </div>
               ))}
             </div>
+            {/* Ideas guardadas con foto */}
+            <div className="mt-2">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[7px] font-bold" style={{ color: '#591427' }}>Ideas guardadas</span>
+                <span className="text-[6px] px-1.5 py-0.5 rounded-full font-semibold" style={{ background: '#FFF1B5', color: '#591427' }}>12 nuevas</span>
+              </div>
+              <div className="grid grid-cols-3 gap-1.5">
+                {[
+                  { src: '/landing/color.jpg', t: 'Mechas honey' },
+                  { src: '/landing/transform.jpg', t: 'Cambio de look' },
+                  { src: '/landing/cutting.jpg', t: 'Blow out' },
+                ].map((c, i) => (
+                  <div key={i} className="rounded-md overflow-hidden relative" style={{ height: 52, border: '1px solid rgba(122,24,50,0.08)' }}>
+                    <img src={c.src} alt="" className="w-full h-full object-cover" draggable={false} />
+                    <div className="absolute inset-x-0 bottom-0 px-1 py-0.5" style={{ background: 'linear-gradient(180deg, transparent, rgba(89,20,39,0.75))' }}>
+                      <p className="text-[5px] font-bold text-white truncate">{c.t}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -127,6 +148,37 @@ export function IPhoneMockup() {
           {/* CTA */}
           <div className="mt-2 py-1.5 rounded-lg text-center text-[7px] font-bold text-white" style={{ background: '#7A1832' }}>
             Crear Stories ✨
+          </div>
+          {/* Mini calendario semanal */}
+          <div className="mt-2 rounded-lg p-1.5" style={{ background: 'white', border: '1px solid rgba(255,241,181,0.8)' }}>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[6px] font-bold" style={{ color: '#591427' }}>Esta semana</span>
+              <span className="text-[6px] font-semibold px-1 rounded-full" style={{ background: '#FFF1B5', color: '#591427' }}>🔥 6 días</span>
+            </div>
+            <div className="flex gap-1">
+              {['L', 'M', 'X', 'J', 'V', 'S', 'D'].map((d, i) => (
+                <div
+                  key={d}
+                  className="flex-1 rounded flex flex-col items-center py-0.5"
+                  style={{ background: i < 4 ? '#7A1832' : i === 4 ? '#FFF1B5' : 'rgba(122,24,50,0.06)' }}
+                >
+                  <span className="text-[5px] font-bold" style={{ color: i < 4 ? 'white' : '#591427' }}>{d}</span>
+                  <span className="text-[5px]" style={{ color: i < 4 ? 'white' : '#591427', opacity: i < 4 ? 0.7 : 0.5 }}>
+                    {i < 4 ? '✓' : '·'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+          {/* Próximo reel */}
+          <div className="mt-1.5 flex items-center gap-1.5 rounded-lg p-1.5" style={{ background: 'white', border: '1px solid rgba(255,241,181,0.8)' }}>
+            <div className="w-6 h-6 rounded-md shrink-0 overflow-hidden">
+              <img src="/landing/color.jpg" alt="" className="w-full h-full object-cover" draggable={false} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[6px] font-bold truncate" style={{ color: '#1a1a1a' }}>5 errores con tu rubio</p>
+              <p className="text-[5px]" style={{ color: '#591427', opacity: 0.6 }}>Reel · Mañana 10:00</p>
+            </div>
           </div>
         </div>
       </div>

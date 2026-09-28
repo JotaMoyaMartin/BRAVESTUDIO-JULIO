@@ -69,7 +69,7 @@ export default function LandingHeader() {
           >
             Ya tengo cuenta
           </Link>
-          <Link href="/signup" className="btn-primary text-sm hidden sm:inline-flex">
+          <Link href="/signup" className="btn-primary text-sm hidden sm:inline-flex whitespace-nowrap">
             Empieza gratis
           </Link>
           <button

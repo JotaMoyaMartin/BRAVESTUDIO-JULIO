@@ -1,6 +1,7 @@
 'use client'
 import LandingHeader from '@/components/landing/LandingHeader'
 import LandingHero from '@/components/landing/LandingHero'
+import LandingGallery from '@/components/landing/LandingGallery'
 import LandingBenefits from '@/components/landing/LandingBenefits'
 import LandingPricing from '@/components/landing/LandingPricing'
 import LandingHowItWorks from '@/components/landing/LandingHowItWorks'
@@ -13,6 +14,7 @@ import LandingCTA from '@/components/landing/LandingCTA'
 import LandingSkool from '@/components/landing/LandingSkool'
 import LandingFooter from '@/components/landing/LandingFooter'
 import BraviFloating from '@/components/landing/BraviFloating'
+import StickyMobileCTA from '@/components/landing/StickyMobileCTA'
 
 export default function LandingClient() {
   return (
@@ -20,6 +22,7 @@ export default function LandingClient() {
       <LandingHeader />
       <main>
         <LandingHero />
+        <LandingGallery />
 
         <div className="relative">
           <LandingBenefits />
@@ -73,6 +76,7 @@ export default function LandingClient() {
         <LandingSkool />
       </main>
       <LandingFooter />
+      <StickyMobileCTA />
     </div>
   )
 }

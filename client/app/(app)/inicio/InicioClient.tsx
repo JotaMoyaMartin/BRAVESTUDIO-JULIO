@@ -1,20 +1,44 @@
 'use client'
 import Link from 'next/link'
 import { useState, useEffect, useMemo } from 'react'
-import { Sparkles, Film, LayoutGrid, Star, ArrowRight, Rocket } from 'lucide-react'
+import { Sparkles, Film, LayoutGrid, Star, ArrowRight, Rocket, Clapperboard, Wand2, BookOpen, Calendar, BarChart3, GraduationCap } from 'lucide-react'
 import { Profile, BrandProfile, ContentItem, ReelInspiration, ReelTransition } from '@/types/database'
 import { Reto10kProgress } from '@/types/reto10k'
 import { demoGetPlan } from '@/lib/demo-store'
 import Bravi from '@/components/bravi/Bravi'
-import QuickActionCard from '@/components/home/QuickActionCard'
-import SurpriseCard from '@/components/home/SurpriseCard'
+import AppTile, { AppTileProps } from '@/components/home/AppTile'
 import ContinueCard from '@/components/home/ContinueCard'
 import LevelBar from '@/components/home/LevelBar'
-import AchievementsCarousel from '@/components/home/AchievementsCarousel'
 import InspirationPreview from '@/components/home/InspirationPreview'
 import TransitionsPreview from '@/components/home/TransitionsPreview'
 
 const SERVICES = ['Balayage', 'Rubios', 'Canas', 'Alisados', 'Tratamientos', 'Corte', 'Color']
+
+// --- Mini-apps launcher (espejo del Sidebar) ---
+
+const TILES_NORMAL: AppTileProps[] = [
+  { href: '/reto-10k', icon: Rocket, label: 'Reto 10K', desc: 'Reto de 30 días', tone: 'cherry' },
+  { href: '/mi-marca', icon: Star, label: 'Mi Marca', desc: 'Perfil de tu salón', tone: 'buttermilk' },
+  { href: '/planificar', icon: Sparkles, label: 'Planificar', desc: 'Ideas para el mes', tone: 'pink' },
+  { href: '/crear-contenido', icon: Film, label: 'Crear Contenido', desc: 'Reel o carrusel ahora', tone: 'blue' },
+  { href: '/stories', icon: LayoutGrid, label: 'Stories BRÄVE', desc: 'Stories y encuestas', tone: 'green' },
+  { href: '/inspiracion-reels', icon: Clapperboard, label: 'Inspiración Reels', desc: 'Ideas de reels virales', tone: 'cream' },
+  { href: '/transiciones-reels', icon: Wand2, label: 'Transiciones Reels', desc: 'Efectos y transiciones', tone: 'pink' },
+  { href: '/biblioteca', icon: BookOpen, label: 'Biblioteca', desc: 'Todo tu contenido', tone: 'buttermilk' },
+  { href: '/calendario', icon: Calendar, label: 'Calendario', desc: 'Tu plan del mes', tone: 'green' },
+]
+
+const TILES_PREMIUM: AppTileProps[] = [
+  { href: '/mi-estrategia', icon: Star, label: 'Mi Estrategia', desc: 'Tu ficha estratégica', tone: 'cherry' },
+  { href: '/plan-contenidos', icon: Sparkles, label: 'Plan de Contenidos', desc: 'Tus guiones asignados', tone: 'pink' },
+  { href: '/metricas', icon: BarChart3, label: 'Métricas', desc: 'Resultados y crecimiento', tone: 'blue' },
+  { href: '/crear-contenido', icon: Film, label: 'Crear Contenido', desc: 'Reel o carrusel ahora', tone: 'green' },
+  { href: '/biblioteca', icon: BookOpen, label: 'Biblioteca', desc: 'Todo tu contenido', tone: 'buttermilk' },
+  { href: '/stories', icon: LayoutGrid, label: 'Stories BRÄVE', desc: 'Stories y encuestas', tone: 'cream' },
+  { href: '/inspiracion-reels', icon: Clapperboard, label: 'Inspiración Reels', desc: 'Ideas de reels virales', tone: 'pink' },
+  { href: '/transiciones-reels', icon: Wand2, label: 'Transiciones Reels', desc: 'Efectos y transiciones', tone: 'buttermilk' },
+  { href: '/academia', icon: GraduationCap, label: 'Academia', desc: 'Formación BRÄVE', tone: 'cherry' },
+]
 
 // --- Levels (persisted in profile.xp_total) ---
 
@@ -61,19 +85,6 @@ function getStreak(items: Partial<ContentItem>[]): number {
   return streak
 }
 
-const ACHIEVEMENTS = [
-  { id: 'primera_idea', label: 'Primera idea', desc: 'Guardaste tu primer contenido', emoji: '🌟', req: (n: number, _s: number, ctx?: any) => n >= 1 },
-  { id: 'cinco_ideas', label: '5 contenidos', desc: '5 piezas creadas', emoji: '🎯', req: (n: number, _s: number, _ctx?: any) => n >= 5 },
-  { id: 'diez_ideas', label: '10 contenidos', desc: '10 piezas creadas', emoji: '💪', req: (n: number, _s: number, _ctx?: any) => n >= 10 },
-  { id: 'racha_2', label: 'Racha x2', desc: '2 semanas seguidas', emoji: '🔥', req: (_n: number, s: number, _ctx?: any) => s >= 2 },
-  { id: 'racha_4', label: 'Racha x4', desc: '4 semanas seguidas', emoji: '⚡', req: (_n: number, s: number, _ctx?: any) => s >= 4 },
-  { id: 'veinte_ideas', label: '20 contenidos', desc: '20 piezas creadas', emoji: '🏆', req: (n: number, _s: number, _ctx?: any) => n >= 20 },
-  { id: 'reto_inicio', label: 'Reto 10K', desc: 'Empezaste el Reto 10K', emoji: '🚀', req: (_n: number, _s: number, ctx?: any) => ctx?.retoActive === true },
-  { id: 'reto_7dias', label: '7 días Reto', desc: '7 días en el Reto 10K', emoji: '🔥', req: (_n: number, _s: number, ctx?: any) => (ctx?.retoDay ?? 0) >= 7 },
-  { id: 'reto_20contenidos', label: '20 del Reto', desc: '20 contenidos del Reto', emoji: '💪', req: (_n: number, _s: number, ctx?: any) => (ctx?.retoItemsCount ?? 0) >= 20 },
-  { id: 'reto_completado', label: 'Reto completo', desc: 'Completaste el Reto 10K', emoji: '👑', req: (_n: number, _s: number, ctx?: any) => ctx?.retoStatus === 'completed' },
-]
-
 function greeting(hour: number): string {
   if (hour < 12) return 'Buenos días'
   if (hour < 19) return 'Buenas tardes'
@@ -117,13 +128,6 @@ export default function InicioClient({
   const firstName = profile?.full_name?.split(' ')[0] || 'guapa'
   const brandComplete = brand?.completion_status === 'complete' || brand?.completion_status === 'partial'
 
-  // Premium quick actions
-  const premiumQuickActions = [
-    { href: '/mi-estrategia', icon: Star, label: 'Mi estrategia', desc: 'Tu ficha estratégica', tone: 'cherry' as const },
-    { href: '/plan-contenidos', icon: Film, label: 'Plan de Contenidos', desc: 'Tus guiones asignados', tone: 'pink' as const },
-    { href: '/crear-contenido', icon: Sparkles, label: 'Crear Contenido', desc: 'Reel o carrusel ahora', tone: 'blue' as const },
-    { href: '/stories', icon: LayoutGrid, label: 'Stories BRÄVE', desc: 'Stories y encuestas', tone: 'buttermilk' as const },
-  ]
   const hour = new Date().getHours()
 
   // Items created today
@@ -142,8 +146,6 @@ export default function InicioClient({
     return sorted[0]
   }, [items])
 
-  const brandContext = brand?.optimized_summary || brand?.salon_name || undefined
-
   const retoDay = retoProgress?.started_at ? Math.max(1, Math.min(30, Math.floor((Date.now() - new Date(retoProgress.started_at).getTime()) / 86400000) + 1)) : 0
 
   const braviContext = {
@@ -157,21 +159,6 @@ export default function InicioClient({
     retoDay,
     retoItemsCount,
   }
-
-  const retoCtx = {
-    retoActive: retoProgress?.status === 'active' || retoProgress?.status === 'completed',
-    retoDay,
-    retoStatus: retoProgress?.status,
-    retoItemsCount,
-  }
-
-  const achievements = ACHIEVEMENTS.map(a => ({
-    id: a.id,
-    label: a.label,
-    desc: a.desc,
-    emoji: a.emoji,
-    unlocked: a.req(xpTotal, streak, retoCtx),
-  }))
 
   return (
     <div className="space-y-6">
@@ -278,20 +265,11 @@ export default function InicioClient({
         <ContinueCard item={lastItem} section={profile?.last_visited_section ?? null} />
       )}
 
-      {/* 3. 4 tarjetas principales */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {isPremium ? (
-          premiumQuickActions.map(a => (
-            <QuickActionCard key={a.href} href={a.href} icon={a.icon} label={a.label} desc={a.desc} tone={a.tone} />
-          ))
-        ) : (
-          <>
-            <QuickActionCard href="/planificar" icon={Sparkles} label="Planificación" desc="Genera ideas para el mes" tone="cherry" />
-            <QuickActionCard href="/crear-contenido" icon={Film} label="Crear Contenido" desc="Reel o carrusel ahora" tone="pink" />
-            <QuickActionCard href="/stories" icon={LayoutGrid} label="Stories BRÄVE" desc="Stories y preguntas" tone="blue" />
-            <QuickActionCard href="/mi-marca" icon={Star} label="Mi Marca" desc="Perfil de tu salón" tone="buttermilk" />
-          </>
-        )}
+      {/* 3. Launcher de mini-apps — 9 tiles */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+        {(isPremium ? TILES_PREMIUM : TILES_NORMAL).map(tile => (
+          <AppTile key={tile.href} {...tile} />
+        ))}
       </div>
 
       {/* 3.5 Inspiración de Reels — portadas visuales rotativas */}
@@ -299,11 +277,6 @@ export default function InicioClient({
 
       {/* 3.6 Transiciones de Reels — portadas visuales rotativas */}
       <TransitionsPreview transitions={transitions} />
-
-      {/* 4. Sorpréndeme protagonista — solo usuarios normales */}
-      {!isPremium && (
-        <SurpriseCard brandContext={brandContext} userId={profile?.id} />
-      )}
 
       {/* 5. Nivel BRÄVE compacto — solo usuarios normales */}
       {!isPremium && (
@@ -314,16 +287,6 @@ export default function InicioClient({
           total={xpTotal}
           progress={levelProgress}
         />
-      )}
-
-      {/* 6. Logros carrusel horizontal — solo usuarios normales */}
-      {!isPremium && (
-        <div
-          className="rounded-[var(--radius-md)] p-5"
-          style={{ background: 'white', border: '1.5px solid var(--color-buttermilk)' }}
-        >
-          <AchievementsCarousel achievements={achievements} />
-        </div>
       )}
 
       {/* 7. Atajos de servicio — solo usuarios normales */}

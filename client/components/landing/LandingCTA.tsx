@@ -40,14 +40,14 @@ export default function LandingCTA() {
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link
               href="/signup"
-              className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl font-semibold text-base transition-transform hover:-translate-y-0.5"
+              className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl font-bold text-lg transition-transform hover:-translate-y-0.5 glow-ready"
               style={{ background: 'var(--color-buttermilk)', color: 'var(--color-cherry-dark)' }}
             >
-              Quiero probar BRÄVE
+              Quiero probar BRÄVE →
             </Link>
             <Link
               href="/signup"
-              className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl font-semibold text-base transition-transform hover:-translate-y-0.5"
+              className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl font-semibold text-lg transition-transform hover:-translate-y-0.5"
               style={{ background: 'transparent', color: 'white', border: '1.5px solid rgba(255,255,255,0.3)' }}
             >
               Empezar ahora

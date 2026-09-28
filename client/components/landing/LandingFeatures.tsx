@@ -1,5 +1,4 @@
 'use client'
-import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { IMacMockup } from '@/components/Mockups'
 import {
@@ -127,9 +126,9 @@ function FeatureRow({ feature, index, reverse }: { feature: Feature; index: numb
         <p className="text-base leading-relaxed text-cherry-dark opacity-75 mb-5">
           {feature.desc}
         </p>
-        <Link href="/signup" className="btn-primary">
-          {feature.cta}
-        </Link>
+        <a href="#planes" className="btn-primary inline-flex items-center gap-2 text-base px-6 py-3.5 shadow-medium">
+          {feature.cta} →
+        </a>
       </motion.div>
     </div>
   )

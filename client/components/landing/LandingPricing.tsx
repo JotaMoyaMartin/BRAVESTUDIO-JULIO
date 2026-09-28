@@ -160,6 +160,9 @@ export default function LandingPricing() {
             >
               {checkoutLoading === 'monthly' ? 'Redirigiendo...' : 'Empieza gratis'}
             </button>
+            <p className="text-[11px] leading-snug text-center text-cherry-dark opacity-55">
+              Te pediremos tu método de pago, pero no se cobra nada hasta pasados los 3 días. Puedes cancelar antes de eso — si no te convence, no pagas nada.
+            </p>
           </motion.div>
 
           {/* Yearly — highlighted */}
@@ -230,6 +233,9 @@ export default function LandingPricing() {
             >
               {checkoutLoading === 'yearly' ? 'Redirigiendo...' : 'Empieza gratis'}
             </button>
+            <p className="text-[11px] leading-snug text-center" style={{ color: 'rgba(255,255,255,0.65)' }}>
+              Te pediremos tu método de pago, pero no se cobra nada hasta pasados los 3 días. Puedes cancelar antes de eso — si no te convence, no pagas nada.
+            </p>
           </motion.div>
         </div>
 

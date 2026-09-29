@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { Copy, Check, BookOpen, MessageSquare, RefreshCw, Calendar, ChevronDown, ChevronUp } from 'lucide-react'
+import { Copy, Check, BookOpen, MessageSquare, RefreshCw, Calendar, ChevronDown, ChevronUp, Clapperboard } from 'lucide-react'
 
 interface Props {
   question: string
@@ -16,11 +16,12 @@ interface Props {
   answerCamera: string | null
   onSaveAnswer: (mode: 'written' | 'camera', text: string) => void
   onScheduleAnswer: (mode: 'written' | 'camera', text: string) => void
+  onTeleprompter?: (text: string) => void
 }
 
 export default function QuestionCard({
   question, topic, index, copied, onCopy, onSave, saved, onRespond, responding,
-  answerWritten, answerCamera, onSaveAnswer, onScheduleAnswer,
+  answerWritten, answerCamera, onSaveAnswer, onScheduleAnswer, onTeleprompter,
 }: Props) {
   const [expanded, setExpanded] = useState(false)
   const [showSchedule, setShowSchedule] = useState<'written' | 'camera' | null>(null)
@@ -126,6 +127,7 @@ export default function QuestionCard({
                 date={date}
                 setDate={setDate}
                 onConfirmSchedule={() => { if (date && answerCamera) onScheduleAnswer('camera', answerCamera) }}
+                onTeleprompter={answerCamera ? () => onTeleprompter?.(answerCamera) : undefined}
               />
             </>
           )}
@@ -136,7 +138,7 @@ export default function QuestionCard({
 }
 
 function AnswerSubCard({
-  mode, text, index, copied, onCopy, onSave, onSchedule, showSchedule, date, setDate, onConfirmSchedule,
+  mode, text, index, copied, onCopy, onSave, onSchedule, showSchedule, date, setDate, onConfirmSchedule, onTeleprompter,
 }: {
   mode: 'written' | 'camera'
   text: string
@@ -149,6 +151,7 @@ function AnswerSubCard({
   date: string
   setDate: (d: string) => void
   onConfirmSchedule: () => void
+  onTeleprompter?: () => void
 }) {
   const key = `resp-${mode}-${index}`
   const bgColor = mode === 'written' ? '#FFFDF5' : '#C1DBE8'
@@ -186,6 +189,15 @@ function AnswerSubCard({
         >
           <Calendar size={11} /> Programar
         </button>
+        {mode === 'camera' && onTeleprompter && text.trim() && (
+          <button
+            onClick={onTeleprompter}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all"
+            style={{ background: '#7A1832', color: 'white' }}
+          >
+            <Clapperboard size={11} /> Grabar con Teleprompter
+          </button>
+        )}
       </div>
 
       {showSchedule && (

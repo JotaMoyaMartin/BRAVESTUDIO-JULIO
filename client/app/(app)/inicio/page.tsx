@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
 import InicioClient from './InicioClient'
 import { Profile, BrandProfile, ContentItem } from '@/types/database'
+import type { ReelInspiration, ReelTransition } from '@/types/database'
 import { Reto10kProgress, Reto10kConfig } from '@/types/reto10k'
 import { computeCurrentDay } from '@/lib/reto-plan'
 import { TodayInput, localISODate, getWeekKey, pickLastPendingItem, pickRetoTodayStatus } from '@/lib/home-today'
@@ -45,6 +46,12 @@ export default async function InicioPage() {
     .select('id, type, title, status, reto_status, scheduled_date, done_at, created_at, updated_at, tag')
     .eq('user_id', user!.id)
     .order('updated_at', { ascending: false })
+
+  // Portadas reales para los bloques grandes de Inspiración / Transiciones (Home explora).
+  const [{ data: inspirations }, { data: transitions }] = await Promise.all([
+    supabase.from('reel_inspirations').select('id, title, short_description, cover_image').eq('status', 'active'),
+    supabase.from('reel_transitions').select('id, title, short_description, cover_image').eq('status', 'active'),
+  ])
 
   // Cargar progreso del Reto 10K solo para usuarios normales
   let retoProgressRow: Reto10kProgress | null = null
@@ -99,6 +106,8 @@ export default async function InicioPage() {
       profile={profile as Profile | null}
       todayInput={todayInput}
       isPremium={isPremium}
+      inspirations={(inspirations as ReelInspiration[] | null) ?? []}
+      transitions={(transitions as ReelTransition[] | null) ?? []}
     />
   )
 }

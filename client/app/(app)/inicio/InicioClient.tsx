@@ -16,6 +16,11 @@ import {
 } from '@/lib/home-today'
 import Bravi from '@/components/bravi/Bravi'
 import TodayCard from '@/components/home/TodayCard'
+import AppTile, { AppTileProps } from '@/components/home/AppTile'
+import { TILES_NORMAL, TILES_PREMIUM } from '@/components/home/tiles'
+import InspirationPreview from '@/components/home/InspirationPreview'
+import TransitionsPreview from '@/components/home/TransitionsPreview'
+import type { ReelInspiration, ReelTransition } from '@/types/database'
 
 // HOME v2 — "BRÄVE me guía": una dirección, una señal de progreso, libertad debajo.
 // Sin catálogo (los tiles viven en /herramientas), sin XP/niveles, sin banners duales.
@@ -33,14 +38,44 @@ function greeting(hour: number): string {
   return 'Buenas noches'
 }
 
+// Exploración: todo lo que BRÄVE sabe hacer, a la vista. Portadas reales
+// (Inspiración/Transiciones) + tarjetas grandes con las herramientas.
+// Reutiliza tiles.ts / AppTile / previews de la Home anterior — sin duplicar.
+function ToolsSection({
+  tiles,
+  inspirations,
+  transitions,
+}: {
+  tiles: AppTileProps[]
+  inspirations: ReelInspiration[]
+  transitions: ReelTransition[]
+}) {
+  return (
+    <section className="space-y-4">
+      <h2 className="text-lg font-bold text-ink" style={{ letterSpacing: '-0.3px' }}>Todas tus herramientas</h2>
+      <InspirationPreview inspirations={inspirations} />
+      <TransitionsPreview transitions={transitions} />
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+        {tiles.map(t => (
+          <AppTile key={t.href} {...t} />
+        ))}
+      </div>
+    </section>
+  )
+}
+
 export default function InicioClient({
   profile,
   todayInput,
   isPremium = false,
+  inspirations = [],
+  transitions = [],
 }: {
   profile: Profile | null
   todayInput: TodayInput | null
   isPremium?: boolean
+  inspirations?: ReelInspiration[]
+  transitions?: ReelTransition[]
 }) {
   const [demoPlan, setDemoPlan] = useState<Partial<ContentItem>[]>([])
   const [demoBrand, setDemoBrand] = useState<Record<string, unknown> | null>(null)
@@ -103,7 +138,7 @@ export default function InicioClient({
   const hour = new Date().getHours()
   const brainIncomplete = plan?.primary.kind === 'marca'
 
-  // --- Estado Brain incompleto: Home minimal (spec §9) ---
+  // --- Estado Brain incompleto: dirección clara + herramientas visibles ---
   if (brainIncomplete && plan && effectiveInput) {
     return (
       <div className="max-w-2xl space-y-8">
@@ -126,11 +161,10 @@ export default function InicioClient({
             >
               <Plus size={14} /> Crear libremente
             </Link>
-            <Link href="/herramientas" className="text-sm font-semibold text-cherry hover:underline">
-              Ver todas las herramientas →
-            </Link>
           </div>
         </div>
+
+        <ToolsSection tiles={TILES_NORMAL} inspirations={inspirations} transitions={transitions} />
       </div>
     )
   }
@@ -195,7 +229,7 @@ export default function InicioClient({
         <p className="text-sm text-cherry-dark opacity-60">{progressLine}</p>
       )}
 
-      {/* 7. Libertad — accesos rápidos pequeños, nunca tarjetas gigantes */}
+      {/* 7. Libertad — accesos rápidos pequeños */}
       <div style={{ paddingTop: 8 }}>
         <p className="text-sm text-cherry-dark opacity-70 mb-2.5">¿Quieres hacer otra cosa?</p>
         <div className="flex flex-wrap gap-2">
@@ -210,10 +244,14 @@ export default function InicioClient({
             </Link>
           ))}
         </div>
-        <Link href="/herramientas" className="inline-flex items-center gap-1.5 mt-4 text-sm font-semibold text-cherry hover:underline">
-          Ver todas las herramientas <ArrowRight size={14} />
-        </Link>
       </div>
+
+      {/* 8. Exploración — todas las herramientas a la vista (portadas reales + tarjetas grandes) */}
+      <ToolsSection
+        tiles={isPremium ? TILES_PREMIUM : TILES_NORMAL}
+        inspirations={inspirations}
+        transitions={transitions}
+      />
     </div>
   )
 }

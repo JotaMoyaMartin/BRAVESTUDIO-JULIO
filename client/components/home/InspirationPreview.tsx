@@ -43,13 +43,13 @@ export default function InspirationPreview({ inspirations }: Props) {
         </Link>
       </div>
 
-      {/* Horizontal scroll de portadas 9:16 */}
+      {/* Horizontal scroll de portadas 9:16 — bloques grandes que invitan a explorar */}
       <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
         {previewItems.map(insp => (
           <Link
             key={insp.id}
             href="/inspiracion-reels"
-            className="group flex-shrink-0 w-28 sm:w-36 rounded-[var(--radius-sm)] overflow-hidden transition-all hover:scale-[1.03]"
+            className="group flex-shrink-0 w-32 sm:w-44 rounded-[var(--radius-sm)] overflow-hidden transition-all hover:scale-[1.03]"
             style={{
               background: 'white',
               border: '1.5px solid var(--color-buttermilk)',

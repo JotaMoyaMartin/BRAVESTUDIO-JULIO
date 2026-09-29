@@ -1,8 +1,11 @@
 'use client'
 import { useState } from 'react'
-import { Film, LayoutGrid, MessageSquare, ChevronDown, ChevronUp, Copy, Check, Calendar, BookOpen, Trash2, RefreshCw } from 'lucide-react'
+import { Film, LayoutGrid, MessageSquare, ChevronDown, ChevronUp, Copy, Check, Calendar, BookOpen, Trash2, RefreshCw, Clapperboard } from 'lucide-react'
 import { ContentItem } from '@/types/database'
 import { copyToClipboard, formatContentForCopy, scheduleItem, unscheduleItem, deleteItem } from '@/lib/content-utils'
+import { teleprompterInputForItem } from '@/lib/teleprompter/scripts'
+import { openTeleprompter } from '@/lib/teleprompter/input'
+import { useRouter } from 'next/navigation'
 
 // ── Copy button for individual blocks ──────────────────────────────
 
@@ -39,13 +42,17 @@ interface Props {
   showSchedule?: boolean
   showDelete?: boolean
   showRegenerate?: boolean
+  showTeleprompter?: boolean
+  teleprompterReturnUrl?: string
 }
 
 export default function ContentCard({
   item, userId, isDemoMode, selectable, selected, onSelect,
   onRegenerate, onDateChange, expandedContent,
   showSchedule = true, showDelete = true, showRegenerate = false,
+  showTeleprompter = false, teleprompterReturnUrl = '/biblioteca',
 }: Props) {
+  const router = useRouter()
   const [expanded, setExpanded] = useState(false)
   const [copied, setCopied] = useState(false)
   const [editingDate, setEditingDate] = useState(false)
@@ -53,6 +60,12 @@ export default function ContentCard({
 
   const config = TYPE_CONFIG[item.type] || TYPE_CONFIG.story
   const Icon = config.icon
+  const teleInput = teleprompterInputForItem(item, teleprompterReturnUrl)
+
+  function handleTeleprompter() {
+    if (!teleInput) return
+    openTeleprompter(teleInput, router)
+  }
 
   async function handleCopy() {
     copyToClipboard(formatContentForCopy(item))
@@ -172,6 +185,11 @@ export default function ContentCard({
             <button onClick={handleCopy} className="btn-secondary text-xs py-1.5 px-3">
               {copied ? <Check size={13} /> : <Copy size={13} />} {copied ? '¡Copiado!' : 'Copiar'}
             </button>
+            {showTeleprompter && teleInput && (
+              <button onClick={handleTeleprompter} className="btn-ghost text-xs py-1.5 px-3">
+                <Clapperboard size={13} /> Grabar con Teleprompter
+              </button>
+            )}
             {showSchedule && !item.scheduled_date && (
               <button onClick={() => setEditingDate(true)} className="btn-ghost text-xs py-1.5 px-3">
                 <Calendar size={13} /> Programar

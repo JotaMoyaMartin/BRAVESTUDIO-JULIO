@@ -1,9 +1,10 @@
 'use client'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import {
   CameraOff, SwitchCamera, Play, Pause, Circle, Square, Download, Share2,
-  Plus, Minus, X, RotateCcw, Copy, Check,
+  Plus, Minus, X, RotateCcw, Copy, Check, ChevronLeft, Film, Clapperboard,
 } from 'lucide-react'
 import {
   TeleprompterInput,
@@ -18,6 +19,9 @@ import {
   FONT_STEP,
   SPEED_STEP,
 } from '@/lib/teleprompter/input'
+import { SavedScriptCard, selectSpeakableItems } from '@/lib/teleprompter/scripts'
+import { IS_DEMO } from '@/lib/demo'
+import { demoGetPlan } from '@/lib/demo-store'
 import { useCameraRecorder, CAMERA_ERROR_MESSAGES } from './useCameraRecorder'
 
 type Stage = 'editor' | 'setup' | 'ready' | 'countdown' | 'recording' | 'preview'
@@ -25,7 +29,7 @@ type Stage = 'editor' | 'setup' | 'ready' | 'countdown' | 'recording' | 'preview
 // Teleprompter V1 — una sola experiencia reutilizable (Home=dir / Crear=libertad:
 // esto es CAPACIDAD, no herramienta nueva de edición). Solo graba bien: sin
 // editor, filtros ni subtítulos. Móvil primero (iOS/Safari: MP4 + playsInline).
-export default function TeleprompterClient() {
+export default function TeleprompterClient({ savedScripts = null }: { savedScripts?: SavedScriptCard[] | null }) {
   const router = useRouter()
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const cam = useCameraRecorder(videoRef)
@@ -41,6 +45,33 @@ export default function TeleprompterClient() {
   const [savedMessage, setSavedMessage] = useState<string | null>(null)
   const [pasted, setPasted] = useState(false)
   const [seconds, setSeconds] = useState(0)
+  const [demoSaved, setDemoSaved] = useState<SavedScriptCard[]>([])
+
+  // Demo: los guiones guardados salen de demoGetPlan (misma fuente que Biblioteca).
+  useEffect(() => {
+    if (IS_DEMO) {
+      setDemoSaved(selectSpeakableItems(demoGetPlan() as never))
+    }
+  }, [])
+  const saved = savedScripts ?? demoSaved
+
+  const selectScript = useCallback((card: SavedScriptCard) => {
+    setScript(card.text)
+    setInput({
+      script: card.text,
+      title: card.title,
+      source: card.kind === 'reel' ? 'reel' : 'stories',
+      returnUrl: null,
+      sequence: card.sequence ? { current: 0, total: card.sequence.length, items: card.sequence } : null,
+    })
+    setSavedMessage(null)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [])
+
+  const goBack = useCallback(() => {
+    if (input?.returnUrl) router.push(input.returnUrl)
+    else router.back()
+  }, [input, router])
 
   // --- Carga inicial: payload precargado (Reel/Stories) o borrador local ---
   useEffect(() => {
@@ -57,15 +88,15 @@ export default function TeleprompterClient() {
     }
   }, [])
 
-  // Borrador solo para entrada manual (los payloads precargados no se machacan).
+  // Borrador siempre a salvo: si el usuario edita un guion precargado y navega
+  // fuera sin grabar, el texto no se pierde (el muevo payload gana al cargar).
   useEffect(() => {
-    if (input) return
     try {
       window.localStorage.setItem(TELEPROMPTER_DRAFT_KEY, script)
     } catch {
       /* noop */
     }
-  }, [script, input])
+  }, [script])
 
   useEffect(() => {
     return () => {
@@ -303,17 +334,9 @@ export default function TeleprompterClient() {
                 <RotateCcw size={14} /> Borrar
               </button>
             )}
-            {input?.returnUrl && (
-              <button
-                onClick={() => {
-                  const url = input.returnUrl as string
-                  router.push(url)
-                }}
-                className="btn-ghost text-sm"
-              >
-                <X size={14} /> Volver al contenido
-              </button>
-            )}
+            <button onClick={goBack} className="btn-ghost text-sm">
+              <ChevronLeft size={14} /> Volver
+            </button>
           </div>
           {!input && (
             <p className="mt-3 text-xs text-cherry-dark" style={{ opacity: 0.5 }}>
@@ -322,6 +345,63 @@ export default function TeleprompterClient() {
           )}
           {savedMessage && stage === 'editor' && <p className="mt-3 text-xs text-cherry-dark">{savedMessage}</p>}
         </div>
+
+        {/* ---------- Mis guiones: los mismos de Biblioteca (content_items) ---------- */}
+        {saved.length > 0 && (
+          <div className="rounded-[var(--radius-md)] p-5" style={{ background: 'var(--color-cream)', border: '1.5px solid rgba(122,24,50,0.08)' }}>
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-2">
+                <Clapperboard size={16} className="text-cherry" />
+                <p className="font-bold text-sm text-cherry-dark">Mis guiones</p>
+              </div>
+              <Link
+                href="/crear-contenido"
+                className="inline-flex items-center gap-1 text-xs font-bold text-cherry hover:underline flex-shrink-0"
+              >
+                <Film size={13} /> Crear nuevo guion
+              </Link>
+            </div>
+            <p className="text-xs text-cherry-dark mb-4" style={{ opacity: 0.6 }}>
+              Guiones que ya tienes en BRÄVE, listos para grabar.
+            </p>
+            <div className="space-y-2.5">
+              {saved.map(card => (
+                <div
+                  key={card.id}
+                  className="p-3.5 rounded-[var(--radius-sm)] flex items-start justify-between gap-3"
+                  style={{ background: 'white', border: '1.5px solid rgba(122,24,50,0.08)' }}
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-cherry-dark truncate">{card.title}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-cherry mb-1" style={{ opacity: 0.5 }}>
+                      {card.kindLabel} · {card.createdAt ? shortDate(card.createdAt) : 'guardado'}
+                    </p>
+                    <p className="text-xs text-cherry-dark leading-snug" style={{ opacity: 0.65, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                      {card.preview}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => selectScript(card)}
+                    className="btn-primary text-xs py-2 flex-shrink-0"
+                    aria-label={`Usar en Teleprompter: ${card.title}`}
+                  >
+                    <Play size={12} /> Usar
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {saved.length === 0 && (
+          <Link
+            href="/crear-contenido"
+            className="flex items-center justify-center gap-2 py-3 rounded-[var(--radius-md)] text-sm font-semibold text-cherry-dark transition-all hover:scale-[1.01]"
+            style={{ background: 'var(--color-buttermilk)', border: '1.5px solid rgba(122,24,50,0.08)' }}
+          >
+            <Film size={15} /> Crear un guion con BRÄVE
+          </Link>
+        )}
       </div>
 
       {/* ---------- Grabador a pantalla completa ---------- */}
@@ -518,4 +598,11 @@ function formatSeconds(total: number): string {
   const m = Math.floor(total / 60)
   const s = total % 60
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+}
+
+function shortDate(iso: string | null | undefined): string {
+  if (!iso) return 'guardado'
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return 'guardado'
+  return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
 }

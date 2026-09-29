@@ -316,7 +316,7 @@ Visual: ${s.visualIdea}`
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
                   style={{ background: '#7A1832', color: 'white' }}
                 >
-                  <Clapperboard size={12} /> Grabar
+                  <Clapperboard size={12} /> Grabar con Teleprompter
                 </button>
                 <button
                   onClick={() => handleCopy(story.text, `story-${story.number}`)}
@@ -392,7 +392,7 @@ Visual: ${s.visualIdea}`
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
                       style={{ background: '#7A1832', color: 'white' }}
                     >
-                      <Clapperboard size={12} /> Grabar
+                      <Clapperboard size={12} /> Grabar con Teleprompter
                     </button>
                     <button
                       onClick={() => handleCopy(story.text, `story-text-${story.number}`)}
@@ -608,6 +608,7 @@ Visual: ${s.visualIdea}`
 
 function QuestionBox({ userId, brandFull }: { userId: string; brandFull: BrandFullContextInput | null }) {
   const isDemoMode = userId === 'demo'
+  const router = useRouter()
   const hasBrand = hasBrandContext(brandFull)
   const [useMiMarca, setUseMiMarca] = useSessionState<boolean>(`u:${userId}:stories:quseMiMarca`, hasBrand)
   const brandContext = useMemo(() => {
@@ -781,6 +782,18 @@ function QuestionBox({ userId, brandFull }: { userId: string; brandFull: BrandFu
                   // it validates a date was selected before calling this callback.
                   // We schedule with today's date since the exact date isn't passed through.
                   handleScheduleAnswer(mode, text, q, new Date().toISOString().split('T')[0])
+                }}
+                onTeleprompter={(text) => {
+                  // SOLO el texto que debe decir (la respuesta a cámara) — nunca la pregunta ni instrucciones.
+                  openTeleprompter(
+                    {
+                      script: text,
+                      title: `Respuesta: ${q.length > 50 ? `${q.slice(0, 50)}…` : q}`,
+                      source: 'stories',
+                      returnUrl: '/stories',
+                    },
+                    router,
+                  )
                 }}
               />
             )

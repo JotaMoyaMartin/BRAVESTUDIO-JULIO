@@ -1,9 +1,10 @@
 'use client'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Search, Filter, Check, Copy, BookOpen, X, Film, LayoutGrid, MessageSquare, Clapperboard, Trash2, ArrowRight, Rocket, Wand2 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { demoGetPlan } from '@/lib/demo-store'
 import { ContentItem, BrandProfile, ReelInspiration, ReelTransition } from '@/types/database'
 import ContentCard from '@/components/content/ContentCard'
 import BraviMascot from '@/components/bravi/BraviMascot'
@@ -37,8 +38,18 @@ export default function BibliotecaClient({ userId, items, brandContext, savedIns
   const [confirmingClear, setConfirmingClear] = useState(false)
   const [clearing, setClearing] = useState(false)
 
+  // Demo: la página pasa vacío — el contenido vive en localStorage (demoGetPlan).
+  // Se carga en un efecto (no en render) para evitar mismatch de hidratación SSR.
+  const [demoItems, setDemoItems] = useState<ContentItem[]>([])
+  useEffect(() => {
+    if (isDemoMode && items.length === 0) {
+      setDemoItems(demoGetPlan() as unknown as ContentItem[])
+    }
+  }, [isDemoMode, items])
+  const effectiveItems = isDemoMode && items.length === 0 ? demoItems : items
+
   const filtered = useMemo(() => {
-    let result = items
+    let result = effectiveItems
     if (filter !== 'all' && filter !== 'inspiraciones' && filter !== 'transiciones' && filter !== 'reto-10k') {
       result = result.filter(i => i.type === filter)
     }
@@ -50,7 +61,7 @@ export default function BibliotecaClient({ userId, items, brandContext, savedIns
       result = result.filter(i => (i.title || '').toLowerCase().includes(q))
     }
     return result
-  }, [items, filter, search])
+  }, [effectiveItems, filter, search])
 
   function handleDateChange() {
     setRefreshKey(k => k + 1)
@@ -75,7 +86,7 @@ export default function BibliotecaClient({ userId, items, brandContext, savedIns
   }
 
   function copySelection() {
-    const selectedItems = items.filter(i => selectedIds.has(i.id))
+    const selectedItems = effectiveItems.filter(i => selectedIds.has(i.id))
     if (selectedItems.length === 0) return
     copyToClipboard(formatMultipleForCopy(selectedItems))
   }
@@ -121,7 +132,7 @@ export default function BibliotecaClient({ userId, items, brandContext, savedIns
     }
   }
 
-  if (items.length === 0 && inspirations.length === 0 && transitions.length === 0) {
+  if (effectiveItems.length === 0 && inspirations.length === 0 && transitions.length === 0) {
     return (
       <div className="space-y-6">
         <div>
@@ -415,6 +426,7 @@ export default function BibliotecaClient({ userId, items, brandContext, savedIns
               selected={selectedIds.has(item.id)}
               onSelect={toggleSelect}
               onDateChange={handleDateChange}
+              showTeleprompter
             />
           ))}
         </div>

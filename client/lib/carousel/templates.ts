@@ -16,6 +16,17 @@ const TOKENS = {
   white: '#FFFFFF',
 } as const
 
+// Tokens de la familia Editorial — espejan los colores muestreados del diseño papel (DISEÑO 3).
+const EDITORIAL_TOKENS = {
+  putty: '#D9D9DA', // fondo portada (muestreado del PDF)
+  beige: '#E2E0D5', // fondo statement (muestreado del PDF)
+  ink: '#2B2B2B', // texto papel statement
+  hairline: '#403C39', // tiras oscuras del layout foto
+  paper: '#FFFFFF',
+} as const
+
+export { EDITORIAL_TOKENS }
+
 export interface CarouselFamilyDef {
   id: CarouselFamily
   name: string
@@ -49,6 +60,14 @@ export const CAROUSEL_FAMILIES: CarouselFamilyDef[] = [
     palettes: [
       { bg: TOKENS.ink, ink: TOKENS.cream, accent: TOKENS.buttermilk, onAccent: TOKENS.cherryDark },
       { bg: TOKENS.cherry, ink: TOKENS.cream, accent: TOKENS.buttermilk, onAccent: TOKENS.cherryDark },
+    ],
+  },
+  {
+    id: 'editorial',
+    name: 'Editorial',
+    description: 'Papel, polaroid y fotografía real',
+    palettes: [
+      { bg: EDITORIAL_TOKENS.beige, ink: EDITORIAL_TOKENS.ink, accent: TOKENS.cherry, onAccent: TOKENS.cream },
     ],
   },
 ]

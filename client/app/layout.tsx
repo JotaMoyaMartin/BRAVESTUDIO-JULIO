@@ -1,11 +1,27 @@
 import type { Metadata } from 'next'
-import { Poppins } from 'next/font/google'
+import { Poppins, Fraunces, Yellowtail } from 'next/font/google'
 import './globals.css'
 
 const poppins = Poppins({
   subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
+  weight: ['300', '400', '500', '600', '700', '800'],
+  style: ['normal', 'italic'],
   variable: '--font-poppins',
+  display: 'swap',
+})
+
+// Familia Editorial (carruseles): serif suave del titular + script de la inicial decorativa.
+const fraunces = Fraunces({
+  subsets: ['latin'],
+  weight: '300',
+  variable: '--font-fraunces',
+  display: 'swap',
+})
+
+const yellowtail = Yellowtail({
+  subsets: ['latin'],
+  weight: '400',
+  variable: '--font-yellowtail',
   display: 'swap',
 })
 
@@ -37,7 +53,7 @@ export const viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className={poppins.variable}>
+    <html lang="es" className={`${poppins.variable} ${fraunces.variable} ${yellowtail.variable}`}>
       <body>{children}</body>
     </html>
   )

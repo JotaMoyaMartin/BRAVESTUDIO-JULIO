@@ -103,10 +103,11 @@ describe('MAX_SLIDE_CHARS', () => {
 })
 
 describe('CAROUSEL_FAMILIES', () => {
-  it('V1 define exactamente 3 familias, cada una con 2 paletas', () => {
-    expect(CAROUSEL_FAMILIES.map(f => f.id)).toEqual(['minimal', 'beauty', 'bold'])
+  it('define 3 familias base (2 paletas c/u) + Editorial (1 paleta, diseño papel)', () => {
+    expect(CAROUSEL_FAMILIES.map(f => f.id)).toEqual(['minimal', 'beauty', 'bold', 'editorial'])
     for (const f of CAROUSEL_FAMILIES) {
-      expect(f.palettes.length).toBeGreaterThanOrEqual(2)
+      const min = f.id === 'editorial' ? 1 : 2
+      expect(f.palettes.length).toBeGreaterThanOrEqual(min)
       for (const p of f.palettes) {
         expect(p.bg).toMatch(/^#[0-9A-Fa-f]{6}$/)
         expect(p.ink).toMatch(/^#[0-9A-Fa-f]{6}$/)

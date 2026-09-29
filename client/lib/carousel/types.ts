@@ -2,7 +2,7 @@
 // Principio: la IA escribe el CONTENIDO; el motor de plantillas controla el DISEÑO.
 // La estilista no diseña, la estilista elige.
 
-export type CarouselFamily = 'minimal' | 'beauty' | 'bold'
+export type CarouselFamily = 'minimal' | 'beauty' | 'bold' | 'editorial'
 
 export interface CarouselPalette {
   bg: string // fondo del slide
@@ -54,7 +54,22 @@ export interface RenderSlideOptions {
   image?: SlideImage | null // pan/zoom de la foto (spec)
   imageEl?: HTMLImageElement | null // foto ya precargada por el cliente
   fontFamily: string
+  // Editorial: assets del diseño papel (hojas/polaroid/pin/tiras) + familias serif/script (next/font).
+  editorialAssets?: EditorialAssetsSpec | null
+  serifFamily?: string
+  scriptFamily?: string
 }
+
+/** Referencia de imagen ya cargada (loader del cliente). Estructura, no DOM, para tests. */
+export interface EditorialImageRef {
+  width: number
+  height: number
+  draw: (ctx: CanvasRenderingContext2D, x: number, y: number, w?: number, h?: number) => void
+}
+
+export const EDITORIAL_ASSET_KEYS = ['paperTall', 'paperTilted', 'polaroid', 'clip', 'strip'] as const
+
+export type EditorialAssetsSpec = Partial<Record<(typeof EDITORIAL_ASSET_KEYS)[number], EditorialImageRef | null>>
 
 export const SLIDE_W = 1080
 export const SLIDE_H = 1350

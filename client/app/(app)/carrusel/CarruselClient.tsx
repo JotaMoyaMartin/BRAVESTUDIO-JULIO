@@ -7,9 +7,10 @@ import { buildBrandFullContext, hasBrandContext, BrandFullContextInput } from '@
 import { useSessionState } from '@/lib/session-store'
 import { saveToLibrary } from '@/lib/content-utils'
 import { CAROUSEL_FAMILIES, getFamily, brandMarkText } from '@/lib/carousel/templates'
-import { drawCarouselSlide, ensureCanvasFont, exportFileName, SLIDE_W, SLIDE_H } from '@/lib/carousel/render'
+import { drawCarouselSlide, ensureCanvasFont, ensureEditorialFonts, exportFileName, SLIDE_W, SLIDE_H } from '@/lib/carousel/render'
+import { loadEditorialAssets } from '@/lib/carousel/assets'
 import { pickLayout } from '@/lib/carousel/text'
-import type { SlideContent, CarouselFamily, CarouselPalette, SlideImage } from '@/lib/carousel/types'
+import type { SlideContent, CarouselFamily, CarouselPalette, SlideImage, EditorialAssetsSpec } from '@/lib/carousel/types'
 import UsarMiMarcaToggle from '@/components/ui/UsarMiMarcaToggle'
 import BraviGuide from '@/components/bravi/BraviGuide'
 import {
@@ -52,6 +53,8 @@ export default function CarruselClient({ userId, brandFull }: { userId: string; 
   const [saving, setSaving] = useState(false)
   const [currentSlide, setCurrentSlide] = useState(0)
   const [fontFamily, setFontFamily] = useState('Poppins')
+  const [editorialAssets, setEditorialAssets] = useState<EditorialAssetsSpec | null>(null)
+  const [editorialFonts, setEditorialFonts] = useState<{ serif: string; script: string } | null>(null)
   const [photos, setPhotos] = useState<Record<number, SlideImage>>({})
   const [imgVersion, setImgVersion] = useState(0)
   const imgElsRef = useRef<Record<number, HTMLImageElement>>({})
@@ -68,6 +71,12 @@ export default function CarruselClient({ userId, brandFull }: { userId: string; 
     ensureCanvasFont().then(f => {
       setFontFamily(f)
       setImgVersion(v => v + 1) // fuerza re-render de previews con la fuente resuelta
+    })
+    // Familia Editorial: assets del diseño papel + fuentes serif/script.
+    Promise.all([loadEditorialAssets(), ensureEditorialFonts()]).then(([assets, fonts]) => {
+      setEditorialAssets(assets)
+      setEditorialFonts(fonts)
+      setImgVersion(v => v + 1)
     })
   }, [])
 
@@ -88,9 +97,12 @@ export default function CarruselClient({ userId, brandFull }: { userId: string; 
       image: photos[i] ?? null,
       imageEl: imgElsMap().get(i) ?? null,
       fontFamily,
+      editorialAssets,
+      serifFamily: editorialFonts?.serif,
+      scriptFamily: editorialFonts?.script,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [slides, total, family, palette, salonName, photos, fontFamily, imgVersion],
+    [slides, total, family, palette, salonName, photos, fontFamily, imgVersion, editorialAssets, editorialFonts],
   )
 
   function imgElsMap(): Map<number, HTMLImageElement> {
@@ -382,7 +394,7 @@ export default function CarruselClient({ userId, brandFull }: { userId: string; 
         </div>
 
         {/* Familias visuales */}
-        <div className="grid grid-cols-3 gap-2.5">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
           {CAROUSEL_FAMILIES.map(f => (
             <button
               key={f.id}
@@ -397,7 +409,7 @@ export default function CarruselClient({ userId, brandFull }: { userId: string; 
                 boxShadow: family === f.id ? '0 8px 24px -12px rgba(122,24,50,0.3)' : 'none',
               }}
             >
-              <MiniCover family={f.id} palette={f.palettes[0]} slide={slides[0]} total={total} fontFamily={fontFamily} brandName={brandMarkText(salonName)} />
+              <MiniCover family={f.id} palette={f.palettes[0]} slide={slides[0]} total={total} fontFamily={fontFamily} brandName={brandMarkText(salonName)} editorialAssets={editorialAssets} serifFamily={editorialFonts?.serif} scriptFamily={editorialFonts?.script} />
               <p className="text-sm font-bold mt-2" style={{ color: 'var(--color-cherry-dark)' }}>{f.name}</p>
               <p className="text-[10px] leading-snug" style={{ color: 'var(--color-cherry-dark)', opacity: 0.6 }}>{f.description}</p>
             </button>
@@ -571,6 +583,9 @@ function MiniCover({
   total,
   fontFamily,
   brandName,
+  editorialAssets,
+  serifFamily,
+  scriptFamily,
 }: {
   family: CarouselFamily
   palette: CarouselPalette
@@ -578,6 +593,9 @@ function MiniCover({
   total: number
   fontFamily: string
   brandName?: string | null
+  editorialAssets?: EditorialAssetsSpec | null
+  serifFamily?: string
+  scriptFamily?: string
 }) {
   const ref = useRef<HTMLCanvasElement | null>(null)
   useEffect(() => {
@@ -593,8 +611,11 @@ function MiniCover({
       image: null,
       imageEl: null,
       fontFamily,
+      editorialAssets,
+      serifFamily,
+      scriptFamily,
     })
-  }, [slide, family, palette, total, fontFamily, brandName])
+  }, [slide, family, palette, total, fontFamily, brandName, editorialAssets, serifFamily, scriptFamily])
   if (!slide) return null
   return <canvas ref={ref} width={SLIDE_W} height={SLIDE_H} className="w-full h-auto block rounded-md" />
 }

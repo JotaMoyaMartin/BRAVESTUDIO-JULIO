@@ -65,6 +65,8 @@ export function useCameraRecorder(videoRef: React.RefObject<HTMLVideoElement | n
   const [errorKind, setErrorKind] = useState<CameraErrorKind | null>(null)
   const [facing, setFacing] = useState<Facing>('user')
   const [recording, setRecording] = useState(false)
+  const [paused, setPaused] = useState(false)
+  const [canPause, setCanPause] = useState(false)
   const [mimeType, setMimeType] = useState<string | null>(null)
 
   function stopTracks() {
@@ -171,12 +173,15 @@ export function useCameraRecorder(videoRef: React.RefObject<HTMLVideoElement | n
     recorder.start() // sin timeslice: un blob al parar
     recorderRef.current = recorder
     setMimeType(recorder.mimeType || mime)
+    setCanPause(typeof recorder.pause === 'function')
     setRecording(true)
+    setPaused(false)
     return true
   }, [])
 
   const stopRecording = useCallback(async (): Promise<RecordingResult | null> => {
     const recorder = recorderRef.current
+    setPaused(false)
     if (!recorder || recorder.state === 'inactive') {
       setRecording(false)
       return null
@@ -197,10 +202,36 @@ export function useCameraRecorder(videoRef: React.RefObject<HTMLVideoElement | n
     return blob.size > 0 ? { blob, url: URL.createObjectURL(blob), mime: mime || 'video/mp4' } : null
   }, [mimeType])
 
+  /** Pausa grabación (descansa, recoloca el texto) y reanuda después: mismo vídeo. */
+  const pauseRecording = useCallback((): boolean => {
+    const recorder = recorderRef.current
+    if (!recorder || recorder.state !== 'recording') return false
+    try {
+      recorder.pause()
+      setPaused(true)
+      return true
+    } catch {
+      return false // navegador sin pausa real: la grabación sigue
+    }
+  }, [])
+
+  const resumeRecording = useCallback((): boolean => {
+    const recorder = recorderRef.current
+    if (!recorder || recorder.state !== 'paused') return false
+    try {
+      recorder.resume()
+      setPaused(false)
+      return true
+    } catch {
+      return false
+    }
+  }, [])
+
   const closeCamera = useCallback(() => {
     stopTracks()
     setStatus('idle')
     setRecording(false)
+    setPaused(false)
   }, [])
 
   // Limpieza al desmontar.
@@ -216,10 +247,14 @@ export function useCameraRecorder(videoRef: React.RefObject<HTMLVideoElement | n
     errorKind,
     facing,
     recording,
+    paused,
+    canPause,
     mimeType,
     openCamera,
     flipCamera,
     startRecording,
+    pauseRecording,
+    resumeRecording,
     stopRecording,
     closeCamera,
   }

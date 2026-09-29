@@ -177,10 +177,10 @@ export default function TeleprompterClient({ savedScripts = null }: { savedScrip
   }, [stage, countdown, startRecordingFn, resetScroll])
 
   useEffect(() => {
-    if (stage !== 'recording') return
+    if (stage !== 'recording' || cam.paused) return
     const t = setInterval(() => setSeconds(s => s + 1), 1000)
     return () => clearInterval(t)
-  }, [stage])
+  }, [stage, cam.paused])
 
   const stopAndPreview = useCallback(async () => {
     setPlaying(false)
@@ -253,9 +253,26 @@ export default function TeleprompterClient({ savedScripts = null }: { savedScrip
   }, [input, recorded, router, cam])
 
   const exitRecording = useCallback(() => {
-    cam.closeCamera()
     setPlaying(false)
+    if (cam.recording) {
+      // Sale en plena grabación: cortamos el recorder (aunque sufra pausa) sin preview.
+      cam.stopRecording().then(result => {
+        if (result) URL.revokeObjectURL(result.url)
+        cam.closeCamera()
+      })
+    } else {
+      cam.closeCamera()
+    }
     setStage('editor')
+  }, [cam])
+
+  // Pausa = descanso: la grabación se congela y el texto se puede recolocar.
+  const togglePause = useCallback(() => {
+    if (cam.paused) {
+      if (cam.resumeRecording()) setPlaying(true)
+    } else if (cam.pauseRecording()) {
+      setPlaying(false)
+    }
   }, [cam])
 
   const paste = useCallback(async () => {
@@ -414,20 +431,18 @@ export default function TeleprompterClient({ savedScripts = null }: { savedScrip
             <video ref={videoRef} playsInline muted className="absolute inset-0 w-full h-full object-cover" />
           )}
 
-          {/* Barra superior: salir + título */}
-          {stage !== 'preview' && (
-            <div className="absolute top-0 inset-x-0 flex items-center justify-between p-4 z-10">
-              <button
-                onClick={exitRecording}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-[var(--radius-sm)] text-sm font-semibold bg-white/90 text-cherry-dark"
-              >
-                <X size={16} /> Salir
-              </button>
-              <p className="text-xs font-bold uppercase tracking-widest text-white/80 truncate max-w-[45%] text-right">
-                {input?.title || 'Teleprompter'}
-              </p>
-            </div>
-          )}
+          {/* Barra superior: salir + título — siempre a la vista */}
+          <div className="absolute top-0 inset-x-0 flex items-center justify-between p-4 z-10">
+            <button
+              onClick={exitRecording}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-[var(--radius-sm)] text-sm font-semibold bg-white/90 text-cherry-dark"
+            >
+              <X size={16} /> Salir
+            </button>
+            <p className="text-xs font-bold uppercase tracking-widest text-white/80 truncate max-w-[45%] text-right">
+              {input?.title || 'Teleprompter'}
+            </p>
+          </div>
 
           {/* Texto superpuesto (arriba: mirada cerca de la cámara del móvil) */}
           {(stage === 'ready' || stage === 'countdown' || stage === 'recording') && (
@@ -449,11 +464,16 @@ export default function TeleprompterClient({ savedScripts = null }: { savedScrip
             </div>
           )}
 
-          {/* Timer de grabación */}
+          {/* Timer de grabación (congela en pausa) */}
           {stage === 'recording' && (
             <div className="absolute top-16 inset-x-0 z-10 flex justify-center">
-              <p className="px-3 py-1 rounded-full bg-black/50 text-white text-xs font-bold tabular-nums">
-                ● {formatSeconds(seconds)}
+              <p className="px-3 py-1 rounded-full bg-black/50 text-white text-xs font-bold tabular-nums flex items-center gap-1.5">
+                {cam.paused ? (
+                  <Pause size={11} />
+                ) : (
+                  <Circle size={10} fill="var(--color-cherry)" style={{ color: 'var(--color-cherry)' }} />
+                )}
+                {formatSeconds(seconds)}
               </p>
             </div>
           )}
@@ -526,17 +546,46 @@ export default function TeleprompterClient({ savedScripts = null }: { savedScrip
             </div>
           )}
 
-          {/* Detener (recording): un solo botón */}
+          {/* Grabación: todo a la vista — texto/velocidad, pausa y detener */}
           {stage === 'recording' && (
-            <div className="absolute bottom-0 inset-x-0 z-10 pb-8 flex justify-center">
-              <button
-                onClick={stopAndPreview}
-                className="flex items-center justify-center w-16 h-16 rounded-full"
-                style={{ background: 'var(--color-cherry)', boxShadow: '0 6px 24px rgba(122,24,50,0.5)' }}
-                aria-label="Detener"
-              >
-                <Square size={26} className="text-white" fill="white" />
-              </button>
+            <div className="absolute bottom-0 inset-x-0 z-10 pb-6 pt-10 px-4" style={{ background: 'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.55) 60%)' }}>
+              {cam.paused && (
+                <p className="mb-3 text-center text-xs font-semibold text-white/85">
+                  En pausa. Coloca el texto con los controles y continúa cuando quieras.
+                </p>
+              )}
+              <div className="flex items-center justify-center gap-4 flex-wrap">
+                <ControlChip label="Texto" onMinus={() => setFontSize(f => clampFontSize(f - FONT_STEP))} onPlus={() => setFontSize(f => clampFontSize(f + FONT_STEP))} value={`${fontSize}px`} />
+                <button
+                  onClick={() => setPlaying(p => !p)}
+                  className="flex items-center justify-center w-11 h-11 rounded-full text-white"
+                  style={{ background: 'rgba(255,255,255,0.18)', border: '1.5px solid rgba(255,255,255,0.4)' }}
+                  aria-label={playing ? 'Pausar texto' : 'Reproducir texto'}
+                >
+                  {playing ? <Pause size={17} /> : <Play size={17} />}
+                </button>
+                <ControlChip label="Velocidad" onMinus={() => setSpeed(s => clampSpeed(s - SPEED_STEP))} onPlus={() => setSpeed(s => clampSpeed(s + SPEED_STEP))} value={`${speed.toFixed(2).replace(/\.?0+$/, '')}x`} />
+              </div>
+              <div className="flex items-center justify-center gap-6 mt-5">
+                {cam.canPause && (
+                  <button
+                    onClick={togglePause}
+                    className="flex items-center justify-center w-14 h-14 rounded-full text-white"
+                    style={{ background: 'rgba(255,255,255,0.18)', border: '1.5px solid rgba(255,255,255,0.5)' }}
+                    aria-label={cam.paused ? 'Reanudar grabación' : 'Pausar grabación'}
+                  >
+                    {cam.paused ? <Play size={22} /> : <Pause size={22} />}
+                  </button>
+                )}
+                <button
+                  onClick={stopAndPreview}
+                  className="flex items-center justify-center w-16 h-16 rounded-full"
+                  style={{ background: 'var(--color-cherry)', boxShadow: '0 6px 24px rgba(122,24,50,0.5)' }}
+                  aria-label="Detener y ver el vídeo"
+                >
+                  <Square size={26} className="text-white" fill="white" />
+                </button>
+              </div>
             </div>
           )}
 

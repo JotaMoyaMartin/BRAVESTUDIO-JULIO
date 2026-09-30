@@ -59,6 +59,8 @@ export default function Sidebar({ profile }: { profile: Profile }) {
     ? [
         { href: '/admin', label: 'Panel Admin', icon: Settings },
         { href: '/team', label: 'Modo Equipo', icon: Users },
+        // TEMPORAL — POC visor de reels IG dentro de la app (quitar al integrarla).
+        { href: '/prueba-reels', label: 'Prueba: reels IG', icon: LayoutGrid, badge: 'TEST', highlight: true },
       ]
     : []
 

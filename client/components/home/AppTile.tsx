@@ -88,12 +88,12 @@ function LiveCollageTile({
         {/* Título protagonista + frase de apoyo */}
         <div className="px-4 pt-3.5 sm:px-6 sm:pt-6 flex-1 min-w-0">
           <p
-            className="text-lg sm:text-[28px] font-extrabold text-cherry-dark leading-tight"
-            style={{ letterSpacing: '-0.6px' }}
+            className="text-lg sm:text-[28px] font-extrabold leading-tight"
+            style={{ letterSpacing: '-0.6px', color }}
           >
             {label}
           </p>
-          <p className="text-[11px] sm:text-sm font-semibold leading-snug text-cherry-dark" style={{ opacity: 0.7 }}>
+          <p className="text-[11px] sm:text-sm font-semibold leading-snug" style={{ color, opacity: 0.75 }}>
             {live.caption}
           </p>
           <span

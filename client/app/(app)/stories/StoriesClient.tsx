@@ -37,7 +37,9 @@ import {
   FileText,
   Plus,
   Clapperboard,
+  Mic,
 } from 'lucide-react'
+import { useDictateText } from '@/lib/speech'
 import type { ContentItem } from '@/types/database'
 
 const SERVICES = [
@@ -116,6 +118,16 @@ function StoriesCreator({ userId, brandFull }: { userId: string; brandFull: Bran
   const [scheduleDate, setScheduleDate] = useSessionState<string>(`u:${userId}:stories:scheduleDate`, '')
   const [showSchedule, setShowSchedule] = useState(false)
   const [scheduledId, setScheduledId] = useSessionState<string | null>(`u:${userId}:stories:scheduledId`, null)
+
+  // Dictado por voz del tema libre (igual que Guiones: chunks finales se acumulan).
+  const dictate = useDictateText()
+  const toggleDictate = () => {
+    if (dictate.listening) {
+      dictate.stop()
+      return
+    }
+    dictate.start(chunk => setFreeText(prev => (prev ? `${prev} ${chunk}` : chunk)))
+  }
 
   async function generate() {
     if (!service && !freeText) return
@@ -547,13 +559,34 @@ Visual: ${s.visualIdea}`
             </button>
           ))}
         </div>
-        <input
-          value={freeText}
-          onChange={e => setFreeText(e.target.value)}
-          placeholder="O escribe un tema libre (ej: antes y después de un color…)"
-          className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
-          style={{ border: '1.5px solid rgba(122,24,50,0.2)', background: '#FFFDF5' }}
-        />
+        <div className="flex items-center gap-2">
+          <input
+            value={freeText}
+            onChange={e => setFreeText(e.target.value)}
+            placeholder={dictate.listening ? 'Escuchando…' : 'O escribe un tema libre (ej: antes y después de un color…)'}
+            className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
+            style={{ border: '1.5px solid rgba(122,24,50,0.2)', background: '#FFFDF5' }}
+          />
+          {dictate.supported && (
+            <button
+              onClick={toggleDictate}
+              aria-pressed={dictate.listening}
+              aria-label={dictate.listening ? 'Parar dictado por voz' : 'Dictar idea por voz'}
+              className="shrink-0 w-11 h-11 rounded-xl flex items-center justify-center transition-all"
+              style={{
+                background: dictate.listening ? '#7A1832' : '#F5F0E8',
+                color: dictate.listening ? 'white' : '#591427',
+              }}
+            >
+              <Mic size={18} className={dictate.listening ? 'animate-pulse' : ''} />
+            </button>
+          )}
+        </div>
+        {dictate.listening && (
+          <p className="text-xs mt-2" style={{ color: '#7A1832' }}>
+            Escuchando… habla y toca el micro al terminar.
+          </p>
+        )}
         <input
           value={detail}
           onChange={e => setDetail(e.target.value)}

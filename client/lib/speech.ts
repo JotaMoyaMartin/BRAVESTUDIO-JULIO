@@ -29,6 +29,22 @@ function getRecognitionCtor(): SpeechCtor | null {
   return w.SpeechRecognition || w.webkitSpeechRecognition || null
 }
 
+/** Procesa SOLO los resultados nuevos de un evento onresult. `results` es
+ *  acumulativo (cada evento repite las frases anteriores) — con el cursor
+ *  evitamos reenviar lo ya entregado (antes el campo se duplicaba y al parar
+ *  el texto entraba roto). Puro y testeado. */
+export function collectNewFinalChunks(
+  results: ArrayLike<{ isFinal: boolean; 0: { transcript: string } }>,
+  fromIndex: number,
+): { chunks: string[]; nextIndex: number } {
+  const chunks: string[] = []
+  for (let i = fromIndex; i < results.length; i++) {
+    const r = results[i]
+    if (r.isFinal && r[0]?.transcript?.trim()) chunks.push(r[0].transcript.trim())
+  }
+  return { chunks, nextIndex: results.length }
+}
+
 /**
  * Devuelve trozos FINALES de dictado vía onFinalText (se acumulan en el setter
  * del campo). `listening` marca el estado para la UI; al parar se corta solo.
@@ -43,6 +59,8 @@ export function useDictateText(lang = 'es-ES'): {
   const [listening, setListening] = useState(false)
   const recRef = useRef<SpeechRecognitionLike | null>(null)
   const onFinalRef = useRef<((text: string) => void) | null>(null)
+  // Cursor: nº de resultados ya procesados de la sesión en curso.
+  const seenRef = useRef(0)
 
   useEffect(() => {
     setSupported(!!getRecognitionCtor())
@@ -56,6 +74,9 @@ export function useDictateText(lang = 'es-ES'): {
   }, [])
 
   const stop = useCallback(() => {
+    // stop() (no abort()): el navegador entrena la frase que estaba sonando
+    // y entrega su resultado final antes de onend — así al parar la última
+    // frase entra en el campo y no se pierde.
     try {
       recRef.current?.stop()
     } catch {
@@ -79,14 +100,12 @@ export function useDictateText(lang = 'es-ES'): {
       rec.lang = lang
       rec.continuous = true
       rec.interimResults = false
+      seenRef.current = 0
       rec.onresult = (e: unknown) => {
         const ev = e as { results: ArrayLike<{ isFinal: boolean; 0: { transcript: string } }> }
-        let final = ''
-        for (let i = 0; i < ev.results.length; i++) {
-          const r = ev.results[i]
-          if (r.isFinal && r[0]?.transcript) final += `${final ? ' ' : ''}${r[0].transcript.trim()}`
-        }
-        if (final.trim()) onFinalRef.current?.(final.trim())
+        const { chunks } = collectNewFinalChunks(ev.results, seenRef.current)
+        seenRef.current = ev.results.length
+        chunks.forEach(c => onFinalRef.current?.(c))
       }
       rec.onend = () => setListening(false)
       rec.onerror = () => setListening(false) // sin permiso / red: se apaga y ya

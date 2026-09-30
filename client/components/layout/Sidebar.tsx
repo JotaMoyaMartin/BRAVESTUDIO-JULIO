@@ -199,7 +199,7 @@ export default function Sidebar({ profile }: { profile: Profile }) {
             <span className="text-white text-xs font-bold">B</span>
           </div>
           <p className="font-bold text-sm text-cherry-dark truncate" style={{ letterSpacing: '-0.3px' }}>
-            {profile.salon_name || profile.full_name || 'BRÄVE Studio'}
+            BRÄVE Studio
           </p>
         </Link>
         <button
@@ -227,16 +227,23 @@ export default function Sidebar({ profile }: { profile: Profile }) {
         )}
       </AnimatePresence>
 
-      {/* Mobile dropdown panel */}
+      {/* Mobile drawer — se despliega DESDE LA IZQUIERDA: navegar entre
+          secciones como las apps nativas (no un dropdown desde arriba). */}
       <AnimatePresence>
         {open && (
           <motion.div
-            initial={{ y: '-100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '-100%' }}
-            transition={{ type: 'tween', duration: 0.25 }}
-            className="fixed left-0 right-0 z-40 md:hidden bg-cream overflow-y-auto"
-            style={{ top: 56, maxHeight: 'calc(100vh - 56px)', borderBottom: '1.5px solid var(--color-buttermilk)' }}
+            initial={{ x: '-100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '-100%' }}
+            transition={{ type: 'tween', duration: 0.28 }}
+            className="fixed left-0 bottom-0 z-40 md:hidden bg-cream overflow-y-auto"
+            style={{
+              top: 56,
+              width: '82%',
+              maxWidth: 330,
+              borderRight: '1.5px solid var(--color-buttermilk)',
+              boxShadow: '12px 0 32px -14px rgba(42,14,22,0.28)',
+            }}
           >
             <MobileMenuContent />
           </motion.div>

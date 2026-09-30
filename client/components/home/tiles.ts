@@ -3,8 +3,7 @@ import { AppTileProps } from './AppTile'
 
 // Launcher de mini-apps — vive en /herramientas (Home v2 ya no es catálogo).
 export const TILES_NORMAL: AppTileProps[] = [
-  { href: '/reto-10k', icon: Rocket, label: 'Reto 10K', desc: 'Reto de 30 días', tone: 'cherry' },
-  { href: '/mi-marca', icon: Star, label: 'Mi Marca', desc: 'Perfil de tu salón', tone: 'buttermilk', image: '/tiles/mi-marca-banner.jpg' },
+  { href: '/mi-marca', icon: Star, label: 'Mi Marca', desc: 'Perfil de tu salón', tone: 'buttermilk', image: '/tiles/mi-marca-banner.jpg', imageAspect: '1746 / 901' },
   { href: '/planificar', icon: Sparkles, label: 'Planificar', desc: 'Ideas para el mes', tone: 'pink', image: '/tiles/planificar-banner.jpg' },
   { href: '/crear-contenido', icon: Film, label: 'Guiones', desc: '5 ideas → guion listo', tone: 'blue', image: '/tiles/guiones-banner.jpg' },
   { href: '/carrusel', icon: Images, label: 'Carrusel', desc: 'Carrusel listo para publicar', tone: 'green' },
@@ -14,6 +13,7 @@ export const TILES_NORMAL: AppTileProps[] = [
   { href: '/transiciones-reels', icon: Wand2, label: 'Transiciones Reels', desc: 'El corte que engancha', tone: 'blue', image: '/tiles/transiciones-banner.jpg', imageAspect: '1746 / 901' },
   { href: '/biblioteca', icon: BookOpen, label: 'Biblioteca', desc: 'Todo tu contenido', tone: 'buttermilk', image: '/tiles/biblioteca-banner.jpg' },
   { href: '/calendario', icon: Calendar, label: 'Calendario', desc: 'Tu plan del mes', tone: 'green', image: '/tiles/calendario-banner.jpg' },
+  { href: '/reto-10k', icon: Rocket, label: 'Reto 10K', desc: 'Reto de 30 días', tone: 'cherry' },
 ]
 
 export const TILES_PREMIUM: AppTileProps[] = [

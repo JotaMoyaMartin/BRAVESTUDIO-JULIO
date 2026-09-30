@@ -127,9 +127,8 @@ function LiveCollageTile({
 }
 
 export default function AppTile({ href, icon: Icon, label, desc, tone, image, imageAspect, live }: AppTileProps) {
-  if (live && live.covers.length > 0) {
-    return <LiveCollageTile href={href} label={label} tone={tone} live={live} />
-  }
+  // La portada curada (image) manda sobre el tile vivo: es la cara que Jota
+  // eligió para la sección. El abanico de portadas reales solo si no hay banner.
   if (image) {
     return (
       <Link href={href} className="block" aria-label={label}>
@@ -149,6 +148,10 @@ export default function AppTile({ href, icon: Icon, label, desc, tone, image, im
         </motion.div>
       </Link>
     )
+  }
+  // Tile vivo (abanico de portadas reales): solo si no hay portada curada.
+  if (live && live.covers.length > 0) {
+    return <LiveCollageTile href={href} label={label} tone={tone} live={live} />
   }
   const { bg, color, iconBg, border } = TONES[tone]
   return (

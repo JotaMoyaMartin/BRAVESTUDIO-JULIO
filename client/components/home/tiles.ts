@@ -11,7 +11,7 @@ export const TILES_NORMAL: AppTileProps[] = [
   { href: '/stories', icon: LayoutGrid, label: 'Stories BRÄVE', desc: 'Stories y encuestas', tone: 'green', image: '/tiles/stories-banner.jpg', imageAspect: '1862 / 845' },
   { href: '/teleprompter', icon: Captions, label: 'Teleprompter', desc: 'Graba hablando a cámara', tone: 'cream', image: '/tiles/teleprompter-banner.jpg' },
   { href: '/inspiracion-reels', icon: Clapperboard, label: 'Inspiración Reels', desc: 'Róbale las ideas al feed', tone: 'cherry', liveCaption: 'Róbale las ideas al feed', liveNoun: 'reels listos' },
-  { href: '/transiciones-reels', icon: Wand2, label: 'Transiciones Reels', desc: 'El corte que engancha', tone: 'blue', liveCaption: 'El corte que engancha', liveNoun: 'transiciones' },
+  { href: '/transiciones-reels', icon: Wand2, label: 'Transiciones Reels', desc: 'El corte que engancha', tone: 'blue', image: '/tiles/transiciones-banner.jpg', imageAspect: '1746 / 901' },
   { href: '/biblioteca', icon: BookOpen, label: 'Biblioteca', desc: 'Todo tu contenido', tone: 'buttermilk', image: '/tiles/biblioteca-banner.jpg' },
   { href: '/calendario', icon: Calendar, label: 'Calendario', desc: 'Tu plan del mes', tone: 'green', image: '/tiles/calendario-banner.jpg' },
 ]
@@ -25,6 +25,6 @@ export const TILES_PREMIUM: AppTileProps[] = [
   { href: '/stories', icon: LayoutGrid, label: 'Stories BRÄVE', desc: 'Stories y encuestas', tone: 'cream', image: '/tiles/stories-banner.jpg', imageAspect: '1862 / 845' },
   { href: '/teleprompter', icon: Captions, label: 'Teleprompter', desc: 'Graba hablando a cámara', tone: 'blue', image: '/tiles/teleprompter-banner.jpg' },
   { href: '/inspiracion-reels', icon: Clapperboard, label: 'Inspiración Reels', desc: 'Róbale las ideas al feed', tone: 'cherry', liveCaption: 'Róbale las ideas al feed', liveNoun: 'reels listos' },
-  { href: '/transiciones-reels', icon: Wand2, label: 'Transiciones Reels', desc: 'El corte que engancha', tone: 'blue', liveCaption: 'El corte que engancha', liveNoun: 'transiciones' },
+  { href: '/transiciones-reels', icon: Wand2, label: 'Transiciones Reels', desc: 'El corte que engancha', tone: 'blue', image: '/tiles/transiciones-banner.jpg', imageAspect: '1746 / 901' },
   { href: '/academia', icon: GraduationCap, label: 'Academia', desc: 'Formación BRÄVE', tone: 'cherry' },
 ]

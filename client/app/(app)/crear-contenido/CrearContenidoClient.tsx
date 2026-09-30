@@ -1,41 +1,56 @@
 'use client'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { saveToLibrary } from '@/lib/content-utils'
 import { generateReel, ReelOutput, ContentObjective } from '@/lib/ai/prompts/reels'
-import { generateCarousel, CarouselOutput } from '@/lib/ai/prompts/carousels'
+import { generateReelIdeas, IdeaItem } from '@/lib/ai/prompts/idea-specs'
+import { useDictateText } from '@/lib/speech'
 import { useSessionState, clearSectionState } from '@/lib/session-store'
 import { buildBrandFullContext, hasBrandContext, BrandFullContextInput } from '@/lib/ai/brand-context'
 import { openTeleprompter, composeReelSpokenScript } from '@/lib/teleprompter/input'
 import UsarMiMarcaToggle from '@/components/ui/UsarMiMarcaToggle'
 import BraviGuide from '@/components/bravi/BraviGuide'
-import { Film, LayoutGrid, Copy, BookOpen, Calendar, RefreshCw, Trash2, Check, ArrowRight, Clapperboard } from 'lucide-react'
+import { Film, Copy, BookOpen, RefreshCw, Check, ChevronLeft, Clapperboard, ChevronDown, Plus, RotateCcw, Sparkles, Mic } from 'lucide-react'
 
 const SERVICES = ['Balayage', 'Rubios', 'Canas', 'Alisados', 'Tratamientos', 'Corte', 'Color', 'General']
 
-type ContentType = 'reel' | 'carrusel'
 type Objective = ContentObjective
 
+interface GeneratedScript {
+  idea: IdeaItem
+  reel: ReelOutput
+}
+
+const STEPS: Array<{ id: 'topic' | 'objective' | 'ideas' | 'scripts'; label: string }> = [
+  { id: 'topic', label: 'Idea' },
+  { id: 'objective', label: 'Objetivo' },
+  { id: 'ideas', label: 'Ideas' },
+  { id: 'scripts', label: 'Guiones' },
+]
+
+// Sección GUIONES — de una idea a guiones completos de Reel, sin fricción:
+// 5 ideas → eliges tus favoritas → guiones completos → guardar/grabar.
+// (La sección antes se llamaba "Crear Contenido"; los carruseles viven en /carrusel.)
 export default function CrearContenidoClient({
   userId,
   brandFull,
   initialService,
-  initialType,
   initialTema,
   initialContexto,
+  recentTitles = [],
 }: {
   userId: string
   brandFull: BrandFullContextInput | null
   initialService?: string | null
-  initialType?: 'reel' | 'carrusel' | null
   initialTema?: string | null
   initialContexto?: string | null
+  recentTitles?: string[]
 }) {
   const isDemoMode = userId === 'demo'
   const router = useRouter()
   const hasBrand = hasBrandContext(brandFull)
-  const [useMiMarca, setUseMiMarca] = useSessionState<boolean>(`u:${userId}:crear:useMiMarca`, hasBrand)
+  const [useMiMarca, setUseMiMarca] = useSessionState<boolean>(`u:${userId}:guiones:useMiMarca`, hasBrand)
 
   // Contexto efectivo que se pasa a los prompts
   const brandContext = useMemo(() => {
@@ -43,39 +58,72 @@ export default function CrearContenidoClient({
     return buildBrandFullContext(brandFull) || undefined
   }, [useMiMarca, brandFull])
 
-  // If a service or tema was passed via URL, jump directly to objective step
   const skipToObjective = !!(initialService || initialTema)
-  const [step, setStep] = useSessionState<'type' | 'topic' | 'objective' | 'result'>(`u:${userId}:crear:step`,
-    skipToObjective ? 'objective' : 'type'
+  const [step, setStep] = useSessionState<'topic' | 'objective' | 'ideas' | 'scripts'>(`u:${userId}:guiones:step`,
+    skipToObjective ? 'objective' : 'topic'
   )
-  const [contentType, setContentType] = useSessionState<ContentType>(`u:${userId}:crear:contentType`, initialType || 'reel')
-  const [service, setService] = useSessionState<string>(`u:${userId}:crear:service`, initialService || '')
-  const [freeText, setFreeText] = useSessionState<string>(`u:${userId}:crear:freeText`, initialTema || '')
-  const [objective, setObjective] = useSessionState<Objective>(`u:${userId}:crear:objective`, 'autoridad')
-  const [slideCount, setSlideCount] = useSessionState<number>(`u:${userId}:crear:slideCount`, 5)
-  const [generating, setGenerating] = useState(false)
-  const [reelResult, setReelResult] = useSessionState<ReelOutput | null>(`u:${userId}:crear:reelResult`, null)
-  const [carouselResult, setCarouselResult] = useSessionState<CarouselOutput | null>(`u:${userId}:crear:carouselResult`, null)
+  const [service, setService] = useSessionState<string>(`u:${userId}:guiones:service`, initialService || '')
+  const [freeText, setFreeText] = useSessionState<string>(`u:${userId}:guiones:freeText`, initialTema || '')
+  const [objective, setObjective] = useSessionState<Objective>(`u:${userId}:guiones:objective`, 'autoridad')
+  const [ideas, setIdeas] = useSessionState<IdeaItem[]>(`u:${userId}:guiones:ideas`, [])
+  const [selected, setSelected] = useSessionState<string[]>(`u:${userId}:guiones:selected`, [])
+  const [scripts, setScripts] = useSessionState<GeneratedScript[]>(`u:${userId}:guiones:scripts`, [])
+  const [savedTitles, setSavedTitles] = useSessionState<string[]>(`u:${userId}:guiones:savedTitles`, [])
+
+  const [ideasLoading, setIdeasLoading] = useState(false)
+  const [genQueue, setGenQueue] = useState<number | null>(null) // nº idea generándose (1-based)
   const [copied, setCopied] = useState<string | null>(null)
-  const [saving, setSaving] = useState(false)
-  const [savedPlan, setSavedPlan] = useSessionState<boolean>(`u:${userId}:crear:savedPlan`, false)
-  const [scheduling, setScheduling] = useState(false)
-  const [scheduledDate, setScheduledDate] = useSessionState<string>(`u:${userId}:crear:scheduledDate`, '')
-  const [savedScheduled, setSavedScheduled] = useSessionState<boolean>(`u:${userId}:crear:savedScheduled`, false)
+  const [saving, setSaving] = useState<string | null>(null)
+  const cancelRef = useRef(false)
 
-  async function generate() {
-    setGenerating(true)
-    const topicService = service || freeText || 'General'
+  // Dictado por voz: habla la idea y el texto entra solo (Web Speech API).
+  const dictate = useDictateText()
+  const dictateToggle = () => {
+    if (dictate.listening) dictate.stop()
+    else dictate.start(chunk => setFreeText(prev => (prev ? `${prev} ${chunk}` : chunk)))
+  }
 
-    if (contentType === 'reel') {
-      const result = await generateReel({ service: topicService, objective, brandContext, freeText })
-      setReelResult(result)
-    } else {
-      const result = await generateCarousel({ service: topicService, objective, slideCount, brandContext, freeText })
-      setCarouselResult(result)
+  const topicService = service || freeText || 'General'
+
+  /** Genera (o amplía) el pack de ideas. "Más" deduplica contra lo ya propuesto. */
+  async function generateIdeas(more: boolean) {
+    setIdeasLoading(true)
+    const res = await generateReelIdeas({
+      brandContext: brandContext || 'No hay contexto de marca disponible. Usa buenas prácticas del sector beauty premium en España.',
+      count: 5,
+      completedTitles: [...recentTitles, ...(more ? ideas.map(i => i.title) : [])],
+    })
+    const existing = new Set(ideas.map(i => i.title))
+    const fresh = res.ideas.filter(i => !existing.has(i.title))
+    setIdeas(prev => (more ? [...prev, ...fresh] : fresh))
+    setSelected(prev => (more ? prev : []))
+    setIdeasLoading(false)
+    setStep('ideas')
+  }
+
+  function toggleIdea(title: string) {
+    setSelected(prev => (prev.includes(title) ? prev.filter(s => s !== title) : [...prev, title]))
+  }
+
+  /** Genera el guion completo de cada idea seleccionada, una a una (card en cuanto llega). */
+  async function generateScripts() {
+    const chosen = ideas.filter(i => selected.includes(i.title))
+    if (chosen.length === 0) return
+    cancelRef.current = false
+    setStep('scripts')
+    for (let k = 0; k < chosen.length; k++) {
+      if (cancelRef.current) break
+      setGenQueue(k + 1)
+      const idea = chosen[k]
+      const reel = await generateReel({
+        service: idea.service || topicService,
+        objective,
+        brandContext,
+        freeText: `${idea.title} — ángulo del gancho: ${idea.hook_idea}`,
+      })
+      setScripts(prev => (prev.some(s => s.idea.title === idea.title) ? prev : [...prev, { idea, reel }]))
     }
-    setGenerating(false)
-    setStep('result')
+    setGenQueue(null)
   }
 
   function copyText(text: string, key: string) {
@@ -84,63 +132,73 @@ export default function CrearContenidoClient({
     setTimeout(() => setCopied(null), 2000)
   }
 
-  function buildPayload(overrides?: Partial<Record<string, unknown>>) {
-    return {
-      type: contentType,
-      title: reelResult?.title || carouselResult?.title || '',
-      service: service || freeText,
+  /** Guarda UN guion en la biblioteca (status library) — cada card es independiente. */
+  async function saveOne(gen: GeneratedScript) {
+    setSaving(gen.idea.title)
+    await saveToLibrary(userId, {
+      type: 'reel',
+      title: gen.reel.title,
+      service: gen.idea.service || topicService,
       objective,
-      content_json: (reelResult || carouselResult) as unknown as Record<string, unknown>,
-      caption_with_hashtags: reelResult?.captionWithHashtags || carouselResult?.captionWithHashtags || null,
-      visual_idea: reelResult?.visualIdea || carouselResult?.visualIdea || null,
+      content_json: gen.reel as unknown as Record<string, unknown>,
+      caption_with_hashtags: gen.reel.captionWithHashtags || null,
+      visual_idea: gen.reel.visualIdea || null,
       status: 'library' as const,
-      format: contentType,
+      format: 'reel',
       scheduled_date: null,
-      ...overrides,
-    }
+    }, isDemoMode)
+    setSavedTitles(prev => [...prev, gen.idea.title])
+    setSaving(null)
   }
 
-  async function saveToLibraryHandler() {
-    setSaving(true)
-    const payload = buildPayload()
-    await saveToLibrary(userId, payload, isDemoMode)
-    setSaving(false)
-    setSavedPlan(true)
-  }
-
-  async function scheduleHandler() {
-    if (!scheduledDate) return
-    setSaving(true)
-    const payload = buildPayload({ status: 'scheduled', scheduled_date: scheduledDate })
-    await saveToLibrary(userId, payload, isDemoMode)
-    setSaving(false)
-    setSavedScheduled(true)
-    setSavedPlan(true)
-    setScheduling(false)
+  function recordOne(gen: GeneratedScript) {
+    openTeleprompter(
+      {
+        script: composeReelSpokenScript(gen.reel.script),
+        title: gen.reel.title,
+        source: 'reel',
+        returnUrl: '/crear-contenido',
+      },
+      router,
+    )
   }
 
   function reset() {
-    clearSectionState(`u:${userId}:crear`)
-    setStep(skipToObjective ? 'objective' : 'type')
-    setReelResult(null)
-    setCarouselResult(null)
+    cancelRef.current = true
+    clearSectionState(`u:${userId}:guiones`)
+    setStep(skipToObjective ? 'objective' : 'topic')
+    setIdeas([])
+    setSelected([])
+    setScripts([])
+    setSavedTitles([])
     setService(initialService || '')
     setFreeText(initialTema || '')
-    setSavedPlan(false)
-    setSavedScheduled(false)
-    setScheduling(false)
-    setScheduledDate('')
+    setGenQueue(null)
+    setIdeasLoading(false)
   }
 
-  function CopyBtn({ text, id, label = 'Copiar' }: { text: string; id: string; label?: string }) {
+  /** Volver atrás conservando ideas/guiones ya generados. */
+  function backToIdeas() {
+    setStep('ideas')
+  }
+
+  const selectedCount = selected.length
+  const pendingCount = selectedCount - scripts.filter(s => selected.includes(s.idea.title)).length
+
+  function CopyBtn({ text, id, label = 'Copiar', dark = false }: { text: string; id: string; label?: string; dark?: boolean }) {
+    const active = copied === id
     return (
       <button
         onClick={() => copyText(text, id)}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-        style={{ background: copied === id ? '#7A1832' : '#FFF1B5', color: copied === id ? 'white' : '#591427' }}
+        className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+        style={{
+          background: dark ? (active ? '#7A1832' : 'rgba(255,255,255,0.15)') : active ? '#7A1832' : '#FFF1B5',
+          color: active ? 'white' : dark ? 'white' : '#591427',
+          border: dark ? '1.5px solid rgba(255,255,255,0.25)' : 'none',
+        }}
       >
-        {copied === id ? <Check size={12} /> : <Copy size={12} />}
-        {copied === id ? '¡Copiado!' : label}
+        {active ? <Check size={12} /> : <Copy size={12} />}
+        {active ? '¡Copiado!' : label}
       </button>
     )
   }
@@ -149,66 +207,55 @@ export default function CrearContenidoClient({
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <BraviGuide section="crear-contenido" size={64} />
-        <div>
-          <h1 className="text-2xl font-bold" style={{ color: '#1a1a1a' }}>Crear Contenido</h1>
-          <p className="mt-1 text-sm" style={{ color: '#591427', opacity: 0.8 }}>Reels y carruseles listos para publicar</p>
+        <div className="flex-1 min-w-0">
+          <h1 className="text-2xl font-bold" style={{ color: '#1a1a1a' }}>Guiones</h1>
+          <p className="mt-1 text-sm" style={{ color: '#591427', opacity: 0.8 }}>De una idea a guiones de Reel listos para grabar</p>
         </div>
       </div>
 
-      {step !== 'result' && (
+      {/* Volver atrás / empezar de nuevo — arriba, siempre a mano */}
+      {step !== 'topic' && (
+        <div className="flex items-center gap-3">
+          <button onClick={reset} className="btn-ghost text-xs">
+            <RotateCcw size={13} /> Empezar de nuevo
+          </button>
+          {step === 'scripts' && (
+            <button onClick={backToIdeas} className="btn-ghost text-xs">
+              <ChevronLeft size={13} /> Ver ideas
+            </button>
+          )}
+          {step === 'scripts' && genQueue && (
+            <span className="text-xs font-semibold" style={{ color: '#591427' }}>
+              Generando guion {genQueue} de {selectedCount}… (los demás quedan en cola)
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Progreso */}
+      {step !== 'topic' && (
         <div className="flex items-center gap-2">
-          {(skipToObjective
-            ? [['objective', 'Objetivo']]
-            : [['type', 'Tipo'], ['topic', 'Tema'], ['objective', 'Objetivo']]
-          ).map(([id, label], i) => {
-            const allSteps = skipToObjective ? ['objective'] : ['type', 'topic', 'objective']
-            const current = allSteps.indexOf(step)
+          {STEPS.slice(1).map((s, i) => {
+            const current = STEPS.slice(1).findIndex(x => x.id === step)
             return (
-              <div key={id} className="flex items-center gap-2">
+              <div key={s.id} className="flex items-center gap-2">
                 <div className="flex items-center gap-1.5">
                   <div
                     className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold"
-                    style={{
-                      background: i <= current ? '#7A1832' : '#F5F0E8',
-                      color: i <= current ? 'white' : '#591427',
-                    }}
+                    style={{ background: i <= current ? '#7A1832' : '#F5F0E8', color: i <= current ? 'white' : '#591427' }}
                   >
                     {i + 1}
                   </div>
-                  <span className="text-xs hidden sm:block" style={{ color: i <= current ? '#7A1832' : '#591427', opacity: i <= current ? 1 : 0.5 }}>{label}</span>
+                  <span className="text-xs hidden sm:block" style={{ color: i <= current ? '#7A1832' : '#591427', opacity: i <= current ? 1 : 0.5 }}>{s.label}</span>
                 </div>
-                {i < allSteps.length - 1 && <div className="w-6 h-0.5" style={{ background: i < current ? '#7A1832' : '#F5F0E8' }} />}
+                {i < STEPS.length - 2 && <div className="w-6 h-0.5" style={{ background: i < current ? '#7A1832' : '#F5F0E8' }} />}
               </div>
             )
           })}
         </div>
       )}
 
-      {/* Step 1: Type */}
-      {step === 'type' && (
-        <div className="space-y-4">
-          <p className="font-semibold" style={{ color: '#1a1a1a' }}>¿Qué quieres crear?</p>
-          <div className="grid grid-cols-2 gap-4">
-            {([
-              ['reel', 'Reel', Film, 'Guion de 40-50 segundos'],
-              ['carrusel', 'Carrusel', LayoutGrid, 'Slides listos para diseñar'],
-            ] as const).map(([val, lbl, Icon, desc]) => (
-              <button
-                key={val}
-                onClick={() => { setContentType(val); setStep('topic') }}
-                className="p-6 rounded-2xl text-left transition-all hover:scale-105"
-                style={{ background: 'white', border: '2px solid rgba(255,241,181,0.8)', boxShadow: '0 2px 12px rgba(90,20,39,0.07)' }}
-              >
-                <Icon size={28} style={{ color: '#7A1832' }} />
-                <p className="font-bold mt-3" style={{ color: '#1a1a1a' }}>{lbl}</p>
-                <p className="text-xs mt-1" style={{ color: '#591427', opacity: 0.7 }}>{desc}</p>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Step 2: Topic */}
+      {/* Step 1: Tema */}
       {step === 'topic' && (
         <div className="space-y-4">
           <p className="font-semibold" style={{ color: '#1a1a1a' }}>¿Sobre qué quieres hablar?</p>
@@ -220,10 +267,7 @@ export default function CrearContenidoClient({
                   key={s}
                   onClick={() => setService(service === s ? '' : s)}
                   className="px-4 py-2 rounded-xl text-sm font-medium transition-all"
-                  style={{
-                    background: service === s ? '#7A1832' : '#F5F0E8',
-                    color: service === s ? 'white' : '#591427',
-                  }}
+                  style={{ background: service === s ? '#7A1832' : '#F5F0E8', color: service === s ? 'white' : '#591427' }}
                 >
                   {s}
                 </button>
@@ -231,49 +275,60 @@ export default function CrearContenidoClient({
             </div>
           </div>
           <div>
-            <p className="text-sm mb-2" style={{ color: '#591427', opacity: 0.7 }}>O escribe tu idea:</p>
-            <input
-              value={freeText}
-              onChange={e => setFreeText(e.target.value)}
-              placeholder="Ej: por qué el protector térmico es importante..."
-              className="w-full px-4 py-3 rounded-xl text-sm outline-none"
-              style={{ border: '1.5px solid rgba(122,24,50,0.2)', background: '#FFFDF5' }}
-            />
+            <p className="text-sm mb-2" style={{ color: '#591427', opacity: 0.7 }}>O escribe tu idea (o dila a voz):</p>
+            <div className="flex items-center gap-2">
+              <input
+                value={freeText}
+                onChange={e => setFreeText(e.target.value)}
+                placeholder={dictate.listening ? 'Escuchando…' : 'Ej: por qué el protector térmico es importante...'}
+                className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+                style={{ border: '1.5px solid rgba(122,24,50,0.2)', background: '#FFFDF5' }}
+              />
+              {dictate.supported && (
+                <button
+                  onClick={dictateToggle}
+                  className="flex items-center justify-center w-11 h-11 rounded-xl flex-shrink-0 transition-all"
+                  style={{
+                    background: dictate.listening ? '#7A1832' : 'white',
+                    border: dictate.listening ? 'none' : '1.5px solid rgba(122,24,50,0.2)',
+                    boxShadow: dictate.listening ? '0 0 0 4px rgba(122,24,50,0.15)' : 'none',
+                  }}
+                  aria-label={dictate.listening ? 'Parar dictado por voz' : 'Dictar idea por voz'}
+                  aria-pressed={dictate.listening}
+                >
+                  <Mic size={18} style={{ color: dictate.listening ? 'white' : '#7A1832' }} />
+                </button>
+              )}
+            </div>
+            {dictate.listening && (
+              <p className="text-xs mt-1.5 font-semibold" style={{ color: '#7A1832' }}>
+                <span className="inline-block w-2 h-2 rounded-full mr-1.5 align-middle" style={{ background: '#7A1832', animation: 'pulse 1.2s infinite' }} />
+                Escuchando… habla y toca el micro al terminar.
+              </p>
+            )}
           </div>
-          <div className="flex gap-3">
-            <button onClick={() => setStep(initialService ? 'objective' : 'type')} className="btn-ghost">Atrás</button>
-            <button
-              onClick={() => setStep('objective')}
-              disabled={!service && !freeText}
-              className="btn-primary flex-1 justify-center"
-              style={{ opacity: !service && !freeText ? 0.5 : 1 }}
-            >
-              Continuar
-            </button>
-          </div>
+          <button
+            onClick={() => setStep('objective')}
+            disabled={!service && !freeText}
+            className="btn-primary w-full justify-center"
+            style={{ opacity: !service && !freeText ? 0.5 : 1 }}
+          >
+            Continuar
+          </button>
         </div>
       )}
 
-      {/* Step 3: Objective */}
+      {/* Step 2: Objetivo → genera 5 ideas */}
       {step === 'objective' && (
         <div className="space-y-4">
-          {service && (
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#7A1832', opacity: 0.6 }}>Sobre:</span>
-              <span className="px-3 py-1 rounded-xl text-sm font-semibold" style={{ background: '#7A1832', color: 'white' }}>{service}</span>
-              <span className="px-3 py-1 rounded-xl text-sm font-semibold" style={{ background: '#F5F0E8', color: '#591427' }}>{contentType === 'reel' ? 'Reel' : 'Carrusel'}</span>
-              {!skipToObjective && (
-                <button onClick={() => setStep('topic')} className="text-xs underline" style={{ color: '#7A1832', opacity: 0.7 }}>Cambiar</button>
-              )}
-            </div>
-          )}
-          {freeText && !service && (
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#7A1832', opacity: 0.6 }}>Idea:</span>
-              <span className="px-3 py-1 rounded-xl text-sm font-semibold" style={{ background: '#7A1832', color: 'white' }}>{freeText}</span>
-              <span className="px-3 py-1 rounded-xl text-sm font-semibold" style={{ background: '#F5F0E8', color: '#591427' }}>Reel</span>
-            </div>
-          )}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#7A1832', opacity: 0.6 }}>Sobre:</span>
+            <span className="px-3 py-1 rounded-xl text-sm font-semibold" style={{ background: '#7A1832', color: 'white' }}>{service || freeText}</span>
+            <span className="px-3 py-1 rounded-xl text-sm font-semibold" style={{ background: '#F5F0E8', color: '#591427' }}>Reel</span>
+            {!skipToObjective && (
+              <button onClick={() => setStep('topic')} className="text-xs underline" style={{ color: '#7A1832', opacity: 0.7 }}>Cambiar</button>
+            )}
+          </div>
           {initialContexto && (
             <div className="rounded-2xl p-3" style={{ background: 'var(--color-pastel-blue)' }}>
               <p className="text-xs font-bold uppercase tracking-wider mb-0.5" style={{ color: '#2a5a6a', opacity: 0.7 }}>CONTEXTO SUGERIDO</p>
@@ -294,10 +349,7 @@ export default function CrearContenidoClient({
                 key={val}
                 onClick={() => setObjective(val)}
                 className="w-full text-left p-4 rounded-xl transition-all"
-                style={{
-                  background: objective === val ? '#7A1832' : '#F5F0E8',
-                  color: objective === val ? 'white' : '#591427',
-                }}
+                style={{ background: objective === val ? '#7A1832' : '#F5F0E8', color: objective === val ? 'white' : '#591427' }}
               >
                 <p className="font-semibold">{lbl}</p>
                 <p className="text-xs mt-0.5 opacity-80">{desc}</p>
@@ -305,357 +357,217 @@ export default function CrearContenidoClient({
             ))}
           </div>
 
-          {contentType === 'carrusel' && (
-            <div className="rounded-2xl p-4" style={{ background: 'white', border: '1.5px solid rgba(255,241,181,0.8)' }}>
-              <p className="text-sm font-semibold mb-3" style={{ color: '#1a1a1a' }}>¿Cuántas slides quieres?</p>
-              <div className="flex gap-2">
-                {[3, 4, 5, 6].map(n => (
-                  <button
-                    key={n}
-                    onClick={() => setSlideCount(n)}
-                    className="flex-1 py-2.5 rounded-xl font-bold text-sm transition-all"
-                    style={{ background: slideCount === n ? '#7A1832' : '#F5F0E8', color: slideCount === n ? 'white' : '#591427' }}
-                  >
-                    {n}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
           <UsarMiMarcaToggle
             enabled={useMiMarca}
             onChange={setUseMiMarca}
-            disabled={generating}
+            disabled={ideasLoading}
             hasBrand={hasBrand}
           />
 
           <div className="flex gap-3">
-            {!skipToObjective && (
-              <button onClick={() => setStep('topic')} className="btn-ghost">Atrás</button>
-            )}
-            <button onClick={generate} disabled={generating} className="btn-primary flex-1 justify-center">
-              {generating ? 'Creando contenido...' : 'Crear contenido ✨'}
+            <button onClick={() => setStep('topic')} className="btn-ghost">Atrás</button>
+            <button onClick={() => generateIdeas(false)} disabled={ideasLoading} className="btn-primary flex-1 justify-center">
+              {ideasLoading ? 'Creando 5 ideas...' : 'Generar 5 ideas ✨'}
             </button>
           </div>
         </div>
       )}
 
-      {/* Result */}
-      {step === 'result' && reelResult && (
-        <ReelResult
-          result={reelResult}
-          onRegenerate={generate}
-          onSave={saveToLibraryHandler}
-          onSchedule={scheduleHandler}
-          onNew={reset}
-          onRecord={() =>
-            openTeleprompter(
-              {
-                script: composeReelSpokenScript(reelResult.script),
-                title: reelResult.title,
-                source: 'reel',
-                returnUrl: '/crear-contenido',
-              },
-              router,
-            )
-          }
-          saving={saving}
-          savedPlan={savedPlan}
-          scheduling={scheduling}
-          setScheduling={setScheduling}
-          scheduledDate={scheduledDate}
-          setScheduledDate={setScheduledDate}
-          savedScheduled={savedScheduled}
-          CopyBtn={CopyBtn}
-          generating={generating}
-        />
+      {/* Step 3: Ideas — elige tus favoritas */}
+      {step === 'ideas' && (
+        <div className="space-y-4">
+          <div>
+            <p className="font-semibold" style={{ color: '#1a1a1a' }}>5 ideas de Reel para tu salón</p>
+            <p className="text-sm mt-0.5" style={{ color: '#591427', opacity: 0.7 }}>Toca las que más te gusten (puedes elegir varias) y te genero el guion completo de cada una.</p>
+          </div>
+          {ideasLoading && <IdeaSkeleton />}
+          <div className="space-y-2.5">
+            {ideas.map(idea => {
+              const active = selected.includes(idea.title)
+              return (
+                <button
+                  key={idea.title}
+                  onClick={() => toggleIdea(idea.title)}
+                  className="w-full text-left p-4 rounded-2xl transition-all"
+                  style={{
+                    background: active ? 'rgba(122,24,50,0.06)' : 'white',
+                    border: active ? '2px solid #7A1832' : '1.5px solid rgba(255,241,181,0.8)',
+                    boxShadow: active ? '0 2px 12px rgba(122,24,50,0.12)' : '0 2px 12px rgba(90,20,39,0.07)',
+                  }}
+                  aria-pressed={active}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1">
+                      <p className="font-bold text-sm" style={{ color: '#1a1a1a' }}>{idea.title}</p>
+                      <p className="text-xs mt-1" style={{ color: '#591427', opacity: 0.75 }}>Gancho: {idea.hook_idea}</p>
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: '#F5F0E8', color: '#591427' }}>{idea.service}</span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: '#F5F0E8', color: '#591427' }}>{idea.pillar}</span>
+                      </div>
+                    </div>
+                    <span
+                      className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center"
+                      style={{ background: active ? '#7A1832' : 'white', border: active ? 'none' : '1.5px solid rgba(122,24,50,0.25)' }}
+                    >
+                      {active ? <Check size={13} className="text-white" /> : <Plus size={13} style={{ color: 'rgba(122,24,50,0.4)' }} />}
+                    </span>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <button onClick={() => generateIdeas(true)} disabled={ideasLoading} className="btn-ghost text-sm">
+              <RefreshCw size={14} className={ideasLoading ? 'animate-spin' : ''} /> Más ideas
+            </button>
+            <button
+              onClick={generateScripts}
+              disabled={selectedCount === 0}
+              className="btn-primary flex-1 justify-center"
+              style={{ opacity: selectedCount === 0 ? 0.5 : 1 }}
+            >
+              <Sparkles size={15} /> Generar {selectedCount || ''} guion{selectedCount === 1 ? '' : 'es'} completos
+            </button>
+          </div>
+        </div>
       )}
 
-      {step === 'result' && carouselResult && (
-        <CarouselResult
-          result={carouselResult}
-          onRegenerate={generate}
-          onSave={saveToLibraryHandler}
-          onSchedule={scheduleHandler}
-          onNew={reset}
-          saving={saving}
-          savedPlan={savedPlan}
-          scheduling={scheduling}
-          setScheduling={setScheduling}
-          scheduledDate={scheduledDate}
-          setScheduledDate={setScheduledDate}
-          savedScheduled={savedScheduled}
-          CopyBtn={CopyBtn}
-          generating={generating}
-        />
+      {/* Step 4: Guiones completos — guardar / grabar / copiar, uno por idea */}
+      {step === 'scripts' && (
+        <div className="space-y-5">
+          {ideas
+            .filter(i => selected.includes(i.title))
+            .map(idea => {
+              const gen = scripts.find(s => s.idea.title === idea.title)
+              if (!gen) return <ScriptLoadingCard key={idea.title} idea={idea} />
+              return (
+                <ScriptCard
+                  key={idea.title}
+                  gen={gen}
+                  saved={savedTitles.includes(idea.title)}
+                  saving={saving === idea.title}
+                  onSave={() => saveOne(gen)}
+                  onRecord={() => recordOne(gen)}
+                  CopyBtn={CopyBtn}
+                />
+              )
+            })}
+          {genQueue === null && (
+            <div className="flex flex-wrap gap-3">
+              <button onClick={reset} className="btn-ghost text-sm">
+                <RotateCcw size={14} /> Empezar de nuevo
+              </button>
+              <Link href="/biblioteca" className="btn-secondary text-sm">
+                <BookOpen size={14} /> Ver biblioteca
+              </Link>
+            </div>
+          )}
+        </div>
       )}
     </div>
   )
 }
 
-function ReelResult({ result, onRegenerate, onSave, onSchedule, onNew, onRecord, saving, savedPlan, scheduling, setScheduling, scheduledDate, setScheduledDate, savedScheduled, CopyBtn, generating }: {
-  result: ReelOutput
-  onRegenerate: () => void
-  onSave: () => void
-  onSchedule: () => void
-  onNew: () => void
-  onRecord: () => void
-  saving: boolean
-  savedPlan: boolean
-  scheduling: boolean
-  setScheduling: (v: boolean) => void
-  scheduledDate: string
-  setScheduledDate: (v: string) => void
-  savedScheduled: boolean
-  CopyBtn: React.ComponentType<{ text: string; id: string; label?: string }>
-  generating: boolean
-}) {
-  const fullScript = `GANCHO:\n${result.script.hook}\n\nCONTEXTO:\n${result.script.context}\n\nSOLUCIÓN:\n${result.script.solution}\n\nCTA:\n${result.script.cta}`
-
+function IdeaSkeleton() {
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Film size={20} style={{ color: '#7A1832' }} />
-          <h2 className="font-bold text-lg" style={{ color: '#1a1a1a' }}>Tu Reel está listo ✨</h2>
+    <div className="space-y-2.5">
+      {[0, 1, 2].map(i => (
+        <div key={i} className="p-4 rounded-2xl" style={{ background: 'white', border: '1.5px solid rgba(255,241,181,0.6)' }}>
+          <div className="h-4 w-3/4 rounded" style={{ background: '#F5F0E8', opacity: 0.8 }} />
+          <div className="h-3 w-1/2 rounded mt-2" style={{ background: '#F5F0E8', opacity: 0.6 }} />
         </div>
-        <div className="flex flex-wrap gap-2">
-          <button onClick={onRegenerate} disabled={generating} className="btn-ghost text-sm">
-            <RefreshCw size={14} className={generating ? 'animate-spin' : ''} /> Regenerar
-          </button>
-          <button onClick={onNew} className="btn-ghost text-sm">
-            <Trash2 size={14} /> Nuevo
-          </button>
-        </div>
-      </div>
+      ))}
+      <p className="text-center text-xs font-semibold" style={{ color: '#591427', opacity: 0.7 }}>Pensando ideas para tu salón…</p>
+    </div>
+  )
+}
 
-      {/* Title + cover */}
-      <div className="p-5 rounded-2xl" style={{ background: 'white', border: '1.5px solid rgba(255,241,181,0.8)' }}>
-        <p className="text-xs font-bold uppercase tracking-wider mb-1" style={{ color: '#7A1832', opacity: 0.6 }}>TÍTULO</p>
-        <p className="font-bold text-lg" style={{ color: '#1a1a1a' }}>{result.title}</p>
-        <p className="text-sm mt-2" style={{ color: '#591427', opacity: 0.7 }}>
-          <strong>Portada:</strong> {result.coverText}
-        </p>
+function ScriptLoadingCard({ idea }: { idea: IdeaItem }) {
+  return (
+    <div className="p-5 rounded-2xl" style={{ background: 'white', border: '1.5px solid rgba(255,241,181,0.6)' }}>
+      <div className="flex items-center gap-2">
+        <RefreshCw size={14} className="animate-spin" style={{ color: '#7A1832' }} />
+        <p className="font-bold text-sm" style={{ color: '#1a1a1a' }}>{idea.title}</p>
       </div>
-
-      {/* Script */}
-      <div className="rounded-2xl overflow-hidden" style={{ background: 'white', border: '1.5px solid rgba(255,241,181,0.8)' }}>
-        <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: 'rgba(255,241,181,0.5)' }}>
-          <p className="font-semibold" style={{ color: '#1a1a1a' }}>Guion BRÄVE</p>
-          <CopyBtn text={fullScript} id="script" label="Copiar guion" />
-        </div>
-        {([
-          ['GANCHO', result.script.hook, '#7A1832'],
-          ['CONTEXTO', result.script.context, '#591427'],
-          ['SOLUCIÓN', result.script.solution, '#2a5a6a'],
-          ['CTA', result.script.cta, '#7a6000'],
-        ] as const).map(([label, text, color]) => (
-          <div key={label} className="px-5 py-4 border-b last:border-0" style={{ borderColor: 'rgba(255,241,181,0.3)' }}>
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex-1">
-                <span className="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-full" style={{ background: 'rgba(122,24,50,0.08)', color }}>
-                  {label}
-                </span>
-                <p className="mt-2 text-sm leading-relaxed" style={{ color: '#1a1a1a' }}>{text}</p>
-              </div>
-              <CopyBtn text={text} id={label} />
-            </div>
-          </div>
+      <p className="text-xs mt-1" style={{ color: '#591427', opacity: 0.7 }}>Escribiendo tu guion…</p>
+      <div className="space-y-2 mt-4">
+        {[90, 75, 85].map((w, i) => (
+          <div key={i} className="h-3 rounded" style={{ width: `${w}%`, background: '#F5F0E8', opacity: 0.7 }} />
         ))}
       </div>
+    </div>
+  )
+}
 
-      {/* Visual idea */}
-      <div className="p-4 rounded-2xl" style={{ background: '#C1DBE8' }}>
-        <p className="text-xs font-bold uppercase tracking-wider mb-1" style={{ color: '#2a5a6a', opacity: 0.7 }}>💡 IDEA VISUAL</p>
-        <p className="text-sm" style={{ color: '#1a3a4a' }}>{result.visualIdea}</p>
+function ScriptCard({
+  gen, saved, saving, onSave, onRecord, CopyBtn,
+}: {
+  gen: GeneratedScript
+  saved: boolean
+  saving: boolean
+  onSave: () => void
+  onRecord: () => void
+  CopyBtn: React.ComponentType<{ text: string; id: string; label?: string; dark?: boolean }>
+}) {
+  const { reel } = gen
+  const fullScript = `GANCHO:\n${reel.script.hook}\n\nCONTEXTO:\n${reel.script.context}\n\nSOLUCIÓN:\n${reel.script.solution}\n\nCTA:\n${reel.script.cta}`
+
+  return (
+    <div className="rounded-2xl overflow-hidden" style={{ background: 'white', border: '1.5px solid rgba(255,241,181,0.8)' }}>
+      <div className="p-5" style={{ background: 'rgba(255,241,181,0.35)' }}>
+        <p className="font-bold text-lg leading-snug" style={{ color: '#1a1a1a' }}>{reel.title}</p>
+        <div className="flex flex-wrap items-center gap-1.5 mt-2">
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: '#7A1832', color: 'white' }}>{gen.idea.service}</span>
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'white', color: '#591427' }}>Reel · {gen.idea.pillar}</span>
+        </div>
+        <p className="text-sm mt-2" style={{ color: '#591427', opacity: 0.75 }}>Portada: <strong>{reel.coverText}</strong></p>
       </div>
 
-      {/* Caption */}
-      <div className="rounded-2xl overflow-hidden" style={{ background: 'white', border: '1.5px solid rgba(255,241,181,0.8)' }}>
-        <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: 'rgba(255,241,181,0.5)' }}>
-          <p className="font-semibold" style={{ color: '#1a1a1a' }}>Publicación para Instagram</p>
-          <CopyBtn text={result.captionWithHashtags} id="caption" label="Copiar publicación" />
+      {/* Guion */}
+      <div className="flex items-center justify-between px-5 py-3.5 border-b" style={{ borderColor: 'rgba(255,241,181,0.5)' }}>
+        <p className="font-semibold text-sm" style={{ color: '#1a1a1a' }}>Guion BRÄVE</p>
+        <CopyBtn text={fullScript} id={`${reel.title}-script`} label="Copiar guion" />
+      </div>
+      {([
+        ['GANCHO', reel.script.hook, '#7A1832'],
+        ['CONTEXTO', reel.script.context, '#591427'],
+        ['SOLUCIÓN', reel.script.solution, '#2a5a6a'],
+        ['CTA', reel.script.cta, '#7a6000'],
+      ] as const).map(([label, text, color]) => (
+        <div key={label} className="px-5 py-3.5 border-b" style={{ borderColor: 'rgba(255,241,181,0.3)' }}>
+          <span className="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-full" style={{ background: 'rgba(122,24,50,0.08)', color }}>
+            {label}
+          </span>
+          <p className="mt-2 text-sm leading-relaxed" style={{ color: '#1a1a1a' }}>{text}</p>
         </div>
-        <div className="px-5 py-4">
-          <p className="text-sm leading-relaxed whitespace-pre-line" style={{ color: '#1a1a1a' }}>{result.captionWithHashtags}</p>
+      ))}
+
+      {/* Idea visual + caption */}
+      <div className="px-5 py-3.5" style={{ background: '#C1DBE8' }}>
+        <p className="text-xs font-bold uppercase tracking-wider" style={{ color: '#2a5a6a', opacity: 0.7 }}>IDEA VISUAL</p>
+        <p className="text-sm mt-1" style={{ color: '#1a3a4a' }}>{reel.visualIdea}</p>
+      </div>
+      <div className="px-5 py-3.5 border-b" style={{ borderColor: 'rgba(255,241,181,0.3)' }}>
+        <div className="flex items-center justify-between gap-3 mb-1">
+          <p className="text-xs font-bold uppercase tracking-wider" style={{ color: '#7A1832', opacity: 0.6 }}>PUBLICACIÓN IG</p>
+          <CopyBtn text={reel.captionWithHashtags} id={`${reel.title}-caption`} label="Copiar" />
         </div>
+        <p className="text-sm leading-relaxed whitespace-pre-line" style={{ color: '#1a1a1a' }}>{reel.captionWithHashtags}</p>
       </div>
 
-      {/* Actions */}
-      <div className="flex flex-wrap gap-2 items-center">
-        <button onClick={onSave} disabled={saving || savedPlan} className="btn-primary text-sm">
-          <BookOpen size={15} /> {saving ? 'Guardando...' : savedPlan ? '✓ Guardado' : 'Guardar en biblioteca'}
+      {/* Actions — cada guion tiene su botón claro en la base de la card */}
+      <div className="px-5 py-4 flex flex-wrap items-center gap-2">
+        <button onClick={onSave} disabled={saving || saved} className="btn-primary text-sm">
+          <BookOpen size={15} /> {saving ? 'Guardando…' : saved ? '✓ Guardado' : 'Guardar en biblioteca'}
         </button>
         <button onClick={onRecord} className="btn-secondary text-sm">
           <Clapperboard size={15} /> Grabar con teleprompter
         </button>
-        {!savedPlan && (
-          <button onClick={() => setScheduling(!scheduling)} disabled={saving} className="btn-ghost text-sm">
-            <Calendar size={15} /> Programar
-          </button>
-        )}
-        {scheduling && !savedScheduled && (
-          <div className="flex items-center gap-2 w-full mt-1">
-            <input
-              type="date"
-              value={scheduledDate}
-              onChange={e => setScheduledDate(e.target.value)}
-              className="px-3 py-2 rounded-xl text-sm outline-none"
-              style={{ border: '1.5px solid rgba(122,24,50,0.2)', background: '#FFFDF5', color: '#591427' }}
-            />
-            <button
-              onClick={onSchedule}
-              disabled={saving || !scheduledDate}
-              className="btn-primary text-sm"
-              style={{ opacity: !scheduledDate ? 0.5 : 1 }}
-            >
-              {saving ? 'Guardando...' : 'Confirmar fecha'}
-            </button>
-          </div>
-        )}
-        {savedScheduled && (
-          <span className="flex items-center gap-1 text-sm font-semibold" style={{ color: '#7A1832' }}>
-            <Check size={14} /> Programado para {scheduledDate}
-          </span>
-        )}
-        {savedPlan && !savedScheduled && (
-          <Link href="/biblioteca" className="flex items-center gap-1 text-sm font-semibold" style={{ color: '#7A1832' }}>
-            Ver en biblioteca <ArrowRight size={14} />
+        {saved && (
+          <Link href="/biblioteca" className="text-xs font-semibold" style={{ color: '#7A1832' }}>
+            Ver en biblioteca →
           </Link>
         )}
-        {savedScheduled && (
-          <Link href="/calendario" className="flex items-center gap-1 text-sm font-semibold" style={{ color: '#7A1832' }}>
-            Ver en calendario <ArrowRight size={14} />
-          </Link>
-        )}
-        <button onClick={onNew} className="btn-ghost text-sm">
-          <Trash2 size={15} /> Nuevo
-        </button>
-      </div>
-    </div>
-  )
-}
-
-function CarouselResult({ result, onRegenerate, onSave, onSchedule, onNew, saving, savedPlan, scheduling, setScheduling, scheduledDate, setScheduledDate, savedScheduled, CopyBtn, generating }: {
-  result: CarouselOutput
-  onRegenerate: () => void
-  onSave: () => void
-  onSchedule: () => void
-  onNew: () => void
-  saving: boolean
-  savedPlan: boolean
-  scheduling: boolean
-  setScheduling: (v: boolean) => void
-  scheduledDate: string
-  setScheduledDate: (v: string) => void
-  savedScheduled: boolean
-  CopyBtn: React.ComponentType<{ text: string; id: string; label?: string }>
-  generating: boolean
-}) {
-  const allSlides = result.slides.map(s => `SLIDE ${s.number} — ${s.role}:\n${s.text}`).join('\n\n')
-
-  return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <LayoutGrid size={20} style={{ color: '#7A1832' }} />
-          <h2 className="font-bold text-lg" style={{ color: '#1a1a1a' }}>Tu Carrusel está listo ✨</h2>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button onClick={onRegenerate} disabled={generating} className="btn-ghost text-sm">
-            <RefreshCw size={14} className={generating ? 'animate-spin' : ''} /> Regenerar
-          </button>
-          <button onClick={onNew} className="btn-ghost text-sm">
-            <Trash2 size={14} /> Nuevo
-          </button>
-        </div>
-      </div>
-
-      <div className="p-5 rounded-2xl" style={{ background: 'white', border: '1.5px solid rgba(255,241,181,0.8)' }}>
-        <p className="font-bold text-lg" style={{ color: '#1a1a1a' }}>{result.title}</p>
-      </div>
-
-      <div className="rounded-2xl overflow-hidden" style={{ background: 'white', border: '1.5px solid rgba(255,241,181,0.8)' }}>
-        <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: 'rgba(255,241,181,0.5)' }}>
-          <p className="font-semibold" style={{ color: '#1a1a1a' }}>Slides del carrusel</p>
-          <CopyBtn text={allSlides} id="slides" label="Copiar todo" />
-        </div>
-        {result.slides.map(slide => (
-          <div key={slide.number} className="px-5 py-4 border-b last:border-0 flex items-start gap-4" style={{ borderColor: 'rgba(255,241,181,0.3)' }}>
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center font-bold text-sm flex-shrink-0" style={{ background: '#7A1832', color: 'white' }}>
-              {slide.number}
-            </div>
-            <div className="flex-1">
-              <span className="text-xs font-semibold" style={{ color: '#7A1832' }}>{slide.role}</span>
-              <p className="text-sm mt-1 leading-relaxed" style={{ color: '#1a1a1a' }}>{slide.text}</p>
-            </div>
-            <CopyBtn text={slide.text} id={`slide-${slide.number}`} />
-          </div>
-        ))}
-      </div>
-
-      <div className="p-4 rounded-2xl" style={{ background: '#C1DBE8' }}>
-        <p className="text-xs font-bold uppercase tracking-wider mb-1" style={{ color: '#2a5a6a', opacity: 0.7 }}>💡 IDEA VISUAL</p>
-        <p className="text-sm" style={{ color: '#1a3a4a' }}>{result.visualIdea}</p>
-      </div>
-
-      <div className="rounded-2xl overflow-hidden" style={{ background: 'white', border: '1.5px solid rgba(255,241,181,0.8)' }}>
-        <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: 'rgba(255,241,181,0.5)' }}>
-          <p className="font-semibold" style={{ color: '#1a1a1a' }}>Publicación para Instagram</p>
-          <CopyBtn text={result.captionWithHashtags} id="caption" label="Copiar publicación" />
-        </div>
-        <div className="px-5 py-4">
-          <p className="text-sm leading-relaxed whitespace-pre-line" style={{ color: '#1a1a1a' }}>{result.captionWithHashtags}</p>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap gap-2 items-center">
-        <button onClick={onSave} disabled={saving || savedPlan} className="btn-primary text-sm">
-          <BookOpen size={15} /> {saving ? 'Guardando...' : savedPlan ? '✓ Guardado' : 'Guardar en biblioteca'}
-        </button>
-        {!savedPlan && (
-          <button onClick={() => setScheduling(!scheduling)} disabled={saving} className="btn-ghost text-sm">
-            <Calendar size={15} /> Programar
-          </button>
-        )}
-        {scheduling && !savedScheduled && (
-          <div className="flex items-center gap-2 w-full mt-1">
-            <input
-              type="date"
-              value={scheduledDate}
-              onChange={e => setScheduledDate(e.target.value)}
-              className="px-3 py-2 rounded-xl text-sm outline-none"
-              style={{ border: '1.5px solid rgba(122,24,50,0.2)', background: '#FFFDF5', color: '#591427' }}
-            />
-            <button
-              onClick={onSchedule}
-              disabled={saving || !scheduledDate}
-              className="btn-primary text-sm"
-              style={{ opacity: !scheduledDate ? 0.5 : 1 }}
-            >
-              {saving ? 'Guardando...' : 'Confirmar fecha'}
-            </button>
-          </div>
-        )}
-        {savedScheduled && (
-          <span className="flex items-center gap-1 text-sm font-semibold" style={{ color: '#7A1832' }}>
-            <Check size={14} /> Programado para {scheduledDate}
-          </span>
-        )}
-        {savedPlan && !savedScheduled && (
-          <Link href="/biblioteca" className="flex items-center gap-1 text-sm font-semibold" style={{ color: '#7A1832' }}>
-            Ver en biblioteca <ArrowRight size={14} />
-          </Link>
-        )}
-        {savedScheduled && (
-          <Link href="/calendario" className="flex items-center gap-1 text-sm font-semibold" style={{ color: '#7A1832' }}>
-            Ver en calendario <ArrowRight size={14} />
-          </Link>
-        )}
-        <button onClick={onNew} className="btn-ghost text-sm">
-          <Trash2 size={15} /> Nuevo
-        </button>
       </div>
     </div>
   )

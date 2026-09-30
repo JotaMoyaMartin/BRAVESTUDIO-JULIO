@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
   CameraOff, SwitchCamera, Play, Pause, Circle, Square, Download, Share2,
-  Plus, Minus, X, RotateCcw, Copy, Check, ChevronLeft, Film, Clapperboard,
+  Plus, Minus, X, RotateCcw, Copy, Check, ChevronLeft, Film, Clapperboard, ChevronDown,
 } from 'lucide-react'
 import {
   TeleprompterInput,
@@ -46,6 +46,17 @@ export default function TeleprompterClient({ savedScripts = null }: { savedScrip
   const [pasted, setPasted] = useState(false)
   const [seconds, setSeconds] = useState(0)
   const [demoSaved, setDemoSaved] = useState<SavedScriptCard[]>([])
+  // Tarjetas de "Mis guiones" desplegadas (leer el guion antes de decidir).
+  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set())
+
+  const toggleCard = useCallback((id: string) => {
+    setExpandedCards(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }, [])
 
   // Demo: los guiones guardados salen de demoGetPlan (misma fuente que Biblioteca).
   useEffect(() => {
@@ -382,30 +393,61 @@ export default function TeleprompterClient({ savedScripts = null }: { savedScrip
               Guiones que ya tienes en BRÄVE, listos para grabar.
             </p>
             <div className="space-y-2.5">
-              {saved.map(card => (
-                <div
-                  key={card.id}
-                  className="p-3.5 rounded-[var(--radius-sm)] flex items-start justify-between gap-3"
-                  style={{ background: 'white', border: '1.5px solid rgba(122,24,50,0.08)' }}
-                >
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-cherry-dark truncate">{card.title}</p>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-cherry mb-1" style={{ opacity: 0.5 }}>
-                      {card.kindLabel} · {card.createdAt ? shortDate(card.createdAt) : 'guardado'}
-                    </p>
-                    <p className="text-xs text-cherry-dark leading-snug" style={{ opacity: 0.65, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                      {card.preview}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => selectScript(card)}
-                    className="btn-primary text-xs py-2 flex-shrink-0"
-                    aria-label={`Usar en Teleprompter: ${card.title}`}
+              {saved.map(card => {
+                const open = expandedCards.has(card.id)
+                return (
+                  <div
+                    key={card.id}
+                    className="rounded-[var(--radius-sm)]"
+                    style={{ background: 'white', border: '1.5px solid rgba(122,24,50,0.08)' }}
                   >
-                    <Play size={12} /> Usar
-                  </button>
-                </div>
-              ))}
+                    {/* Cabeza clicable: despliega el guion completo para leerlo antes de usar */}
+                    <button
+                      onClick={() => toggleCard(card.id)}
+                      className="w-full text-left p-3.5 flex items-start justify-between gap-3"
+                      aria-expanded={open}
+                      aria-label={`Ver guion completo: ${card.title}`}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-cherry-dark truncate">{card.title}</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-cherry mb-1" style={{ opacity: 0.5 }}>
+                          {card.kindLabel} · {card.createdAt ? shortDate(card.createdAt) : 'guardado'}
+                        </p>
+                        <p
+                          className="text-xs text-cherry-dark leading-snug whitespace-pre-line"
+                          style={{
+                            opacity: 0.65,
+                            display: open ? 'block' : '-webkit-box',
+                            WebkitLineClamp: open ? undefined : 2,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: open ? 'auto' : 'hidden',
+                            maxHeight: open ? 132 : undefined,
+                          }}
+                        >
+                          {card.text}
+                        </p>
+                      </div>
+                      <span
+                        className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-cherry"
+                        style={{ color: 'var(--color-cherry)', background: 'rgba(122,24,50,0.06)' }}
+                      >
+                        <ChevronDown size={14} className={open ? 'rotate-180 transition-transform' : 'transition-transform'} />
+                      </span>
+                    </button>
+                    {open && (
+                      <div className="px-3.5 pb-3.5">
+                        <button
+                          onClick={() => selectScript(card)}
+                          className="btn-primary text-xs py-2 w-full"
+                          aria-label={`Usar en Teleprompter: ${card.title}`}
+                        >
+                          <Play size={12} /> Usar este guion
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           </div>
         )}

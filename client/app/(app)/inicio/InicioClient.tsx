@@ -28,7 +28,7 @@ import type { ReelInspiration, ReelTransition } from '@/types/database'
 const FREEDOM_CHIPS = [
   { href: '/crear-contenido?type=reel', icon: Clapperboard, label: 'Reel' },
   { href: '/stories', icon: LayoutGrid, label: 'Stories' },
-  { href: '/crear-contenido?type=carrusel', icon: Film, label: 'Carrusel' },
+  { href: '/carrusel', icon: Film, label: 'Carrusel' },
   { href: '/planificar', icon: Lightbulb, label: 'Ideas' },
 ]
 

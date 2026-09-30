@@ -647,12 +647,37 @@ export default function TeleprompterClient({ savedScripts = null }: { savedScrip
                   {playing ? <Pause size={17} /> : <Play size={17} />}
                 </button>
                 <ControlChip label="Velocidad" onMinus={() => setSpeed(s => clampSpeed(s - SPEED_STEP))} onPlus={() => setSpeed(s => clampSpeed(s + SPEED_STEP))} value={`${speed.toFixed(2).replace(/\.?0+$/, '')}x`} />
-                <ControlChip
-                  label="Calidad"
-                  onMinus={() => setQuality(q => (q === 'hd' ? 'uhd' : 'hd'))}
-                  onPlus={() => setQuality(q => (q === 'uhd' ? 'hd' : 'uhd'))}
-                  value={quality === 'hd' ? 'HD' : '4K'}
-                />
+                {/* Elige calidad tocando la opción, como en la cámara del iPhone */}
+                <div className="flex flex-col items-center gap-1">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-white/80">Calidad</p>
+                  <div
+                    className="flex rounded-full"
+                    style={{ background: 'rgba(255,255,255,0.14)', border: '1.5px solid rgba(255,255,255,0.4)', padding: 2 }}
+                  >
+                    <button
+                      onClick={() => setQuality('hd')}
+                      aria-pressed={quality === 'hd'}
+                      className="px-3 py-1 rounded-full text-xs font-bold transition-all"
+                      style={{
+                        background: quality === 'hd' ? 'white' : 'transparent',
+                        color: quality === 'hd' ? 'var(--color-ink)' : 'rgba(255,255,255,0.75)',
+                      }}
+                    >
+                      HD
+                    </button>
+                    <button
+                      onClick={() => setQuality('uhd')}
+                      aria-pressed={quality === 'uhd'}
+                      className="px-3 py-1 rounded-full text-xs font-bold transition-all"
+                      style={{
+                        background: quality === 'uhd' ? 'white' : 'transparent',
+                        color: quality === 'uhd' ? 'var(--color-ink)' : 'rgba(255,255,255,0.75)',
+                      }}
+                    >
+                      4K
+                    </button>
+                  </div>
+                </div>
                 <button
                   onClick={cam.flipCamera}
                   className="flex items-center justify-center w-11 h-11 rounded-full text-white"

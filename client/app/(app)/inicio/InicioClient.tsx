@@ -50,17 +50,36 @@ function ToolsSection({
   inspirations: ReelInspiration[]
   transitions: ReelTransition[]
 }) {
+  // Tiles VIVOS: los de Inspiración/Transiciones muestran portadas reales de
+  // la base de datos (rotan solas) — presencia de banner sin imagen estática.
+  const liveCovers = useMemo(() => {
+    const coversOf = (rows: Array<{ cover_image?: string | null }> | null | undefined) =>
+      (rows ?? []).map(r => r?.cover_image).filter((v): v is string => !!v).slice(0, 12)
+    const insp = coversOf(inspirations)
+    const tr = coversOf(transitions)
+    return {
+      '/inspiracion-reels': insp,
+      '/transiciones-reels': tr,
+    } as Record<string, string[]>
+  }, [inspirations, transitions])
+
   return (
     <section className="space-y-4">
       <h2 className="text-lg font-bold text-ink" style={{ letterSpacing: '-0.3px' }}>Todas tus herramientas</h2>
       <InspirationPreview inspirations={inspirations} />
       <TransitionsPreview transitions={transitions} />
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
-        {tiles.map(t => (
-          <div key={t.href} className={t.image ? 'col-span-2' : ''}>
-            <AppTile {...t} />
-          </div>
-        ))}
+        {tiles.map(t => {
+          const covers = liveCovers[t.href]
+          const live = covers && covers.length > 0 && t.liveCaption
+            ? { covers, caption: t.liveCaption, noun: t.liveNoun ?? 'ideas' }
+            : undefined
+          return (
+            <div key={t.href} className={t.image || live ? 'col-span-2' : ''}>
+              <AppTile {...t} live={live} />
+            </div>
+          )
+        })}
       </div>
     </section>
   )

@@ -1,6 +1,6 @@
 'use client'
 import Link from 'next/link'
-import { useMemo } from 'react'
+import { useEffect, useState } from 'react'
 import { ArrowRight, Wand2 } from 'lucide-react'
 import { ReelTransition } from '@/types/database'
 
@@ -11,10 +11,12 @@ interface Props {
 }
 
 export default function TransitionsPreview({ transitions }: Props) {
-  // Rotación: mezcla aleatoria en cada mount → diferentes ejemplos cada visita
-  const previewItems = useMemo(() => {
-    const shuffled = [...transitions].sort(() => Math.random() - 0.5)
-    return shuffled.slice(0, 6)
+  // Rotación: en el PRIMER render (SSR + primer hidratado) va en orden — el
+  // barajado llega tras el mount (Math.random en render descolgaba la
+  // hidratación: textos de servidor ≠ cliente).
+  const [previewItems, setPreviewItems] = useState(transitions.slice(0, 6))
+  useEffect(() => {
+    setPreviewItems([...transitions].sort(() => Math.random() - 0.5).slice(0, 6))
   }, [transitions])
 
   if (previewItems.length === 0) return null

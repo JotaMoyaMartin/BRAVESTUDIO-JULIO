@@ -24,7 +24,28 @@ const DEMO_PROFILE: Profile = {
 
 export default async function InicioPage() {
   if (!IS_CONFIGURED) {
-    return <InicioClient profile={DEMO_PROFILE} todayInput={null} isPremium={false} />
+    // Demo: portadas de relleno (SOLO visual, son banners locales) para que
+    // los bloques de Inspiración/Transiciones y los tiles vivos se vean con
+    // datos — en producción nacen de reel_inspirations/reel_transitions.
+    const demoInsp = [
+      { id: 'd1', title: 'Lo que nadie te cuenta del balayage', short_description: '', cover_image: '/tiles/guiones-banner.jpg' },
+      { id: 'd2', title: 'Tu rubio dura menos y es tu culpa', short_description: '', cover_image: '/tiles/stories-banner.jpg' },
+      { id: 'd3', title: '5 cortes que despiertan', short_description: '', cover_image: '/tiles/calendario-banner.jpg' },
+    ] as unknown as ReelInspiration[]
+    const demoTrans = [
+      { id: 't1', title: 'Whip pan: el corte más rápido', short_description: '', cover_image: '/tiles/teleprompter-banner.jpg' },
+      { id: 't2', title: 'Match cut de manos', short_description: '', cover_image: '/tiles/biblioteca-banner.jpg' },
+      { id: 't3', title: 'Zoom brusco al detalle', short_description: '', cover_image: '/tiles/planificar-banner.jpg' },
+    ] as unknown as ReelTransition[]
+    return (
+      <InicioClient
+        profile={DEMO_PROFILE}
+        todayInput={null}
+        isPremium={false}
+        inspirations={demoInsp}
+        transitions={demoTrans}
+      />
+    )
   }
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

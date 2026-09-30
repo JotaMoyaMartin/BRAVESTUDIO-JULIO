@@ -1,5 +1,5 @@
 'use client'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
@@ -120,6 +120,9 @@ export default function TeleprompterClient({ savedScripts = null }: { savedScrip
   const innerRef = useRef<HTMLDivElement | null>(null)
   const offsetRef = useRef(0)
   const endRef = useRef(0)
+  const maxOffsetRef = useRef(0)
+  // Arrastre para rebobinar: tocar y tirar del texto lo trae de vuelta.
+  const draggingRef = useRef<{ pointerId: number; startY: number; startOffset: number } | null>(null)
 
   const applyOffset = useCallback(() => {
     if (innerRef.current) innerRef.current.style.transform = `translateY(${offsetRef.current}px)`
@@ -130,6 +133,7 @@ export default function TeleprompterClient({ savedScripts = null }: { savedScrip
     const i = innerRef.current
     if (!w || !i) return
     offsetRef.current = w.clientHeight * 0.75 // primera línea entra desde abajo del encuadre
+    maxOffsetRef.current = offsetRef.current
     // Fin: la última línea queda visible en el tercio superior (no desaparece entera).
     endRef.current = w.clientHeight * 0.35 - i.scrollHeight
     applyOffset()
@@ -147,19 +151,51 @@ export default function TeleprompterClient({ savedScripts = null }: { savedScrip
     const step = (now: number) => {
       const dt = (now - last) / 1000
       last = now
-      offsetRef.current -= v * dt
-      if (offsetRef.current <= endRef.current) {
-        offsetRef.current = endRef.current
+      // Mientras se arrastra el texto, el avance automático se congela.
+      if (!draggingRef.current) {
+        offsetRef.current -= v * dt
+        if (offsetRef.current <= endRef.current) {
+          offsetRef.current = endRef.current
+          applyOffset()
+          setPlaying(false)
+          return
+        }
         applyOffset()
-        setPlaying(false)
-        return
       }
-      applyOffset()
       raf = requestAnimationFrame(step)
     }
     raf = requestAnimationFrame(step)
     return () => cancelAnimationFrame(raf)
   }, [playing, speed, fontSize, applyOffset])
+
+  // --- Arrastrar el texto para repetir (funciona grabando y en pausa) ---
+  const onTextPointerDown = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
+    draggingRef.current = { pointerId: e.pointerId, startY: e.clientY, startOffset: offsetRef.current }
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId)
+    } catch {
+      /* sin captura: igual se puede arrastrar */
+    }
+  }, [])
+
+  const onTextPointerMove = useCallback(
+    (e: ReactPointerEvent<HTMLDivElement>) => {
+      const d = draggingRef.current
+      if (!d || d.pointerId !== e.pointerId) return
+      const w = windowRef.current
+      if (!w) return
+      let next = d.startOffset + (e.clientY - d.startY)
+      if (next > maxOffsetRef.current) next = maxOffsetRef.current
+      else if (next < endRef.current) next = endRef.current
+      offsetRef.current = next
+      applyOffset()
+    },
+    [applyOffset],
+  )
+
+  const onTextPointerEnd = useCallback(() => {
+    draggingRef.current = null
+  }, [])
 
   // --- Flujo de grabación ---
   const startCountdown = useCallback(() => {
@@ -197,10 +233,14 @@ export default function TeleprompterClient({ savedScripts = null }: { savedScrip
     setPlaying(false)
     const result = await cam.stopRecording()
     if (result) {
+      // Detach la cámara del <video> ANTES del preview: si el stream sigue en
+      // srcObject, en el mismo nodo tapa al src=blob (era la "cámara de nuevo").
+      cam.hideCameraFeed()
       setRecorded({ blob: result.blob, url: result.url, mime: result.mime })
       setStage('preview')
     } else {
-      // Grabación vacía: repetir sin castigo.
+      // Grabación vacía: repetir sin castigo, pero aviso claro.
+      setSavedMessage('La grabación salió vacía. Pulsa grabar para repetir.')
       resetScroll()
       setStage('ready')
     }
@@ -211,8 +251,14 @@ export default function TeleprompterClient({ savedScripts = null }: { savedScrip
     setRecorded(null)
     setSavedMessage(null)
     resetScroll()
+    cam.showCameraFeed() // vuelve la proyección en vivo al <video>
     setStage('ready')
-  }, [recorded, resetScroll])
+  }, [recorded, resetScroll, cam])
+
+  /** Rebobina el texto al principio sin cortar la grabación. */
+  const rewindToStart = useCallback(() => {
+    resetScroll()
+  }, [resetScroll])
 
   const saveVideo = useCallback(async () => {
     if (!recorded) return
@@ -252,6 +298,7 @@ export default function TeleprompterClient({ savedScripts = null }: { savedScrip
       if (recorded) URL.revokeObjectURL(recorded.url)
       setRecorded(null)
       setSavedMessage(null)
+      cam.showCameraFeed() // siguiente story: cámara de vuelta en el <video>
       setStage('ready')
       return
     }
@@ -309,6 +356,7 @@ export default function TeleprompterClient({ savedScripts = null }: { savedScrip
       : null
 
   const recorderOpen = stage === 'setup' || stage === 'ready' || stage === 'countdown' || stage === 'recording' || stage === 'preview'
+  const isPreview = stage === 'preview'
 
   return (
     <>
@@ -466,12 +514,19 @@ export default function TeleprompterClient({ savedScripts = null }: { savedScrip
       {/* ---------- Grabador a pantalla completa ---------- */}
       {recorderOpen && (
         <div className="fixed inset-0 z-50 bg-black">
-          {/* Vídeo o preview */}
-          {stage === 'preview' && recorded ? (
-            <video src={recorded.url} controls autoPlay playsInline className="absolute inset-0 w-full h-full object-contain" />
-          ) : (
-            <video ref={videoRef} playsInline muted className="absolute inset-0 w-full h-full object-cover" />
-          )}
+          {/* UN solo <video> siempre montado: en preview juega el blob (la
+              cámara ya se despegó con hideCameraFeed); en las demás fases,
+              proyección en vivo. Mismo nodo ⇒ React nunca reutiliza entre
+              ramas y srcObject no puede tapar al src. */}
+          <video
+            ref={videoRef}
+            playsInline
+            muted
+            autoPlay={isPreview}
+            controls={isPreview}
+            src={isPreview && recorded ? recorded.url : undefined}
+            className={`absolute inset-0 w-full h-full ${isPreview ? 'object-contain' : 'object-cover'}`}
+          />
 
           {/* Barra superior: salir + título — siempre a la vista */}
           <div className="absolute top-0 inset-x-0 flex items-center justify-between p-4 z-10">
@@ -486,9 +541,19 @@ export default function TeleprompterClient({ savedScripts = null }: { savedScrip
             </p>
           </div>
 
-          {/* Texto superpuesto (arriba: mirada cerca de la cámara del móvil) */}
+          {/* Texto superpuesto (arriba: mirada cerca de la cámara del móvil).
+              Interactivo en ready/recording: tirar del texto lo rebobina. */}
           {(stage === 'ready' || stage === 'countdown' || stage === 'recording') && (
-            <div ref={windowRef} className="absolute inset-x-0 top-[14%] h-[40%] overflow-hidden px-5 z-10" style={{ pointerEvents: 'none' }}>
+            <div
+              ref={windowRef}
+              data-testid="teleprompter-text"
+              className={`absolute inset-x-0 top-[14%] h-[40%] overflow-hidden px-5 z-10 ${stage === 'countdown' ? '' : 'touch-none select-none'}`}
+              style={{ pointerEvents: stage === 'countdown' ? 'none' : 'auto' }}
+              onPointerDown={stage === 'countdown' ? undefined : onTextPointerDown}
+              onPointerMove={stage === 'countdown' ? undefined : onTextPointerMove}
+              onPointerUp={stage === 'countdown' ? undefined : onTextPointerEnd}
+              onPointerCancel={stage === 'countdown' ? undefined : onTextPointerEnd}
+            >
               <div
                 ref={innerRef}
                 className="mx-auto max-w-xl whitespace-pre-wrap text-center font-bold text-white will-change-transform"
@@ -552,6 +617,15 @@ export default function TeleprompterClient({ savedScripts = null }: { savedScrip
             </div>
           )}
 
+          {/* Aviso (p. ej. grabación vacía) en la pantalla lista */}
+          {stage === 'ready' && savedMessage && (
+            <div className="absolute top-16 inset-x-0 z-10 flex justify-center px-6">
+              <p className="px-3 py-1.5 rounded-full bg-white/90 text-cherry-dark text-xs font-semibold text-center">
+                {savedMessage}
+              </p>
+            </div>
+          )}
+
           {/* Controles (ready): mínimos, abajo, nunca sobre el texto */}
           {stage === 'ready' && (
             <div className="absolute bottom-0 inset-x-0 z-10 pb-6 pt-10" style={{ background: 'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.55) 60%)' }}>
@@ -593,11 +667,19 @@ export default function TeleprompterClient({ savedScripts = null }: { savedScrip
             <div className="absolute bottom-0 inset-x-0 z-10 pb-6 pt-10 px-4" style={{ background: 'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.55) 60%)' }}>
               {cam.paused && (
                 <p className="mb-3 text-center text-xs font-semibold text-white/85">
-                  En pausa. Coloca el texto con los controles y continúa cuando quieras.
+                  En pausa. Arrastra el texto hacia abajo para repetir una parte y continúa cuando quieras.
                 </p>
               )}
               <div className="flex items-center justify-center gap-4 flex-wrap">
                 <ControlChip label="Texto" onMinus={() => setFontSize(f => clampFontSize(f - FONT_STEP))} onPlus={() => setFontSize(f => clampFontSize(f + FONT_STEP))} value={`${fontSize}px`} />
+                <button
+                  onClick={rewindToStart}
+                  className="flex items-center justify-center w-11 h-11 rounded-full text-white"
+                  style={{ background: 'rgba(255,255,255,0.18)', border: '1.5px solid rgba(255,255,255,0.4)' }}
+                  aria-label="Volver el texto al principio"
+                >
+                  <RotateCcw size={17} />
+                </button>
                 <button
                   onClick={() => setPlaying(p => !p)}
                   className="flex items-center justify-center w-11 h-11 rounded-full text-white"
@@ -634,6 +716,7 @@ export default function TeleprompterClient({ savedScripts = null }: { savedScrip
           {/* Preview: repetir / guardar / continuar */}
           {stage === 'preview' && recorded && (
             <div className="absolute bottom-0 inset-x-0 z-10 p-5 pb-8" style={{ background: 'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.75) 45%)' }}>
+              <p className="text-center text-[11px] text-white/70 mb-2">Míralo completo antes de guardarlo</p>
               <div className="flex flex-wrap items-center justify-center gap-3">
                 <button onClick={repeat} className="px-5 py-3 rounded-[var(--radius-sm)] text-sm font-semibold text-white" style={{ border: '1.5px solid rgba(255,255,255,0.4)' }}>
                   <RotateCcw size={15} /> Repetir

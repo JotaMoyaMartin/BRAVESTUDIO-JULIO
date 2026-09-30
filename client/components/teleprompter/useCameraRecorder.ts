@@ -55,6 +55,27 @@ export interface RecordingResult {
   mime: string
 }
 
+/** Rect fuente (dentro del vídeo) para rellenar targetW×targetH recortando al centro. */
+export function coverCrop(
+  vw: number,
+  vh: number,
+  targetW: number,
+  targetH: number,
+): { sx: number; sy: number; sw: number; sh: number } {
+  const target = targetW / targetH
+  let sw = vw
+  let sh = vw / target
+  if (sh > vh) {
+    sh = vh
+    sw = vh * target
+  }
+  return { sx: (vw - sw) / 2, sy: (vh - sh) / 2, sw, sh }
+}
+
+/** Resolución del vídeo guardado: 9:16 como lo ve Instagram/TikTok/Reels. */
+const REC_WIDTH = 720
+const REC_HEIGHT = 1280
+
 export type Facing = 'user' | 'environment'
 
 export function useCameraRecorder(videoRef: React.RefObject<HTMLVideoElement | null>) {
@@ -68,11 +89,28 @@ export function useCameraRecorder(videoRef: React.RefObject<HTMLVideoElement | n
   const [paused, setPaused] = useState(false)
   const [canPause, setCanPause] = useState(false)
   const [mimeType, setMimeType] = useState<string | null>(null)
+  // Feed vertical: canvas 9:16 repintado por rAF (el vídeo guardado sale recortado
+  // al centro, no el 4:3 crudo de la cámara).
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const canvasStreamRef = useRef<MediaStream | null>(null)
+  const drawRafRef = useRef(0)
+
+  const stopCanvasFeed = useCallback(() => {
+    cancelAnimationFrame(drawRafRef.current)
+    drawRafRef.current = 0
+    canvasStreamRef.current?.getTracks().forEach(t => t.stop())
+    canvasStreamRef.current = null
+    if (canvasRef.current && canvasRef.current.parentNode) {
+      canvasRef.current.parentNode.removeChild(canvasRef.current)
+    }
+    canvasRef.current = null
+  }, [])
 
   function stopTracks() {
     streamRef.current?.getTracks().forEach(t => t.stop())
     streamRef.current = null
     if (videoRef.current) videoRef.current.srcObject = null
+    stopCanvasFeed()
   }
 
   function mapError(err: unknown): CameraErrorKind {
@@ -150,34 +188,113 @@ export function useCameraRecorder(videoRef: React.RefObject<HTMLVideoElement | n
       setStatus('error')
       return false
     }
+    stopCanvasFeed() // feed anterior si lo hubiera
     let mime = pickMimeType()
     chunksRef.current = []
-    let recorder: MediaRecorder
-    try {
-      // Omitir mimeType (no pasar string vacío) si nada pasó isTypeSupported.
-      recorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream)
-    } catch {
+
+    // Formato vertical 9:16: la cámara nativa da 4:3; componemos cada frame
+    // en un canvas 720×1280 (recorte al centro, lo mismo que se ve en pantalla,
+    // object-cover) y grabamos ese feed con el audio del micro.
+    let recordStream: MediaStream = stream
+    let usingFeed = false
+    const video = videoRef.current
+    const canCapture =
+      typeof HTMLCanvasElement !== 'undefined' && typeof HTMLCanvasElement.prototype.captureStream === 'function'
+    if (video && video.videoWidth > 0 && canCapture) {
       try {
-        mime = null
-        recorder = new MediaRecorder(stream)
+        const canvas = document.createElement('canvas')
+        canvas.width = REC_WIDTH
+        canvas.height = REC_HEIGHT
+        // Safari solo entrega frames de un canvas compuesto: lo montamos diminuto.
+        canvas.style.cssText = 'position:fixed;left:0;bottom:0;width:2px;height:2px;opacity:0.01;pointer-events:none;'
+        document.body.appendChild(canvas)
+        const ctx = canvas.getContext('2d')
+        if (!ctx) throw new Error('2d no disponible')
+        const target = canvas.width / canvas.height
+        const draw = () => {
+          const vw = video.videoWidth
+          const vh = video.videoHeight
+          if (vw > 0 && vh > 0) {
+            const c = coverCrop(vw, vh, canvas.width, canvas.height)
+            ctx.drawImage(video, c.sx, c.sy, c.sw, c.sh, 0, 0, canvas.width, canvas.height)
+          }
+          drawRafRef.current = requestAnimationFrame(draw)
+        }
+        draw()
+        const canvasStream = canvas.captureStream(30)
+        canvasStreamRef.current = canvasStream
+        canvasRef.current = canvas
+        recordStream = new MediaStream([...canvasStream.getVideoTracks(), ...stream.getAudioTracks()])
+        usingFeed = true
       } catch {
-        setErrorKind('record')
-        return false
+        stopCanvasFeed() // sin canvas: cámara directa, nunca rompe la grabación
       }
+    }
+
+    const tryRecorder = (s: MediaStream, m: string | null): MediaRecorder | null => {
+      try {
+        return m ? new MediaRecorder(s, { mimeType: m }) : new MediaRecorder(s)
+      } catch {
+        return null
+      }
+    }
+    let recorder = tryRecorder(recordStream, mime)
+    if (!recorder && usingFeed) {
+      // El mime no tragó con el canvas (Chrome anuncia MP4 pero lo rechaza aquí):
+      // verticales igualmente, dejando que el navegador elija códec.
+      recorder = tryRecorder(recordStream, null)
+    }
+    if (!recorder && usingFeed) {
+      // Algunos navegadores no aceptan el feed de canvas:
+      // cámara directa tal cual, la grabación sigue existiendo.
+      stopCanvasFeed()
+      usingFeed = false
+      recordStream = stream
+      recorder = tryRecorder(recordStream, mime)
+    }
+    if (!recorder) {
+      // Última carta: sin mimeType y que el navegador elija.
+      mime = null
+      recorder = tryRecorder(recordStream, null)
+    }
+    if (!recorder) {
+      setErrorKind('record')
+      return false
     }
     chunksRef.current = []
     recorder.ondataavailable = e => {
       if (e.data.size > 0) chunksRef.current.push(e.data)
     }
     recorder.onerror = () => setErrorKind('record')
-    recorder.start() // sin timeslice: un blob al parar
+    // Con MP4 (iOS) sin timeslice: Safari entrega todo al parar y sus trozos
+    // parciales pueden romper el archivo. Con WebM sí, trozos por segundo.
+    if (mime && mime.includes('mp4')) recorder.start()
+    else recorder.start(1000)
     recorderRef.current = recorder
     setMimeType(recorder.mimeType || mime)
     setCanPause(typeof recorder.pause === 'function')
     setRecording(true)
     setPaused(false)
     return true
-  }, [])
+  }, [videoRef, stopCanvasFeed])
+
+  /** Stream vivo de la cámara (para volver a proyectarlo tras el preview). */
+  const getCameraStream = useCallback((): MediaStream | null => streamRef.current, [])
+
+  /** Quita la proyección de cámara del <video> (el stream sigue vivo). */
+  const hideCameraFeed = useCallback(() => {
+    if (videoRef.current) videoRef.current.srcObject = null
+  }, [videoRef])
+
+  /** Reproyecta la cámara en el <video> (del preview se vuelve a grabar). */
+  const showCameraFeed = useCallback(() => {
+    const v = videoRef.current
+    if (v && streamRef.current) {
+      v.srcObject = streamRef.current
+      v.muted = true
+      v.play().catch(() => {})
+    }
+  }, [videoRef])
 
   const stopRecording = useCallback(async (): Promise<RecordingResult | null> => {
     const recorder = recorderRef.current
@@ -198,6 +315,7 @@ export function useCameraRecorder(videoRef: React.RefObject<HTMLVideoElement | n
     setRecording(false)
     recorderRef.current = null
     await stopped
+    stopCanvasFeed() // el feed vertical muere con la grabación
     const blob = new Blob(chunksRef.current, { type: mime || 'video/mp4' })
     return blob.size > 0 ? { blob, url: URL.createObjectURL(blob), mime: mime || 'video/mp4' } : null
   }, [mimeType])
@@ -239,8 +357,9 @@ export function useCameraRecorder(videoRef: React.RefObject<HTMLVideoElement | n
     return () => {
       streamRef.current?.getTracks().forEach(t => t.stop())
       streamRef.current = null
+      stopCanvasFeed()
     }
-  }, [])
+  }, [stopCanvasFeed])
 
   return {
     status,
@@ -256,6 +375,9 @@ export function useCameraRecorder(videoRef: React.RefObject<HTMLVideoElement | n
     pauseRecording,
     resumeRecording,
     stopRecording,
+    getCameraStream,
+    hideCameraFeed,
+    showCameraFeed,
     closeCamera,
   }
 }

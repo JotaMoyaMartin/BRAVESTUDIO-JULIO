@@ -75,9 +75,9 @@ export default function Sidebar({ profile }: { profile: Profile }) {
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
-      {/* Logo */}
+      {/* Logo — al pulsarlo vuelves a Inicio */}
       <div className="px-6 py-6 border-b border-soft">
-        <div className="flex items-center gap-3">
+        <Link href="/inicio" className="flex items-center gap-3" title="Ir a Inicio">
           <div className="w-9 h-9 rounded-[var(--radius-sm)] flex items-center justify-center bg-cherry">
             <span className="text-white text-sm font-bold">B</span>
           </div>
@@ -85,7 +85,7 @@ export default function Sidebar({ profile }: { profile: Profile }) {
             <p className="font-bold text-sm text-cherry-dark" style={{ letterSpacing: '-0.3px' }}>BRÄVE Studio</p>
             <p className="text-xs text-cherry opacity-70">{profile.salon_name || profile.full_name || 'Mi salón'}</p>
           </div>
-        </div>
+        </Link>
       </div>
 
       {/* Nav */}
@@ -194,14 +194,14 @@ export default function Sidebar({ profile }: { profile: Profile }) {
         className="fixed top-0 left-0 right-0 z-40 md:hidden flex items-center justify-between px-4 bg-white"
         style={{ height: 56, borderBottom: '1.5px solid var(--color-buttermilk)' }}
       >
-        <div className="flex items-center gap-2.5 min-w-0">
+        <Link href="/inicio" className="flex items-center gap-2.5 min-w-0" title="Ir a Inicio">
           <div className="w-8 h-8 rounded-[var(--radius-sm)] flex items-center justify-center bg-cherry flex-shrink-0">
             <span className="text-white text-xs font-bold">B</span>
           </div>
           <p className="font-bold text-sm text-cherry-dark truncate" style={{ letterSpacing: '-0.3px' }}>
             {profile.salon_name || profile.full_name || 'BRÄVE Studio'}
           </p>
-        </div>
+        </Link>
         <button
           onClick={() => setOpen(!open)}
           className="flex items-center gap-2 px-4 rounded-[var(--radius-sm)] bg-cherry text-white font-semibold text-sm transition-all hover:opacity-90 flex-shrink-0"

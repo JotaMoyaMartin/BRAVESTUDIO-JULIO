@@ -74,9 +74,12 @@ export default async function InicioPage() {
     supabase.from('reel_transitions').select('id, title, short_description, cover_image').eq('status', 'active'),
   ])
 
-  // Cargar progreso del Reto 10K solo para usuarios normales
+  // RETO 10K OCULTO (30 sep, petición Jota): simplificar la Home. La lógica del
+  // reto sigue intacta en lib/home-today.ts y la ruta /reto-10k funciona —
+  // para reactivar, volver SHOW_RETO a true (de nuevo carga progreso + misión).
+  const SHOW_RETO = false
   let retoProgressRow: Reto10kProgress | null = null
-  if (!isPremium) {
+  if (SHOW_RETO && !isPremium) {
     const { data: retoRow } = await supabase
       .from('reto_10k_progress')
       .select('*')
@@ -89,7 +92,7 @@ export default async function InicioPage() {
   const todayISO = localISODate(new Date())
   const weekKey = getWeekKey(new Date())
   const itemList = (items as Partial<ContentItem>[] | null) || []
-  const retoActive = !isPremium && retoProgressRow?.status === 'active'
+  const retoActive = SHOW_RETO && !isPremium && retoProgressRow?.status === 'active'
   const retoDay = retoActive ? computeCurrentDay(retoProgressRow!.started_at) : 0
   let retoMissionTitle: string | null = null
   if (retoActive) {

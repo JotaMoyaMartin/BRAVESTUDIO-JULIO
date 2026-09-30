@@ -6,7 +6,7 @@ import { Profile } from '@/types/database'
 import {
   Home, Sparkles, Star,
   Film, LayoutGrid, BookOpen, Calendar, LogOut, Menu, X,
-  Clapperboard, Wand2, Settings, Shield, Rocket, Crown, GraduationCap, Users, BarChart3,
+  Clapperboard, Wand2, Settings, Shield, Crown, GraduationCap, Users, BarChart3,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -23,7 +23,8 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { href: '/inicio', label: 'Inicio', icon: Home },
-  { href: '/reto-10k', label: 'Reto 10K', icon: Rocket, badge: 'NUEVO', highlight: true },
+  // Reto 10K oculto por Jota (30 sep): simplificar — reactivar junto al tile
+  // de tiles.ts. La ruta /reto-10k sigue existiendo por URL directa.
   { href: '/mi-marca', label: 'Mi Marca', icon: Star },
   { href: '/planificar', label: 'Planificación', icon: Sparkles },
   { href: '/crear-contenido', label: 'Guiones', icon: Film },

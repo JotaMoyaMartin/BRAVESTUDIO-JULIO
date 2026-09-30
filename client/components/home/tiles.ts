@@ -1,4 +1,4 @@
-import { Sparkles, Film, LayoutGrid, Star, Rocket, Clapperboard, Wand2, BookOpen, Calendar, BarChart3, GraduationCap, Captions, Images } from 'lucide-react'
+import { Sparkles, Film, LayoutGrid, Star, Clapperboard, Wand2, BookOpen, Calendar, BarChart3, GraduationCap, Captions, Images } from 'lucide-react'
 import { AppTileProps } from './AppTile'
 
 // Launcher de mini-apps — vive en /herramientas (Home v2 ya no es catálogo).
@@ -12,7 +12,8 @@ export const TILES_NORMAL: AppTileProps[] = [
   { href: '/transiciones-reels', icon: Wand2, label: 'Transiciones Reels', desc: 'El corte que engancha', tone: 'blue', image: '/tiles/transiciones-banner.jpg', imageAspect: '1746 / 901' },
   { href: '/biblioteca', icon: BookOpen, label: 'Biblioteca', desc: 'Todo tu contenido', tone: 'buttermilk', image: '/tiles/biblioteca-banner.jpg' },
   { href: '/calendario', icon: Calendar, label: 'Calendario', desc: 'Tu plan del mes', tone: 'green', image: '/tiles/calendario-banner.jpg' },
-  { href: '/reto-10k', icon: Rocket, label: 'Reto 10K', desc: 'Reto de 30 días', tone: 'cherry' },
+  // Reto 10K oculto por Jota (30 sep): simplificar. La ruta /reto-10k sigue viva —
+  // para reactivarlo: devolver esta línea a TILES_NORMAL (y el nav de Sidebar).
   { href: '/carrusel', icon: Images, label: 'Carrusel', desc: 'Carrusel listo para publicar', tone: 'green' },
 ]
 

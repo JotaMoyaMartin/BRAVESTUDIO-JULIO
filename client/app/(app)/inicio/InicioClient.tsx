@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { useState, useEffect, useMemo } from 'react'
-import { Target, ArrowRight, Clapperboard, LayoutGrid, Film, Lightbulb, Plus } from 'lucide-react'
+import { Target, ArrowRight } from 'lucide-react'
 import { Profile } from '@/types/database'
 import { ContentItem } from '@/types/database'
 import { demoGetPlan, demoGetBrand } from '@/lib/demo-store'
@@ -24,13 +24,6 @@ import type { ReelInspiration, ReelTransition } from '@/types/database'
 
 // HOME v2 — "BRÄVE me guía": una dirección, una señal de progreso, libertad debajo.
 // Sin catálogo (los tiles viven en /herramientas), sin XP/niveles, sin banners duales.
-
-const FREEDOM_CHIPS = [
-  { href: '/crear-contenido?type=reel', icon: Clapperboard, label: 'Reel' },
-  { href: '/stories', icon: LayoutGrid, label: 'Stories' },
-  { href: '/carrusel', icon: Film, label: 'Carrusel' },
-  { href: '/planificar', icon: Lightbulb, label: 'Ideas' },
-]
 
 function greeting(hour: number): string {
   if (hour < 12) return 'Buenos días'
@@ -172,19 +165,6 @@ export default function InicioClient({
 
         <TodayCard decision={plan.primary} />
 
-        <div>
-          <p className="text-sm text-cherry-dark opacity-70">¿Quieres explorar mientras tanto?</p>
-          <div className="flex items-center gap-4 mt-2">
-            <Link
-              href="/crear-contenido"
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-[var(--radius-sm)] text-sm font-semibold text-cherry-dark"
-              style={{ background: 'var(--color-warm-gray)' }}
-            >
-              <Plus size={14} /> Crear libremente
-            </Link>
-          </div>
-        </div>
-
         <ToolsSection tiles={TILES_NORMAL} inspirations={inspirations} transitions={transitions} />
       </div>
     )
@@ -250,24 +230,7 @@ export default function InicioClient({
         <p className="text-sm text-cherry-dark opacity-60">{progressLine}</p>
       )}
 
-      {/* 7. Libertad — accesos rápidos pequeños */}
-      <div style={{ paddingTop: 8 }}>
-        <p className="text-sm text-cherry-dark opacity-70 mb-2.5">¿Quieres hacer otra cosa?</p>
-        <div className="flex flex-wrap gap-2">
-          {FREEDOM_CHIPS.map(c => (
-            <Link
-              key={c.label}
-              href={c.href}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-[var(--radius-sm)] text-sm font-medium transition-all hover:scale-105"
-              style={{ background: 'var(--color-buttermilk)', color: 'var(--color-cherry-dark)', border: '1.5px solid rgba(122,24,50,0.1)' }}
-            >
-              <c.icon size={14} /> {c.label}
-            </Link>
-          ))}
-        </div>
-      </div>
-
-      {/* 8. Exploración — todas las herramientas a la vista (portadas reales + tarjetas grandes) */}
+      {/* 7. Exploración — todas las herramientas a la vista (portadas reales + tarjetas grandes) */}
       <ToolsSection
         tiles={isPremium ? TILES_PREMIUM : TILES_NORMAL}
         inspirations={inspirations}

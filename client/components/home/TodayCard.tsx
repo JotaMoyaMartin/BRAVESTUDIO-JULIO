@@ -1,6 +1,7 @@
 'use client'
 import Link from 'next/link'
-import { Clapperboard, CalendarCheck, Clock, Sparkles, Star, ArrowRight, Plus } from 'lucide-react'
+import { Clapperboard, CalendarCheck, Clock, Sparkles, Star, ArrowRight } from 'lucide-react'
+import { motion } from 'framer-motion'
 import { TodayDecision, TodayKind } from '@/lib/home-today'
 
 const KIND_ICON: Record<TodayKind, typeof Star> = {
@@ -13,6 +14,7 @@ const KIND_ICON: Record<TodayKind, typeof Star> = {
 }
 
 // ACCIÓN PRINCIPAL de Home v2 — debe dominar visualmente (PRODUCT §6.1).
+// Brevi vive dentro: flota y saluda — marca el recuadro como "lo importante".
 export default function TodayCard({ decision, retoNote }: { decision: TodayDecision; retoNote?: boolean }) {
   const Icon = KIND_ICON[decision.kind]
 
@@ -27,16 +29,29 @@ export default function TodayCard({ decision, retoNote }: { decision: TodayDecis
         boxShadow: '0 10px 30px -18px rgba(122,24,50,0.35)',
       }}
     >
-      <div className="flex items-center gap-3">
-        <div
-          className="w-11 h-11 rounded-[var(--radius-sm)] flex items-center justify-center flex-shrink-0"
-          style={{ background: 'var(--color-cherry)' }}
-        >
-          <Icon size={21} className="text-white" />
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div
+            className="w-11 h-11 rounded-[var(--radius-sm)] flex items-center justify-center flex-shrink-0"
+            style={{ background: 'var(--color-cherry)' }}
+          >
+            <Icon size={21} className="text-white" />
+          </div>
+          <p className="text-[11px] font-bold uppercase tracking-widest text-cherry opacity-60">
+            Recomendado para hoy · {decision.timeLabel}
+          </p>
         </div>
-        <p className="text-[11px] font-bold uppercase tracking-widest text-cherry opacity-60">
-          Recomendado para hoy · {decision.timeLabel}
-        </p>
+        {/* Brevi: se balancea (framer-motion, cero conflicto con SSR) */}
+        <motion.img
+          src="/bravi2.png"
+          alt="Brevi"
+          draggable={false}
+          aria-hidden
+          animate={{ y: [0, -7, 0], rotate: [0, -6, 3, 0] }}
+          transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
+          className="w-14 h-14 sm:w-16 sm:h-16 object-contain flex-shrink-0 -my-2"
+          style={{ filter: 'drop-shadow(0 3px 6px rgba(89,20,39,0.22))' }}
+        />
       </div>
 
       <h2 className="text-2xl sm:text-3xl font-bold text-ink mt-4" style={{ letterSpacing: '-0.5px' }}>
@@ -52,15 +67,6 @@ export default function TodayCard({ decision, retoNote }: { decision: TodayDecis
         >
           {decision.ctaLabel} <ArrowRight size={15} />
         </Link>
-        {/* Principio Libertad (PRODUCT §6.2): la recomendación nunca encierra. */}
-        {!decision.ctaHref.startsWith('/crear-contenido') && (
-          <Link
-            href="/crear-contenido"
-            className="inline-flex items-center gap-1 text-sm font-semibold text-cherry-dark opacity-60 hover:opacity-100"
-          >
-            <Plus size={14} /> Crear otra cosa
-          </Link>
-        )}
       </div>
 
       {retoNote && (

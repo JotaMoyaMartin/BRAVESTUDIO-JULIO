@@ -66,18 +66,27 @@ export default function TeleprompterClient({ savedScripts = null }: { savedScrip
   }, [])
   const saved = savedScripts ?? demoSaved
 
-  const selectScript = useCallback((card: SavedScriptCard) => {
-    setScript(card.text)
-    setInput({
-      script: card.text,
-      title: card.title,
-      source: card.kind === 'reel' ? 'reel' : 'stories',
-      returnUrl: null,
-      sequence: card.sequence ? { current: 0, total: card.sequence.length, items: card.sequence } : null,
-    })
-    setSavedMessage(null)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }, [])
+  /** "Usar este guion": carga el guion y abre el teleprompter directamente. */
+  const selectScript = useCallback(
+    async (card: SavedScriptCard) => {
+      setScript(card.text)
+      setInput({
+        script: card.text,
+        title: card.title,
+        source: card.kind === 'reel' ? 'reel' : 'stories',
+        returnUrl: null,
+        sequence: card.sequence ? { current: 0, total: card.sequence.length, items: card.sequence } : null,
+      })
+      setSavedMessage(null)
+      // Misma entrada que "Empezar a grabar": a pantalla completa al instante.
+      // Si la cámara falla, la propia pantalla pide permiso/reintenta (setup).
+      cam.closeCamera()
+      setStage('setup')
+      const ok = await cam.openCamera('user')
+      if (ok) setStage('ready')
+    },
+    [cam],
+  )
 
   const goBack = useCallback(() => {
     if (input?.returnUrl) router.push(input.returnUrl)

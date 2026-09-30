@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { REC_SIZES, computeRecordSize, coverCrop } from '@/components/teleprompter/useCameraRecorder'
+import { REC_SIZES, applyCanvasMirror, computeRecordSize, coverCrop } from '@/components/teleprompter/useCameraRecorder'
 
 // Recorte vertical 9:16: la cámara da 4:3 (u otra proporción) y el vídeo se
 // guarda rellenando 720×1280 con el recorte centrado (lo que se ve en pantalla).
@@ -92,5 +92,36 @@ describe('computeRecordSize', () => {
   it('sin vídeo (0×0) → cae a HD sensato', () => {
     expect(computeRecordSize(0, 0, 'hd')).toEqual({ w: 720, h: 1280 })
     expect(computeRecordSize(0, 0, 'uhd')).toEqual({ w: 720, h: 1280 })
+  })
+})
+
+// EFECTO ESPEJO: preview (CSS scaleX(-1)) y archivo (canvas) con LA MISMA
+// regla — lo que se ve es lo que se guarda. El helper voltea el eje X.
+describe('applyCanvasMirror', () => {
+  function stubCtx(): { ctx: CanvasRenderingContext2D; calls: string[][] } {
+    const calls: string[][] = []
+    const ctx = {
+      translate: (...a: number[]) => calls.push(['translate', ...a.map(String)]),
+      scale: (...a: number[]) => calls.push(['scale', ...a.map(String)]),
+    } as unknown as CanvasRenderingContext2D
+    return { ctx, calls }
+  }
+
+  it('traslada al borde derecho y invierte X (espejo horizontal)', () => {
+    const { ctx, calls } = stubCtx()
+    applyCanvasMirror(ctx, 720, 1280)
+    expect(calls).toEqual([
+      ['translate', '720', '0'],
+      ['scale', '-1', '1'],
+    ])
+  })
+
+  it('es igual para cualquier tamaño de canvas (voltear es del contexto)', () => {
+    const { ctx, calls } = stubCtx()
+    applyCanvasMirror(ctx, 2160, 3840)
+    expect(calls).toEqual([
+      ['translate', '2160', '0'],
+      ['scale', '-1', '1'],
+    ])
   })
 })

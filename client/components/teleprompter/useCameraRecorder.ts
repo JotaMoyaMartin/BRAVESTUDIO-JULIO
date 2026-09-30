@@ -83,6 +83,14 @@ export function coverCrop(
   return { sx: (vw - sw) / 2, sy: (vh - sh) / 2, sw, sh }
 }
 
+/** Voltea el eje X del contexto para grabar el EFECTO ESPEJO del frontal.
+ *  Regla WYSIWYG: lo que ves en pantalla (CSS scaleX(-1)) es lo que guarda el
+ *  archivo — el llamador hace ctx.save()/restore() alrededor del drawImage. */
+export function applyCanvasMirror(ctx: CanvasRenderingContext2D, w: number, h: number): void {
+  ctx.translate(w, 0)
+  ctx.scale(-1, 1)
+}
+
 /** Resolución del vídeo guardado: 9:16 como lo ve Instagram/TikTok/Reels.
  *  HD por defecto (liviano y universal); 4K real para quien quiere máxima
  *  nitidez (canvas más grande: más peso y batería, mismo encuadre). */
@@ -116,6 +124,12 @@ export function computeRecordSize(
   return { w: Math.round(crop.sw * scale), h: Math.round(crop.sh * scale) }
 }
 
+// Preferencia de espejo persistente (por dispositivo). Por defecto SÍ, como
+// la app Cámara en su preview y como graba el frontal Instagram/TikTok. La
+// MISMA regla gobierna el preview (CSS scaleX(-1)) y el archivo (canvas), así
+// lo que se ve es exactamente lo que se guarda.
+const MIRROR_KEY = 'brave_teleprompter_mirror'
+
 export function useCameraRecorder(videoRef: React.RefObject<HTMLVideoElement | null>) {
   const streamRef = useRef<MediaStream | null>(null)
   const recorderRef = useRef<MediaRecorder | null>(null)
@@ -125,6 +139,25 @@ export function useCameraRecorder(videoRef: React.RefObject<HTMLVideoElement | n
   const [facing, setFacing] = useState<Facing>('user')
   const [recording, setRecording] = useState(false)
   const [mimeType, setMimeType] = useState<string | null>(null)
+  const [mirror, setMirror] = useState(true)
+  // El bucle de dibujo lee el ref: cero re-creación de closures mientras graba.
+  const mirrorRef = useRef(true)
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(MIRROR_KEY)
+      if (stored !== null) setMirror(stored === '1')
+    } catch {
+      /* storage bloqueado: quedamos en el default */
+    }
+  }, [])
+  useEffect(() => {
+    mirrorRef.current = mirror
+    try {
+      window.localStorage.setItem(MIRROR_KEY, mirror ? '1' : '0')
+    } catch {
+      /* noop */
+    }
+  }, [mirror])
   // Feed vertical: canvas 9:16 repintado por rAF (el vídeo guardado sale recortado
   // al centro, no el 4:3 crudo de la cámara).
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -214,11 +247,18 @@ export function useCameraRecorder(videoRef: React.RefObject<HTMLVideoElement | n
     [videoRef],
   )
 
-  /** Cambiar frontal ↔ trasera. Si la nueva falla, intenta restaurar la anterior. */
+  /** Cambiar frontal ↔ trasera. Si la nueva falla, intenta restaurar la anterior.
+   *  El espejo sigue a la cámara: frontal SÍ, trasera NO (una trasera espejada
+   *  invierte todo lo que graba). */
   const flipCamera = useCallback(async () => {
     const next: Facing = facing === 'user' ? 'environment' : 'user'
     const ok = await openCamera(next)
-    if (!ok) await openCamera(facing)
+    if (ok) {
+      setMirror(next === 'user')
+      return
+    }
+    const restored = await openCamera(facing)
+    if (restored) setMirror(facing === 'user')
   }, [facing, openCamera])
 
   const startRecording = useCallback((quality: RecordingQuality = 'hd'): boolean => {
@@ -260,7 +300,14 @@ export function useCameraRecorder(videoRef: React.RefObject<HTMLVideoElement | n
           const vh = video.videoHeight
           if (vw > 0 && vh > 0) {
             const c = coverCrop(vw, vh, canvas.width, canvas.height)
-            ctx.drawImage(video, c.sx, c.sy, c.sw, c.sh, 0, 0, canvas.width, canvas.height)
+            if (mirrorRef.current) {
+              ctx.save()
+              applyCanvasMirror(ctx, canvas.width, canvas.height)
+              ctx.drawImage(video, c.sx, c.sy, c.sw, c.sh, 0, 0, canvas.width, canvas.height)
+              ctx.restore()
+            } else {
+              ctx.drawImage(video, c.sx, c.sy, c.sw, c.sh, 0, 0, canvas.width, canvas.height)
+            }
           }
           drawRafRef.current = requestAnimationFrame(draw)
         }
@@ -386,6 +433,8 @@ export function useCameraRecorder(videoRef: React.RefObject<HTMLVideoElement | n
     facing,
     recording,
     mimeType,
+    mirror,
+    setMirror,
     openCamera,
     flipCamera,
     startRecording,

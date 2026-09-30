@@ -5,6 +5,7 @@ import Link from 'next/link'
 import {
   CameraOff, SwitchCamera, Play, Pause, Circle, Square, Download, Share2,
   Plus, Minus, X, RotateCcw, Copy, Check, ChevronLeft, Film, Clapperboard, ChevronDown,
+  FlipHorizontal2,
 } from 'lucide-react'
 import {
   TeleprompterInput,
@@ -537,6 +538,7 @@ export default function TeleprompterClient({ savedScripts = null }: { savedScrip
             controls={isPreview}
             src={isPreview && recorded ? recorded.url : undefined}
             className={`w-full flex-1 min-h-0 ${isPreview ? 'object-contain' : 'object-cover'}`}
+            style={{ transform: isPreview ? undefined : cam.mirror ? 'scaleX(-1)' : 'none' }}
           />
 
           {/* Barra superior: salir + título — siempre a la vista */}
@@ -677,6 +679,24 @@ export default function TeleprompterClient({ savedScripts = null }: { savedScrip
                       4K
                     </button>
                   </div>
+                </div>
+                {/* Espejo Sí/No: gobierna el preview Y el archivo (WYSIWYG).
+                    Activo = blanco relleno, como la opción de calidad elegida. */}
+                <div className="flex flex-col items-center gap-1">
+                  <button
+                    onClick={() => cam.setMirror(m => !m)}
+                    className="flex items-center justify-center w-11 h-11 rounded-full transition-all"
+                    style={{
+                      background: cam.mirror ? 'white' : 'rgba(255,255,255,0.18)',
+                      border: '1.5px solid rgba(255,255,255,0.4)',
+                      color: cam.mirror ? 'var(--color-ink)' : 'white',
+                    }}
+                    aria-pressed={cam.mirror}
+                    aria-label="Efecto espejo"
+                  >
+                    <FlipHorizontal2 size={17} />
+                  </button>
+                  <p className="text-[9px] font-bold uppercase tracking-widest text-white/70">Espejo</p>
                 </div>
                 <button
                   onClick={cam.flipCamera}

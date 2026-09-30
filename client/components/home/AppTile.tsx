@@ -12,6 +12,8 @@ export interface AppTileProps {
   /** Portada ilustrada: si viene, el tile es un banner con la imagen
    *  (el texto/CTA ya están en la propia imagen). */
   image?: string
+  /** Aspect ratio de la portada (CSS). Por defecto 1:2 horizontal. */
+  imageAspect?: string
 }
 
 const TONES = {
@@ -23,7 +25,7 @@ const TONES = {
   cream: { bg: 'var(--color-cream)', color: 'var(--color-cherry-dark)', iconBg: 'rgba(122,24,50,0.10)', border: '1.5px solid rgba(122,24,50,0.10)' },
 }
 
-export default function AppTile({ href, icon: Icon, label, desc, tone, image }: AppTileProps) {
+export default function AppTile({ href, icon: Icon, label, desc, tone, image, imageAspect }: AppTileProps) {
   if (image) {
     return (
       <Link href={href} className="block" aria-label={label}>
@@ -37,7 +39,7 @@ export default function AppTile({ href, icon: Icon, label, desc, tone, image }: 
             src={image}
             alt={label}
             className="w-full h-full object-cover block"
-            style={{ aspectRatio: '1712 / 896' }}
+            style={{ aspectRatio: imageAspect || '1774 / 887' }}
             loading="lazy"
           />
         </motion.div>

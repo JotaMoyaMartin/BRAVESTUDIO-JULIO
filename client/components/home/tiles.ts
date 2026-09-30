@@ -8,11 +8,11 @@ export const TILES_NORMAL: AppTileProps[] = [
   { href: '/planificar', icon: Sparkles, label: 'Planificar', desc: 'Ideas para el mes', tone: 'pink', image: '/tiles/planificar-banner.jpg' },
   { href: '/crear-contenido', icon: Film, label: 'Guiones', desc: '5 ideas → guion listo', tone: 'blue', image: '/tiles/guiones-banner.jpg' },
   { href: '/carrusel', icon: Images, label: 'Carrusel', desc: 'Carrusel listo para publicar', tone: 'green' },
-  { href: '/stories', icon: LayoutGrid, label: 'Stories BRÄVE', desc: 'Stories y encuestas', tone: 'green' },
+  { href: '/stories', icon: LayoutGrid, label: 'Stories BRÄVE', desc: 'Stories y encuestas', tone: 'green', image: '/tiles/stories-banner.jpg', imageAspect: '1862 / 845' },
   { href: '/teleprompter', icon: Captions, label: 'Teleprompter', desc: 'Graba hablando a cámara', tone: 'cream' },
   { href: '/inspiracion-reels', icon: Clapperboard, label: 'Inspiración Reels', desc: 'Ideas de reels virales', tone: 'cream' },
   { href: '/transiciones-reels', icon: Wand2, label: 'Transiciones Reels', desc: 'Efectos y transiciones', tone: 'pink' },
-  { href: '/biblioteca', icon: BookOpen, label: 'Biblioteca', desc: 'Todo tu contenido', tone: 'buttermilk' },
+  { href: '/biblioteca', icon: BookOpen, label: 'Biblioteca', desc: 'Todo tu contenido', tone: 'buttermilk', image: '/tiles/biblioteca-banner.jpg' },
   { href: '/calendario', icon: Calendar, label: 'Calendario', desc: 'Tu plan del mes', tone: 'green' },
 ]
 
@@ -22,7 +22,7 @@ export const TILES_PREMIUM: AppTileProps[] = [
   { href: '/metricas', icon: BarChart3, label: 'Métricas', desc: 'Resultados y crecimiento', tone: 'blue' },
   { href: '/crear-contenido', icon: Film, label: 'Guiones', desc: '5 ideas → guion listo', tone: 'green', image: '/tiles/guiones-banner.jpg' },
   { href: '/carrusel', icon: Images, label: 'Carrusel', desc: 'Carrusel listo para publicar', tone: 'buttermilk' },
-  { href: '/stories', icon: LayoutGrid, label: 'Stories BRÄVE', desc: 'Stories y encuestas', tone: 'cream' },
+  { href: '/stories', icon: LayoutGrid, label: 'Stories BRÄVE', desc: 'Stories y encuestas', tone: 'cream', image: '/tiles/stories-banner.jpg', imageAspect: '1862 / 845' },
   { href: '/teleprompter', icon: Captions, label: 'Teleprompter', desc: 'Graba hablando a cámara', tone: 'blue' },
   { href: '/inspiracion-reels', icon: Clapperboard, label: 'Inspiración Reels', desc: 'Ideas de reels virales', tone: 'pink' },
   { href: '/transiciones-reels', icon: Wand2, label: 'Transiciones Reels', desc: 'Efectos y transiciones', tone: 'buttermilk' },

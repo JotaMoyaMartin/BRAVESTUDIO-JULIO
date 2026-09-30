@@ -33,6 +33,17 @@ const MIME_CANDIDATES = [
   'video/webm',
 ]
 
+// Audio natural: la cancelación de eco + supresión de ruido del navegador
+// (activas por defecto) aplasta la voz y suena robótica/granulada. Aquí no
+// suena nada mientras se graba, así que el AEC no hace falta — desactivamos
+// TODO el procesado para dejar pasar el micro en limpio.
+const AUDIO_NATURAL: MediaTrackConstraints = {
+  echoCancellation: false,
+  noiseSuppression: false,
+  autoGainControl: false,
+  channelCount: { ideal: 1 },
+}
+
 export function pickMimeType(): string | null {
   if (typeof MediaRecorder === 'undefined') return null
   for (const t of MIME_CANDIDATES) {
@@ -82,6 +93,28 @@ export const REC_SIZES: Record<RecordingQuality, { w: number; h: number }> = {
 }
 
 export type Facing = 'user' | 'environment'
+
+/**
+ * Tamaño REAL del vídeo guardado según lo que la cámara entrega de verdad.
+ * Nunca hace upscale por encima de 2× (antes un 4K "etiquetado" sobre una
+ * cámara 720p salía borroso) ni excede el tamaño objetivo. Puro y testeado.
+ */
+export function computeRecordSize(
+  vw: number,
+  vh: number,
+  quality: RecordingQuality,
+): { w: number; h: number } {
+  const target = REC_SIZES[quality]
+  if (vw <= 0 || vh <= 0) return { w: 720, h: 1280 }
+  const crop = coverCrop(vw, vh, target.w, target.h)
+  // fit: escala para encajar en el target (≤1 sobra fuente → bajar; >1 faltan
+  // píxeles → solo se permite subir hasta 720 de ancho y como mucho ×2, para
+  // no inflar un 720p hasta "4K" borroso).
+  const fit = Math.min(target.w / crop.sw, target.h / crop.sh)
+  const minUplift = Math.max(1, Math.min(720 / crop.sw, 2))
+  const scale = Math.min(fit, minUplift)
+  return { w: Math.round(crop.sw * scale), h: Math.round(crop.sh * scale) }
+}
 
 export function useCameraRecorder(videoRef: React.RefObject<HTMLVideoElement | null>) {
   const streamRef = useRef<MediaStream | null>(null)
@@ -139,8 +172,12 @@ export function useCameraRecorder(videoRef: React.RefObject<HTMLVideoElement | n
       // iOS: solo un stream getUserMedia activo — parar el anterior siempre.
       stopTracks()
       const attempts: MediaStreamConstraints[] = [
-        { video: { facingMode: requestFacing }, audio: true },
-        { video: true, audio: true }, // fallback por si el facingMode exacto no existe
+        // Máxima resolución que el dispositivo pueda dar (ideal: no falla si no llega),
+        // y audio SIN procesado (voz natural, no robótica).
+        { video: { facingMode: requestFacing, width: { ideal: 3840 }, height: { ideal: 2160 } }, audio: AUDIO_NATURAL },
+        { video: { facingMode: requestFacing, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: AUDIO_NATURAL },
+        { video: { facingMode: requestFacing }, audio: true }, // fallback sencillo
+        { video: true, audio: true },
       ]
       let stream: MediaStream | null = null
       let lastKind: CameraErrorKind = 'unknown'
@@ -205,7 +242,10 @@ export function useCameraRecorder(videoRef: React.RefObject<HTMLVideoElement | n
       typeof HTMLCanvasElement !== 'undefined' && typeof HTMLCanvasElement.prototype.captureStream === 'function'
     if (video && video.videoWidth > 0 && canCapture) {
       try {
-        const size = REC_SIZES[quality]
+        // ¿Qué puede dar el vídeo de verdad? El canvas se ajusta a eso (sin
+        // etiquetas falsas: si la cámara es 720p, el archivo es 720p nítido;
+        // 4K solo si la cámara entrega 4K real).
+        const size = computeRecordSize(video.videoWidth, video.videoHeight, quality)
         const canvas = document.createElement('canvas')
         canvas.width = size.w
         canvas.height = size.h
@@ -235,9 +275,13 @@ export function useCameraRecorder(videoRef: React.RefObject<HTMLVideoElement | n
       }
     }
 
+    // Bitrate alto: los navegadores comprimen muy agresivamente por defecto
+    // (por eso "se guarda en mala calidad"). Safari ignora esta opción, pero
+    // Chrome/Android y el WebM de escritorio la respetan.
+    const bitrate = quality === 'uhd' ? 18_000_000 : 5_000_000
     const tryRecorder = (s: MediaStream, m: string | null): MediaRecorder | null => {
       try {
-        return m ? new MediaRecorder(s, { mimeType: m }) : new MediaRecorder(s)
+        return new MediaRecorder(s, { ...(m ? { mimeType: m } : {}), videoBitsPerSecond: bitrate })
       } catch {
         return null
       }

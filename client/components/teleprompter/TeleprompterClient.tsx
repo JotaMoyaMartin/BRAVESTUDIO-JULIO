@@ -269,20 +269,29 @@ export default function TeleprompterClient({ savedScripts = null }: { savedScrip
     resetScroll()
   }, [resetScroll])
 
+  /** Guardado SIN hoja de compartir en ordenador/Android: descarga directa.
+   *  Solo iOS usa navigator.share (ahí es la vía fiable a Fotos — un
+   *  a[download] en Safari solo abre el visor). */
   const saveVideo = useCallback(async () => {
     if (!recorded) return
     const name = fileNameFor(input?.source, input?.sequence?.current ?? null, recorded.mime)
+    const isIOS =
+      typeof navigator !== 'undefined' &&
+      (/iPad|iPhone|iPod/.test(navigator.userAgent) ||
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1))
     const file = new File([recorded.blob], name, { type: recorded.mime || 'video/mp4' })
-    try {
-      if (typeof navigator !== 'undefined' && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: name })
-        setSavedMessage('Guardado. Búscalo en tus fotos o archivos.')
-        return
+    if (isIOS) {
+      try {
+        if (navigator.canShare?.({ files: [file] })) {
+          await navigator.share({ files: [file], title: name })
+          setSavedMessage('Guardado. Búscalo en tus fotos o archivos.')
+          return
+        }
+      } catch (err) {
+        if ((err as Error).name === 'AbortError') return // cerró el panel: sin mensaje
       }
-    } catch (err) {
-      if ((err as Error).name === 'AbortError') return // cerró el panel: sin mensaje
     }
-    // Fallback: descarga directa (Chrome/Android OK; iOS con gesto real guarda en Archivos).
+    // Descarga directa (Chrome/Android/escritorio: aparece nada más pulsar).
     try {
       const a = document.createElement('a')
       a.href = recorded.url
@@ -290,7 +299,7 @@ export default function TeleprompterClient({ savedScripts = null }: { savedScrip
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
-      setSavedMessage('Vídeo descargado. Si no aparece, guárdalo desde el reproductor.')
+      setSavedMessage('Vídeo guardado en tus descargas.')
     } catch {
       window.open(recorded.url, '_blank')
       setSavedMessage('Abre el vídeo y guárdalo desde el menú compartir.')
@@ -522,19 +531,20 @@ export default function TeleprompterClient({ savedScripts = null }: { savedScrip
 
       {/* ---------- Grabador a pantalla completa ---------- */}
       {recorderOpen && (
-        <div className="fixed inset-0 z-50 bg-black">
+        <div className="fixed inset-0 z-50 bg-black flex flex-col">
           {/* UN solo <video> siempre montado: en preview juega el blob (la
               cámara ya se despegó con hideCameraFeed); en las demás fases,
-              proyección en vivo. Mismo nodo ⇒ React nunca reutiliza entre
-              ramas y srcObject no puede tapar al src. */}
+              proyección en vivo. En preview SIN mute (se oye lo grabado) y con
+              controles nativos visibles encima del hueco de acciones, así
+              siempre se puede volver a reproducir. */}
           <video
             ref={videoRef}
             playsInline
-            muted
+            muted={!isPreview}
             autoPlay={isPreview}
             controls={isPreview}
             src={isPreview && recorded ? recorded.url : undefined}
-            className={`absolute inset-0 w-full h-full ${isPreview ? 'object-contain' : 'object-cover'}`}
+            className={`w-full flex-1 min-h-0 ${isPreview ? 'object-contain' : 'object-cover'}`}
           />
 
           {/* Barra superior: salir + título — siempre a la vista */}
@@ -722,9 +732,10 @@ export default function TeleprompterClient({ savedScripts = null }: { savedScrip
             </div>
           )}
 
-          {/* Preview: repetir / guardar / continuar */}
+          {/* Preview: repetir / guardar / continuar (flujo normal bajo el vídeo,
+              nunca tapando los controles nativos de reproducción) */}
           {stage === 'preview' && recorded && (
-            <div className="absolute bottom-0 inset-x-0 z-10 p-5 pb-8" style={{ background: 'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.75) 45%)' }}>
+            <div className="shrink-0 z-10 p-5 pb-8" style={{ background: 'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.85) 20%)' }}>
               <p className="text-center text-[11px] text-white/70 mb-2">Míralo completo antes de guardarlo</p>
               <div className="flex flex-wrap items-center justify-center gap-3">
                 <button onClick={repeat} className="px-5 py-3 rounded-[var(--radius-sm)] text-sm font-semibold text-white" style={{ border: '1.5px solid rgba(255,255,255,0.4)' }}>

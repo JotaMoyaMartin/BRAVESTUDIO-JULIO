@@ -22,7 +22,7 @@ import {
 import { SavedScriptCard, selectSpeakableItems } from '@/lib/teleprompter/scripts'
 import { IS_DEMO } from '@/lib/demo'
 import { demoGetPlan } from '@/lib/demo-store'
-import { useCameraRecorder, CAMERA_ERROR_MESSAGES } from './useCameraRecorder'
+import { useCameraRecorder, CAMERA_ERROR_MESSAGES, type RecordingQuality } from './useCameraRecorder'
 
 type Stage = 'editor' | 'setup' | 'ready' | 'countdown' | 'recording' | 'preview'
 
@@ -39,6 +39,7 @@ export default function TeleprompterClient({ savedScripts = null }: { savedScrip
   const [script, setScript] = useState('')
   const [fontSize, setFontSize] = useState(26)
   const [speed, setSpeed] = useState(1)
+  const [quality, setQuality] = useState<RecordingQuality>('hd')
   const [playing, setPlaying] = useState(false)
   const [countdown, setCountdown] = useState(3)
   const [recorded, setRecorded] = useState<{ blob: Blob; url: string; mime: string } | null>(null)
@@ -213,7 +214,7 @@ export default function TeleprompterClient({ savedScripts = null }: { savedScrip
     setStage('countdown')
   }, [])
 
-  const startRecordingFn = cam.startRecording
+  const startRecordingFn = useCallback(() => cam.startRecording(quality), [cam, quality])
   useEffect(() => {
     if (stage !== 'countdown') return
     if (countdown <= 0) {
@@ -233,10 +234,10 @@ export default function TeleprompterClient({ savedScripts = null }: { savedScrip
   }, [stage, countdown, startRecordingFn, resetScroll])
 
   useEffect(() => {
-    if (stage !== 'recording' || cam.paused) return
+    if (stage !== 'recording') return
     const t = setInterval(() => setSeconds(s => s + 1), 1000)
     return () => clearInterval(t)
-  }, [stage, cam.paused])
+  }, [stage])
 
   const stopAndPreview = useCallback(async () => {
     setPlaying(false)
@@ -340,15 +341,6 @@ export default function TeleprompterClient({ savedScripts = null }: { savedScrip
       cam.closeCamera()
     }
     setStage('editor')
-  }, [cam])
-
-  // Pausa = descanso: la grabación se congela y el texto se puede recolocar.
-  const togglePause = useCallback(() => {
-    if (cam.paused) {
-      if (cam.resumeRecording()) setPlaying(true)
-    } else if (cam.pauseRecording()) {
-      setPlaying(false)
-    }
   }, [cam])
 
   const paste = useCallback(async () => {
@@ -590,15 +582,11 @@ export default function TeleprompterClient({ savedScripts = null }: { savedScrip
             </div>
           )}
 
-          {/* Timer de grabación (congela en pausa) */}
+          {/* Timer de grabación */}
           {stage === 'recording' && (
             <div className="absolute top-16 inset-x-0 z-10 flex justify-center">
               <p className="px-3 py-1 rounded-full bg-black/50 text-white text-xs font-bold tabular-nums flex items-center gap-1.5">
-                {cam.paused ? (
-                  <Pause size={11} />
-                ) : (
-                  <Circle size={10} fill="var(--color-cherry)" style={{ color: 'var(--color-cherry)' }} />
-                )}
+                <Circle size={10} fill="var(--color-cherry)" style={{ color: 'var(--color-cherry)' }} />
                 {formatSeconds(seconds)}
               </p>
             </div>
@@ -659,6 +647,12 @@ export default function TeleprompterClient({ savedScripts = null }: { savedScrip
                   {playing ? <Pause size={17} /> : <Play size={17} />}
                 </button>
                 <ControlChip label="Velocidad" onMinus={() => setSpeed(s => clampSpeed(s - SPEED_STEP))} onPlus={() => setSpeed(s => clampSpeed(s + SPEED_STEP))} value={`${speed.toFixed(2).replace(/\.?0+$/, '')}x`} />
+                <ControlChip
+                  label="Calidad"
+                  onMinus={() => setQuality(q => (q === 'hd' ? 'uhd' : 'hd'))}
+                  onPlus={() => setQuality(q => (q === 'uhd' ? 'hd' : 'uhd'))}
+                  value={quality === 'hd' ? 'HD' : '4K'}
+                />
                 <button
                   onClick={cam.flipCamera}
                   className="flex items-center justify-center w-11 h-11 rounded-full text-white"
@@ -681,14 +675,10 @@ export default function TeleprompterClient({ savedScripts = null }: { savedScrip
             </div>
           )}
 
-          {/* Grabación: todo a la vista — texto/velocidad, pausa y detener */}
+          {/* Grabación: texto/velocidad, rebobinar y detener — sin pausas,
+              graba del tirón (la pausa nativa daba fallos al parar). */}
           {stage === 'recording' && (
             <div className="absolute bottom-0 inset-x-0 z-10 pb-6 pt-10 px-4" style={{ background: 'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.55) 60%)' }}>
-              {cam.paused && (
-                <p className="mb-3 text-center text-xs font-semibold text-white/85">
-                  En pausa. Arrastra el texto hacia abajo para repetir una parte y continúa cuando quieras.
-                </p>
-              )}
               <div className="flex items-center justify-center gap-4 flex-wrap">
                 <ControlChip label="Texto" onMinus={() => setFontSize(f => clampFontSize(f - FONT_STEP))} onPlus={() => setFontSize(f => clampFontSize(f + FONT_STEP))} value={`${fontSize}px`} />
                 <button
@@ -710,16 +700,6 @@ export default function TeleprompterClient({ savedScripts = null }: { savedScrip
                 <ControlChip label="Velocidad" onMinus={() => setSpeed(s => clampSpeed(s - SPEED_STEP))} onPlus={() => setSpeed(s => clampSpeed(s + SPEED_STEP))} value={`${speed.toFixed(2).replace(/\.?0+$/, '')}x`} />
               </div>
               <div className="flex items-center justify-center gap-6 mt-5">
-                {cam.canPause && (
-                  <button
-                    onClick={togglePause}
-                    className="flex items-center justify-center w-14 h-14 rounded-full text-white"
-                    style={{ background: 'rgba(255,255,255,0.18)', border: '1.5px solid rgba(255,255,255,0.5)' }}
-                    aria-label={cam.paused ? 'Reanudar grabación' : 'Pausar grabación'}
-                  >
-                    {cam.paused ? <Play size={22} /> : <Pause size={22} />}
-                  </button>
-                )}
                 <button
                   onClick={stopAndPreview}
                   className="flex items-center justify-center w-16 h-16 rounded-full"

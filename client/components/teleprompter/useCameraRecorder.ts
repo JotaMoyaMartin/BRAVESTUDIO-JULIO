@@ -72,9 +72,14 @@ export function coverCrop(
   return { sx: (vw - sw) / 2, sy: (vh - sh) / 2, sw, sh }
 }
 
-/** Resolución del vídeo guardado: 9:16 como lo ve Instagram/TikTok/Reels. */
-const REC_WIDTH = 720
-const REC_HEIGHT = 1280
+/** Resolución del vídeo guardado: 9:16 como lo ve Instagram/TikTok/Reels.
+ *  HD por defecto (liviano y universal); 4K real para quien quiere máxima
+ *  nitidez (canvas más grande: más peso y batería, mismo encuadre). */
+export type RecordingQuality = 'hd' | 'uhd'
+export const REC_SIZES: Record<RecordingQuality, { w: number; h: number }> = {
+  hd: { w: 720, h: 1280 },
+  uhd: { w: 2160, h: 3840 },
+}
 
 export type Facing = 'user' | 'environment'
 
@@ -86,8 +91,6 @@ export function useCameraRecorder(videoRef: React.RefObject<HTMLVideoElement | n
   const [errorKind, setErrorKind] = useState<CameraErrorKind | null>(null)
   const [facing, setFacing] = useState<Facing>('user')
   const [recording, setRecording] = useState(false)
-  const [paused, setPaused] = useState(false)
-  const [canPause, setCanPause] = useState(false)
   const [mimeType, setMimeType] = useState<string | null>(null)
   // Feed vertical: canvas 9:16 repintado por rAF (el vídeo guardado sale recortado
   // al centro, no el 4:3 crudo de la cámara).
@@ -181,7 +184,7 @@ export function useCameraRecorder(videoRef: React.RefObject<HTMLVideoElement | n
     if (!ok) await openCamera(facing)
   }, [facing, openCamera])
 
-  const startRecording = useCallback((): boolean => {
+  const startRecording = useCallback((quality: RecordingQuality = 'hd'): boolean => {
     const stream = streamRef.current
     if (!stream || typeof MediaRecorder === 'undefined') {
       setErrorKind('unsupported')
@@ -193,7 +196,7 @@ export function useCameraRecorder(videoRef: React.RefObject<HTMLVideoElement | n
     chunksRef.current = []
 
     // Formato vertical 9:16: la cámara nativa da 4:3; componemos cada frame
-    // en un canvas 720×1280 (recorte al centro, lo mismo que se ve en pantalla,
+    // en un canvas 9:16 (recorte al centro, lo mismo que se ve en pantalla,
     // object-cover) y grabamos ese feed con el audio del micro.
     let recordStream: MediaStream = stream
     let usingFeed = false
@@ -202,9 +205,10 @@ export function useCameraRecorder(videoRef: React.RefObject<HTMLVideoElement | n
       typeof HTMLCanvasElement !== 'undefined' && typeof HTMLCanvasElement.prototype.captureStream === 'function'
     if (video && video.videoWidth > 0 && canCapture) {
       try {
+        const size = REC_SIZES[quality]
         const canvas = document.createElement('canvas')
-        canvas.width = REC_WIDTH
-        canvas.height = REC_HEIGHT
+        canvas.width = size.w
+        canvas.height = size.h
         // Safari solo entrega frames de un canvas compuesto: lo montamos diminuto.
         canvas.style.cssText = 'position:fixed;left:0;bottom:0;width:2px;height:2px;opacity:0.01;pointer-events:none;'
         document.body.appendChild(canvas)
@@ -272,9 +276,7 @@ export function useCameraRecorder(videoRef: React.RefObject<HTMLVideoElement | n
     else recorder.start(1000)
     recorderRef.current = recorder
     setMimeType(recorder.mimeType || mime)
-    setCanPause(typeof recorder.pause === 'function')
     setRecording(true)
-    setPaused(false)
     return true
   }, [videoRef, stopCanvasFeed])
 
@@ -298,7 +300,6 @@ export function useCameraRecorder(videoRef: React.RefObject<HTMLVideoElement | n
 
   const stopRecording = useCallback(async (): Promise<RecordingResult | null> => {
     const recorder = recorderRef.current
-    setPaused(false)
     if (!recorder || recorder.state === 'inactive') {
       setRecording(false)
       return null
@@ -320,36 +321,10 @@ export function useCameraRecorder(videoRef: React.RefObject<HTMLVideoElement | n
     return blob.size > 0 ? { blob, url: URL.createObjectURL(blob), mime: mime || 'video/mp4' } : null
   }, [mimeType])
 
-  /** Pausa grabación (descansa, recoloca el texto) y reanuda después: mismo vídeo. */
-  const pauseRecording = useCallback((): boolean => {
-    const recorder = recorderRef.current
-    if (!recorder || recorder.state !== 'recording') return false
-    try {
-      recorder.pause()
-      setPaused(true)
-      return true
-    } catch {
-      return false // navegador sin pausa real: la grabación sigue
-    }
-  }, [])
-
-  const resumeRecording = useCallback((): boolean => {
-    const recorder = recorderRef.current
-    if (!recorder || recorder.state !== 'paused') return false
-    try {
-      recorder.resume()
-      setPaused(false)
-      return true
-    } catch {
-      return false
-    }
-  }, [])
-
   const closeCamera = useCallback(() => {
     stopTracks()
     setStatus('idle')
     setRecording(false)
-    setPaused(false)
   }, [])
 
   // Limpieza al desmontar.
@@ -366,14 +341,10 @@ export function useCameraRecorder(videoRef: React.RefObject<HTMLVideoElement | n
     errorKind,
     facing,
     recording,
-    paused,
-    canPause,
     mimeType,
     openCamera,
     flipCamera,
     startRecording,
-    pauseRecording,
-    resumeRecording,
     stopRecording,
     getCameraStream,
     hideCameraFeed,

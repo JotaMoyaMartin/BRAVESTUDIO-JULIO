@@ -20,7 +20,9 @@ export default function TodayCard({ decision, retoNote }: { decision: TodayDecis
     <div
       className="rounded-[var(--radius-lg)] p-6 sm:p-8"
       style={{
-        background: 'white',
+        // Amarillo de marca (el de los chips de acción): la recomendación del
+        // día debe llamarse a la vista sobre el fondo crema de la app.
+        background: 'var(--color-buttermilk)',
         border: '2px solid var(--color-cherry)',
         boxShadow: '0 10px 30px -18px rgba(122,24,50,0.35)',
       }}

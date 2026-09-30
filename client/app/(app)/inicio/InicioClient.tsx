@@ -57,7 +57,9 @@ function ToolsSection({
       <TransitionsPreview transitions={transitions} />
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
         {tiles.map(t => (
-          <AppTile key={t.href} {...t} />
+          <div key={t.href} className={t.image ? 'col-span-2' : ''}>
+            <AppTile {...t} />
+          </div>
         ))}
       </div>
     </section>

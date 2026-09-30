@@ -6,6 +6,9 @@ export interface StoryInput {
   mode: 'text' | 'camera'
   detail?: string
   brandContext?: string
+  /** Idea de la estilista (dictada por voz o escrita): la secuencia gira
+   *  enteramente sobre esta temática, no sobre el servicio genérico. */
+  idea?: string
 }
 
 export interface StorySticker {
@@ -36,6 +39,7 @@ export function buildStoriesPrompt(input: StoryInput): string {
   return `Eres un experto en Stories de Instagram para salones de belleza. Crea ${input.count} Story(ies) siguiendo EXACTAMENTE el manual oficial BRÄVE Content.
 
 SERVICIO REALIZADO: ${input.service}
+${input.idea ? `\nIDEA DE LA ESTILISTA (construye TODA la secuencia sobre esta temática — es lo que dictó o escribió):\n${input.idea}\n` : ''}
 ${input.detail ? `DETALLE ADICIONAL: ${input.detail}` : ''}
 MODO: ${input.mode === 'camera' ? 'Guion para grabar a cámara (conversacional)' : 'Texto para copiar y pegar'}
 ${input.brandContext ? `CONTEXTO DEL SALÓN: ${input.brandContext}` : ''}

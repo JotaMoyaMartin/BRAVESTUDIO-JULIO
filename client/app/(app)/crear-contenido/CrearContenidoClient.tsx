@@ -1,9 +1,9 @@
 'use client'
-import { useState, useMemo, useRef } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { saveToLibrary } from '@/lib/content-utils'
-import { generateReel, ReelOutput, ContentObjective } from '@/lib/ai/prompts/reels'
+import { generateReelChecked, hashSeed, ReelOutput, ContentObjective } from '@/lib/ai/prompts/reels'
 import { generateReelIdeas, IdeaItem } from '@/lib/ai/prompts/idea-specs'
 import { useDictateText } from '@/lib/speech'
 import { useSessionState, clearSectionState } from '@/lib/session-store'
@@ -20,6 +20,8 @@ type Objective = ContentObjective
 interface GeneratedScript {
   idea: IdeaItem
   reel: ReelOutput
+  /** true = la IA no respondió y salió un guion de ejemplo (no personalizado). */
+  mock?: boolean
 }
 
 const STEPS: Array<{ id: 'topic' | 'objective' | 'ideas' | 'scripts'; label: string }> = [
@@ -69,12 +71,29 @@ export default function CrearContenidoClient({
   const [selected, setSelected] = useSessionState<string[]>(`u:${userId}:guiones:selected`, [])
   const [scripts, setScripts] = useSessionState<GeneratedScript[]>(`u:${userId}:guiones:scripts`, [])
   const [savedTitles, setSavedTitles] = useSessionState<string[]>(`u:${userId}:guiones:savedTitles`, [])
+  // Todo lo que se le ha PROPUESTO alguna vez: los packs nuevos nunca repiten
+  // (regla: ideas siempre frescas — cada entrada a Guiones trae ideas nuevas).
+  const [shownTitles, setShownTitles] = useSessionState<string[]>(`u:${userId}:guiones:shownTitles`, [])
 
   const [ideasLoading, setIdeasLoading] = useState(false)
   const [genQueue, setGenQueue] = useState<number | null>(null) // nº idea generándose (1-based)
   const [copied, setCopied] = useState<string | null>(null)
   const [saving, setSaving] = useState<string | null>(null)
+  const [regenTick, setRegenTick] = useState(0)
+  const [regenerating, setRegenerating] = useState<string | null>(null)
   const cancelRef = useRef(false)
+
+  // Al ENTRAR a la sección: si quedó un pack de ideas viejo sin guiones, fuera —
+  // los packs nunca se acumulan entre visitas (siempre nuevas al continuar).
+  useEffect(() => {
+    if (skipToObjective) return
+    if ((step === 'ideas' || step === 'objective') && scripts.length === 0) {
+      setStep('topic')
+      setIdeas([])
+      setSelected([])
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Dictado por voz: habla la idea y el texto entra solo (Web Speech API).
   const dictate = useDictateText()
@@ -84,18 +103,22 @@ export default function CrearContenidoClient({
   }
 
   const topicService = service || freeText || 'General'
+  // El tema es una idea propia (escrita o dictada) → guion DIRECTO, sin pack de ideas.
+  const hasOwnIdea = freeText.trim().length > 0
 
-  /** Genera (o amplía) el pack de ideas. "Más" deduplica contra lo ya propuesto. */
+  /** Genera (o amplía) el pack de ideas. NUNCA repite ni lo ya guardado en
+   *  biblioteca (recentTitles) ni lo propuesto en visitas anteriores (shownTitles). */
   async function generateIdeas(more: boolean) {
     setIdeasLoading(true)
     const res = await generateReelIdeas({
       brandContext: brandContext || 'No hay contexto de marca disponible. Usa buenas prácticas del sector beauty premium en España.',
       count: 5,
-      completedTitles: [...recentTitles, ...(more ? ideas.map(i => i.title) : [])],
+      completedTitles: [...recentTitles, ...shownTitles, ...(more ? ideas.map(i => i.title) : [])],
     })
     const existing = new Set(ideas.map(i => i.title))
     const fresh = res.ideas.filter(i => !existing.has(i.title))
     setIdeas(prev => (more ? [...prev, ...fresh] : fresh))
+    if (fresh.length > 0) setShownTitles(prev => [...new Set([...prev, ...fresh.map(i => i.title)])].slice(-300))
     setSelected(prev => (more ? prev : []))
     setIdeasLoading(false)
     setStep('ideas')
@@ -105,25 +128,85 @@ export default function CrearContenidoClient({
     setSelected(prev => (prev.includes(title) ? prev.filter(s => s !== title) : [...prev, title]))
   }
 
-  /** Genera el guion completo de cada idea seleccionada, una a una (card en cuanto llega). */
+  /** Genera el guion completo de cada idea seleccionada, una a una (card en cuanto
+   *  llega). Anti-repetición: cada guion recibe la lista de los YA escritos en la
+   *  tanda (título + gancho) para que el siguiente sea claramente distinto. */
   async function generateScripts() {
     const chosen = ideas.filter(i => selected.includes(i.title))
     if (chosen.length === 0) return
     cancelRef.current = false
     setStep('scripts')
+    const batch: Array<{ title: string; hook: string }> = scripts.map(s => ({ title: s.reel.title, hook: s.reel.script.hook }))
     for (let k = 0; k < chosen.length; k++) {
       if (cancelRef.current) break
       setGenQueue(k + 1)
       const idea = chosen[k]
-      const reel = await generateReel({
-        service: idea.service || topicService,
-        objective,
-        brandContext,
-        freeText: `${idea.title} — ángulo del gancho: ${idea.hook_idea}`,
-      })
-      setScripts(prev => (prev.some(s => s.idea.title === idea.title) ? prev : [...prev, { idea, reel }]))
+      let { reel, mock } = await generateReelChecked(
+        {
+          service: idea.service || topicService,
+          objective,
+          brandContext,
+          freeText: `IDEA: ${idea.title}\nÁNGULO DEL GANCHO: ${idea.hook_idea}`,
+          avoidScripts: batch,
+        },
+        { seed: hashSeed(`${idea.title}|${idea.hook_idea}`) },
+      )
+      // Colisión (fallback con la misma variante): reintento con otro seed.
+      if (batch.some(b => b.title.toLowerCase() === reel.title.toLowerCase())) {
+        ;({ reel, mock } = await generateReelChecked(
+          { service: idea.service || topicService, objective, brandContext, freeText: `IDEA: ${idea.title}\nÁNGULO DEL GANCHO: ${idea.hook_idea}`, avoidScripts: batch },
+          { seed: hashSeed(`${idea.title}|${idea.hook_idea}`) + 7 },
+        ))
+      }
+      batch.push({ title: reel.title, hook: reel.script.hook })
+      setScripts(prev => (prev.some(s => s.idea.title === idea.title) ? prev : [...prev, { idea, reel, mock }]))
     }
     setGenQueue(null)
+  }
+
+  /** La estilista dictó/escribió SU idea → un guion DIRECTO sobre eso (sin pack de ideas). */
+  async function generateDirectScript() {
+    cancelRef.current = false
+    setStep('scripts')
+    setGenQueue(1)
+    const t = freeText.trim()
+    const idea: IdeaItem = {
+      title: t.length > 64 ? `${t.slice(0, 61)}…` : t,
+      type: 'reel',
+      pillar: 'Tu idea',
+      objective,
+      service: service || 'General',
+      hook_idea: t,
+    }
+    const { reel, mock } = await generateReelChecked(
+      { service: service || 'General', objective, brandContext, freeText: t },
+      { seed: hashSeed(`directa|${t}`) },
+    )
+    setScripts(prev => [...prev.filter(s => s.idea.title !== idea.title), { idea, reel, mock }])
+    setGenQueue(null)
+  }
+
+  /** Regenera UN guion (la estilista no gusta): nuevo intento que no repite
+   *  el ángulo/gancho de ningún guion ya escrito en la sección (incluido el propio). */
+  async function regenerateOne(gen: GeneratedScript) {
+    setRegenerating(gen.idea.title)
+    const avoid = scripts
+      .filter(s => s.idea.title !== gen.idea.title)
+      .map(s => ({ title: s.reel.title, hook: s.reel.script.hook }))
+    avoid.push({ title: gen.reel.title, hook: gen.reel.script.hook })
+    setRegenTick(t => t + 1)
+    const { reel, mock } = await generateReelChecked(
+      {
+        service: gen.idea.service || topicService,
+        objective,
+        brandContext,
+        freeText: `IDEA: ${gen.idea.title}\nÁNGULO DEL GANCHO: ${gen.idea.hook_idea}`,
+        avoidScripts: avoid,
+      },
+      { seed: hashSeed(`${gen.idea.title}|${gen.idea.hook_idea}`) + regenTick * 2 + 1 },
+    )
+    setScripts(prev => prev.map(s => (s.idea.title === gen.idea.title ? { ...s, reel, mock } : s)))
+    setRegenerating(null)
   }
 
   function copyText(text: string, key: string) {
@@ -366,9 +449,20 @@ export default function CrearContenidoClient({
 
           <div className="flex gap-3">
             <button onClick={() => setStep('topic')} className="btn-ghost">Atrás</button>
-            <button onClick={() => generateIdeas(false)} disabled={ideasLoading} className="btn-primary flex-1 justify-center">
-              {ideasLoading ? 'Creando 5 ideas...' : 'Generar 5 ideas ✨'}
-            </button>
+            {hasOwnIdea ? (
+              // Idea propia (dictada/escrita) → GUION DIRECTO sobre eso, sin pack de ideas
+              <button
+                onClick={generateDirectScript}
+                disabled={genQueue !== null}
+                className="btn-primary flex-1 justify-center"
+              >
+                {genQueue !== null ? 'Escribiendo tu guion…' : 'Generar mi guion ✨'}
+              </button>
+            ) : (
+              <button onClick={() => generateIdeas(false)} disabled={ideasLoading} className="btn-primary flex-1 justify-center">
+                {ideasLoading ? 'Creando 5 ideas...' : 'Generar 5 ideas ✨'}
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -381,6 +475,11 @@ export default function CrearContenidoClient({
             <p className="text-sm mt-0.5" style={{ color: '#591427', opacity: 0.7 }}>Toca las que más te gusten (puedes elegir varias) y te genero el guion completo de cada una.</p>
           </div>
           {ideasLoading && <IdeaSkeleton />}
+          {!ideasLoading && ideas.length === 0 && (
+            <p className="text-sm" style={{ color: '#591427', opacity: 0.7 }}>
+              No hay ideas en pantalla — genera un pack nuevo (siempre traerá ideas que no has visto antes).
+            </p>
+          )}
           <div className="space-y-2.5">
             {ideas.map(idea => {
               const active = selected.includes(idea.title)
@@ -418,7 +517,7 @@ export default function CrearContenidoClient({
           </div>
           <div className="flex flex-wrap gap-3">
             <button onClick={() => generateIdeas(true)} disabled={ideasLoading} className="btn-ghost text-sm">
-              <RefreshCw size={14} className={ideasLoading ? 'animate-spin' : ''} /> Más ideas
+              <RefreshCw size={14} className={ideasLoading ? 'animate-spin' : ''} /> {ideas.length === 0 ? 'Generar ideas' : 'Más ideas'}
             </button>
             <button
               onClick={generateScripts}
@@ -432,26 +531,33 @@ export default function CrearContenidoClient({
         </div>
       )}
 
-      {/* Step 4: Guiones completos — guardar / grabar / copiar, uno por idea */}
+      {/* Step 4: Guiones completos — guardar / grabar / copiar, uno por idea.
+          Se listan: los ya generados (incluida la idea dictada directa) + los
+          pendientes del pack que siguen en cola. */}
       {step === 'scripts' && (
         <div className="space-y-5">
-          {ideas
-            .filter(i => selected.includes(i.title))
-            .map(idea => {
-              const gen = scripts.find(s => s.idea.title === idea.title)
-              if (!gen) return <ScriptLoadingCard key={idea.title} idea={idea} />
-              return (
-                <ScriptCard
-                  key={idea.title}
-                  gen={gen}
-                  saved={savedTitles.includes(idea.title)}
-                  saving={saving === idea.title}
-                  onSave={() => saveOne(gen)}
-                  onRecord={() => recordOne(gen)}
-                  CopyBtn={CopyBtn}
-                />
-              )
-            })}
+          {[
+            ...scripts.map(gen => ({ idea: gen.idea, gen: gen as GeneratedScript | null })),
+            ...ideas
+              .filter(i => selected.includes(i.title) && !scripts.some(s => s.idea.title === i.title))
+              .map(idea => ({ idea, gen: null as GeneratedScript | null })),
+          ].map(card => {
+            if (!card.gen) return <ScriptLoadingCard key={card.idea.title} idea={card.idea} />
+            const gen = card.gen
+            return (
+              <ScriptCard
+                key={card.idea.title}
+                gen={gen}
+                saved={savedTitles.includes(card.idea.title)}
+                saving={saving === card.idea.title}
+                onSave={() => saveOne(gen)}
+                onRecord={() => recordOne(gen)}
+                onRegen={() => regenerateOne(gen)}
+                regenerating={regenerating === card.idea.title}
+                CopyBtn={CopyBtn}
+              />
+            )
+          })}
           {genQueue === null && (
             <div className="flex flex-wrap gap-3">
               <button onClick={reset} className="btn-ghost text-sm">
@@ -500,13 +606,15 @@ function ScriptLoadingCard({ idea }: { idea: IdeaItem }) {
 }
 
 function ScriptCard({
-  gen, saved, saving, onSave, onRecord, CopyBtn,
+  gen, saved, saving, onSave, onRecord, onRegen, regenerating, CopyBtn,
 }: {
   gen: GeneratedScript
   saved: boolean
   saving: boolean
   onSave: () => void
   onRecord: () => void
+  onRegen: () => void
+  regenerating: boolean
   CopyBtn: React.ComponentType<{ text: string; id: string; label?: string; dark?: boolean }>
 }) {
   const { reel } = gen
@@ -515,10 +623,17 @@ function ScriptCard({
   return (
     <div className="rounded-2xl overflow-hidden" style={{ background: 'white', border: '1.5px solid rgba(255,241,181,0.8)' }}>
       <div className="p-5" style={{ background: 'rgba(255,241,181,0.35)' }}>
-        <p className="font-bold text-lg leading-snug" style={{ color: '#1a1a1a' }}>{reel.title}</p>
+        <div className="flex items-start justify-between gap-3">
+          <p className="font-bold text-lg leading-snug" style={{ color: '#1a1a1a' }}>{reel.title}</p>
+        </div>
         <div className="flex flex-wrap items-center gap-1.5 mt-2">
           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: '#7A1832', color: 'white' }}>{gen.idea.service}</span>
           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'white', color: '#591427' }}>Reel · {gen.idea.pillar}</span>
+          {gen.mock && (
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(122,24,50,0.08)', color: '#591427' }}>
+              Ejemplo — IA no disponible
+            </span>
+          )}
         </div>
         <p className="text-sm mt-2" style={{ color: '#591427', opacity: 0.75 }}>Portada: <strong>{reel.coverText}</strong></p>
       </div>
@@ -562,6 +677,10 @@ function ScriptCard({
         </button>
         <button onClick={onRecord} className="btn-secondary text-sm">
           <Clapperboard size={15} /> Grabar con teleprompter
+        </button>
+        <button onClick={onRegen} disabled={regenerating} className="btn-secondary text-sm">
+          <RefreshCw size={15} className={regenerating ? 'animate-spin' : ''} />
+          {regenerating ? 'Reescribiendo…' : 'Regenerar'}
         </button>
         {saved && (
           <Link href="/biblioteca" className="text-xs font-semibold" style={{ color: '#7A1832' }}>

@@ -133,7 +133,8 @@ function StoriesCreator({ userId, brandFull }: { userId: string; brandFull: Bran
     if (!service && !freeText) return
     setGenerating(true)
     const out = await generateStories({
-      service: service || freeText,
+      service: service || 'General',
+      idea: freeText || undefined,
       count,
       mode,
       detail: detail || undefined,
@@ -178,7 +179,8 @@ function StoriesCreator({ userId, brandFull }: { userId: string; brandFull: Bran
     const payload = {
       type: 'story' as const,
       title: `Stories: ${service || freeText}`,
-      service: service || freeText,
+      service: service || 'General',
+      idea: freeText || undefined,
       content_json: result as unknown as Record<string, unknown>,
       caption_with_hashtags: fullText,
       status: 'library' as const,
@@ -202,7 +204,8 @@ function StoriesCreator({ userId, brandFull }: { userId: string; brandFull: Bran
     const basePayload = {
       type: 'story' as const,
       title: `Stories: ${service || freeText}`,
-      service: service || freeText,
+      service: service || 'General',
+      idea: freeText || undefined,
       content_json: result as unknown as Record<string, unknown>,
       caption_with_hashtags: fullText,
       format: 'story',
@@ -234,7 +237,8 @@ function StoriesCreator({ userId, brandFull }: { userId: string; brandFull: Bran
     if (!result) return
     setGenerating(true)
     const out = await generateStories({
-      service: service || freeText,
+      service: service || 'General',
+      idea: freeText || undefined,
       count,
       mode,
       detail: detail || undefined,
@@ -250,7 +254,8 @@ function StoriesCreator({ userId, brandFull }: { userId: string; brandFull: Bran
     if (!result || regenerating !== null) return
     setRegenerating(number)
     try {
-      const fresh = await generateStories({ service: service || freeText, count, mode, detail: detail || undefined, brandContext: brandContext || undefined })
+      const fresh = await generateStories({ service: service || 'General',
+      idea: freeText || undefined, count, mode, detail: detail || undefined, brandContext: brandContext || undefined })
       const newStory = fresh.stories[number - 1]
       if (newStory) {
         setResult(prev => prev ? { stories: prev.stories.map(s => s.number === number ? newStory : s) } : prev)
@@ -267,7 +272,8 @@ function StoriesCreator({ userId, brandFull }: { userId: string; brandFull: Bran
       user_id: userId,
       type: 'story' as const,
       title: `Stories: ${service || freeText}`,
-      service: service || freeText,
+      service: service || 'General',
+      idea: freeText || undefined,
       objective: null,
       format: 'story',
       content_json: result as unknown as ContentItem['content_json'],

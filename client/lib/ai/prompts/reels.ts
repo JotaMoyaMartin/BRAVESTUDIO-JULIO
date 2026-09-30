@@ -49,6 +49,8 @@ export interface ReelInput {
   objective: ContentObjective
   brandContext?: string
   freeText?: string
+  /** Guiones ya escritos en esta tanda — el nuevo debe diferenciarse claramente. */
+  avoidScripts?: Array<{ title: string; hook: string }>
 }
 
 // New objectives map onto the three base tones for the mock generator.
@@ -71,15 +73,34 @@ export interface ReelOutput {
   captionWithHashtags: string
 }
 
+// Enfoque del guion según el objetivo elegido (el ESTRUCTURA GANCHO→CONTEXTO→
+// SOLUCIÓN→CTA es fija; esto cambia el énfasis y el cierre).
+const OBJECTIVE_RULES: Record<ContentObjective, string> = {
+  autoridad: 'Guion de AUTORIDAD (35-45 segundos). El objetivo es posicionar, educar, generar confianza, justificar valor y conseguir reservas.',
+  reservas: 'Guion para CONSEGUIR RESERVAS (35-45 segundos). Hilo narrativo: un caso real o transformación (sin datos identificativos). El CTA invita directamente a reservar la cita o el diagnóstico.',
+  visibilidad: 'Guion de VISIBILIDAD (35-45 segundos). El objetivo es llegar a gente nueva: ángulo muy llamativo y contenido guardable (listón, checklist, comparación).',
+  educativo: 'Guion EDUCATIVO (35-45 segundos). Enseña algo concreto y aporta valor real a la clienta — el CTA puede ser suave.',
+  consejos: 'Guion de CONSEJOS (35-45 segundos). Tips prácticos y fáciles de aplicar en casa, sin agobios técnicos — el CTA puede ser suave.',
+  venta: 'Guion de VENTA (35-45 segundos). El objetivo es invitar de forma directa y natural a reservar o comprar: beneficia + precio justificado por el proceso.',
+}
+
 export function buildReelPrompt(input: ReelInput): string {
+  // Idea central de la estilista (dictada o escrita): el guion gira SIEMPRE en torno a ella.
+  const ideaBlock = input.freeText
+    ? `\nIDEA DE LA ESTILISTA (desarrolla ESTE guion exactamente sobre esta idea; NO cambies de tema ni improvises otro distinto):\n${input.freeText}\n`
+    : ''
+  // Anti-repetición dentro de una tanda: títulos y ganchos ya escritos.
+  const avoidBlock = (input.avoidScripts?.length || 0) > 0
+    ? `\nEN ESTA MISMA TANDA YA HAS ESCRITO ESTOS GUIONES (NO repitas su ángulo, su gancho, sus frases ni un título parecido — el nuevo guion debe ser CLARAMENTE DISTINTO en ángulo y enfoque):\n${input.avoidScripts!.map(a => `- "${a.title}" (gancho: ${a.hook})`).join('\n')}\nVaría también el TIPO de gancho: si los anteriores parten de un error, usa un falso mito, deseo u objeción.\n`
+    : ''
+
   return `Eres un experto en contenido para salones de belleza en Instagram. Crea un guion de Reel siguiendo EXACTAMENTE el manual oficial BRÄVE Content.
 
 SERVICIO: ${input.service}
-OBJETIVO: ${input.objective}
-${input.freeText ? `IDEA/TEMA: ${input.freeText}` : ''}
-${input.brandContext ? `CONTEXTO DEL SALÓN: ${input.brandContext}` : ''}
-
-TIPO DE GUION: Guion de AUTORIDAD (35-45 segundos). El objetivo es posicionar, educar, generar confianza, justificar valor y conseguir reservas.
+OBJETIVO ELEGIDO POR LA ESTILISTA: ${input.objective}
+${ideaBlock}${input.brandContext ? `CONTEXTO DEL SALÓN: ${input.brandContext}` : ''}${avoidBlock}
+TIPO DE GUION SEGÚN EL OBJETIVO — respétalo:
+${OBJECTIVE_RULES[input.objective]}
 
 ESTRUCTURA OBLIGATORIA — sigue este orden exacto, nunca lo cambies:
 
@@ -125,7 +146,7 @@ Devuelve EXACTAMENTE este JSON sin texto adicional:
     "cta": "CTA conversacional sin palabras clave (1 frase, 3-5 segundos)"
   },
   "visualIdea": "Idea visual natural para grabar (1-2 frases)",
-  "captionWithHashtags": "Copy para Instagram + 5 hashtags relevantes para salones de belleza en español"
+  "captionWithHashtags": "Copy para Instagram de 4-6 líneas con esta estructura EXACTA: 1ª línea = gancho que pare el scroll (pregunta o afirmación potente); después 2-3 frases desarrollando la SOLUCIÓN y su valor (qué se hace, cómo y por qué marca la diferencia — la clienta debe sentir que la escribe una experta); y al final un CTA conversacional que invite a escribir o reservar (sin palabras clave) + 5 hashtags del sector belleza en español. Más desarrollado que una sola línea, sin convertirse en un ensayo"
 }`
 }
 
@@ -142,7 +163,7 @@ const REEL_VARIANTS = [
     solutionFn: (_s: string) => `El secreto está en el diagnóstico previo. Antes de tocar ningún producto, analizo el estado del cabello, la historia de tratamientos anteriores y lo que realmente necesita cada persona. No existe una fórmula universal. Existe la fórmula correcta para ti.`,
     ctaFn: (s: string) => { const l = serviceLabel(s); return `Si llevas tiempo pensando en hacerte ${l.un} y quieres que lo hagamos bien desde el principio, escríbeme y te cuento cómo podríamos conseguirlo.` },
     visualFn: (_s: string) => `Grábate hablando a cámara en tu salón, con luz natural si es posible. Puedes mostrar el proceso de trabajo de fondo.`,
-    captionFn: (s: string) => { const l = serviceLabel(s); return `La diferencia entre ${l.un} que ${l.dura} y uno que no, está en el producto. Está en cómo se hace. ✨ Si tienes dudas, escríbeme y te asesoro.\n\n#estilista #${s.replace(/\s/g, '').toLowerCase()} #consejosbelleza #cabelloprofesional #salonbelleza` },
+    captionFn: (s: string) => { const l = serviceLabel(s); return `¿Por qué hay ${l.esFacil} y otros no te ${l.dura} ni dos semanas? La diferencia está en el diagnóstico previo, no en la suerte.\n\nAntes de tocar nada, analizamos tu tipo de cabello y diseñamos el proceso correcto. Por eso el resultado se mantiene y tu cabello no sufre.\n\nSi tienes dudas, escríbeme y te asesoro sin compromiso. ✨\n\n#estilista #${s.replace(/\s/g, '').toLowerCase()} #consejosbelleza #cabelloprofesional #salonbelleza` },
   },
   {
     titleFn: (s: string) => { const l = serviceLabel(s); return `Por qué ${l.el} no ${l.queda} como en las fotos` },
@@ -156,7 +177,7 @@ const REEL_VARIANTS = [
     solutionFn: (s: string) => { const l = serviceLabel(s); return `En mi salón, antes de hacer ${l.el}, hacemos una consulta de 15 minutos. Analizamos el estado del cabello, hablamos de objetivos realistas y diseñamos un plan personalizado. El resultado no es suerte: es técnica + planificación.` },
     ctaFn: (s: string) => { const l = serviceLabel(s); return `¿Tienes dudas sobre ${l.el}? Escríbeme directamente y te doy mi opinión profesional sin compromiso.` },
     visualFn: (s: string) => { const l = serviceLabel(s); return `Muestra el antes y después de ${l.el} en un corte rápido. O grábate explicando el proceso mientras trabajas.` },
-    captionFn: (s: string) => { const l = serviceLabel(s); return `Un buen trabajo con ${l.el} no es casualidad. Es diagnóstico + técnica + producto adecuado. 💇‍♀️ ¿Tienes alguna duda? Escríbeme y te ayudo.\n\n#${s.replace(/\s/g, '').toLowerCase()} #estilista #capilar #salonbelleza #cabellosano` },
+    captionFn: (s: string) => { const l = serviceLabel(s); return `Un buen trabajo con ${l.el} no es casualidad: es diagnóstico + técnica + producto adecuado.\n\nEn mi salón cada ${l.un} empieza con una consulta: miramos tu historial, el estado de tu fibra y qué resultado es realista para ti. El proceso bien hecho es lo que hace que el resultado ${l.dura}.\n\n¿Tienes alguna duda? Escríbeme y te ayudo. 💇‍♀️\n\n#${s.replace(/\s/g, '').toLowerCase()} #estilista #capilar #salonbelleza #cabellosano` },
   },
   {
     titleFn: (s: string) => { const l = serviceLabel(s); return `Lo que cambia cuando ${l.el} se hace bien` },
@@ -170,7 +191,7 @@ const REEL_VARIANTS = [
     solutionFn: (s: string) => { const l = serviceLabel(s); return `El protocolo correcto para ${l.el} empieza mucho antes del sillón. Incluye análisis capilar, elección del producto adecuado y un plan de mantenimiento realista para casa. Sin eso, el resultado ${l.dura} la mitad.` },
     ctaFn: (s: string) => { const l = serviceLabel(s); return `Si quieres hacerte ${l.un} y que el resultado ${l.dura} de verdad, escríbeme. Te explico cómo trabajamos en el salón.` },
     visualFn: (_s: string) => `Grábate en el salón mostrando productos o herramientas mientras explicas. Fondo limpio y buena iluminación.`,
-    captionFn: (s: string) => { const l = serviceLabel(s); return `El resultado perfecto con ${l.el} existe. Solo necesita el proceso correcto. ✨ ¿Tienes preguntas? Escríbeme y te ayudo.\n\n#estilista #${s.replace(/\s/g, '').toLowerCase()} #expertacapilar #salonbelleza #cabelloprofesional` },
+    captionFn: (s: string) => { const l = serviceLabel(s); return `El resultado perfecto con ${l.el} existe: solo necesita el proceso correcto, no productos milagro.\n\nProtocolo completo: análisis capilar, producto adecuado a tu tipo de fibra y un plan de mantenimiento real para casa. Eso es lo que hace que el resultado ${l.dura} de verdad.\n\n¿Tienes preguntas? Escríbeme y te ayudo de verdad. ✨\n\n#estilista #${s.replace(/\s/g, '').toLowerCase()} #expertacapilar #salonbelleza #cabelloprofesional` },
   },
 ]
 
@@ -192,12 +213,25 @@ export function getMockReel(input: ReelInput, seed?: number): ReelOutput {
   }
 }
 
+/** Hash simple y estable (misma idea → mismo seed) para variar el mock por idea. */
+export function hashSeed(s: string): number {
+  let h = 0
+  for (let i = 0; i < s.length; i++) {
+    h = (h * 31 + s.charCodeAt(i)) | 0
+  }
+  return Math.abs(h)
+}
+
 /**
  * Generates a Reel using the configured LLM (DeepSeek via Ollama), falling
  * back to the deterministic mock on any error (route misconfigured, network
  * failure, invalid JSON, or shape mismatch). The app always renders something.
+ *
+ * `opts.seed` hace que DISTINTAS ideas caigan en distintas variantes del mock
+ * (antes: 3 ideas seleccionadas + IA caída = el mismo guion ×3). El seed se
+ * deriva de la idea y sube 1 en cada regeneración para no repetir.
  */
-export async function generateReel(input: ReelInput): Promise<ReelOutput> {
+export async function generateReelChecked(input: ReelInput, opts?: { seed?: number }): Promise<{ reel: ReelOutput; mock: boolean }> {
   try {
     const prompt = buildReelPrompt(input)
     const raw = await generateAIContent(prompt)
@@ -214,10 +248,15 @@ export async function generateReel(input: ReelInput): Promise<ReelOutput> {
       typeof parsed.visualIdea === 'string' &&
       typeof parsed.captionWithHashtags === 'string'
     ) {
-      return parsed
+      return { reel: parsed, mock: false }
     }
   } catch {
     // fall through to mock
   }
-  return getMockReel(input)
+  return { reel: getMockReel(input, opts?.seed), mock: true }
+}
+
+export async function generateReel(input: ReelInput, opts?: { seed?: number }): Promise<ReelOutput> {
+  const { reel } = await generateReelChecked(input, opts)
+  return reel
 }

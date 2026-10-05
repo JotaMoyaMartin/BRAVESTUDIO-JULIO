@@ -39,7 +39,16 @@ export function buildStoriesPrompt(input: StoryInput): string {
   return `Eres un experto en Stories de Instagram para salones de belleza. Crea ${input.count} Story(ies) siguiendo EXACTAMENTE el manual oficial BRÄVE Content.
 
 SERVICIO REALIZADO: ${input.service}
-${input.idea ? `\nIDEA DE LA ESTILISTA (construye TODA la secuencia sobre esta temática — es lo que dictó o escribió):\n${input.idea}\n` : ''}
+${input.idea ? `\nHISTORIA PERSONAL DE LA ESTILISTA (puede venir de un audio dictado — transcripción literal, puede tener muletillas):
+"""
+${input.idea}
+"""
+ASIMILA este mensaje: es material real de la estilista (una clienta concreta, algo que pasó hoy, lo que dijo la clienta, lo que hiciste tú).
+- Extrae del mensaje los HECHOS: quién (nombre si aparece, ej. Carmen), situación inicial, qué hiciste tú, qué dijiste la clienta, resultado.
+- Construye TODA la secuencia sobre ESTA historia real — no sobre el servicio genérico. El servicio es solo contexto.
+- Integra los detalles concretos del mensaje en los textos de las Stories de forma natural y cercana (p. ej. "Carmen llegó a mi salón con…" o "una clienta llevo 3 meses acompañando…"). Usa SOLO el nombre de pila nunca apellidos ni datos de salud.
+- No inventes hechos que contradigan el mensaje; lo que falte complétalo con tu criterio profesional, coherente con la historia.
+` : ''}
 ${input.detail ? `DETALLE ADICIONAL: ${input.detail}` : ''}
 MODO: ${input.mode === 'camera' ? 'Guion para grabar a cámara (conversacional)' : 'Texto para copiar y pegar'}
 ${input.brandContext ? `CONTEXTO DEL SALÓN: ${input.brandContext}` : ''}
@@ -48,6 +57,7 @@ METODOLOGÍA OBLIGATORIA:
 - Story 1: PROBLEMA/IDENTIFICACIÓN - Conseguir atención generando INTRIGA. Usar problema real, frase de clienta, duda frecuente o curiosidad. NO resuelvas el problema aquí — deja la incógnita abierta para que la clienta quiera ver la siguiente Story.
 - Story 2 (si aplica): AUTORIDAD - La estilista demuestra su criterio profesional. Explica qué detectó, analizó y decidió. Debe explicar QUÉ haces, CÓMO lo haces y POR QUÉ lo haces.
 - Story 3 (si aplica): RESULTADO + ACCIÓN - Muestra el beneficio final + CTA conversacional.
+${input.idea ? 'REGLA ESPECIAL (hay historia personal): la Story 1 debe partir del HECHO REAL del mensaje (el momento más impactante), no de una frase genérica de intriga.\n' : ''}
 
 CTA: NUNCA dependas de palabras clave ni automatizaciones.
 CTAs válidos: "Si estás pensando en hacerte este servicio, escríbeme y te ayudo." / "Reserva tu diagnóstico y analizamos tu caso." / "Si tienes dudas, escríbeme y te asesoramos."
@@ -88,9 +98,13 @@ export function getMockStories(input: StoryInput): StoriesOutput {
     {
       number: 1,
       role: 'Problema / Identificación',
-      text: input.mode === 'camera'
-        ? `¿Llevas tiempo queriendo hacerte un ${input.service} pero algo te frena? Hoy quiero contarte algo que cambié en mi forma de trabajar y que puede cambiarte la idea completamente.`
-        : `¿Tu ${input.service} no dura lo que debería? Hay algo que casi nadie te cuenta… 👇`,
+      text: input.idea
+        ? input.mode === 'camera'
+          ? 'Hoy quiero contarte algo que me ha pasado en el salón. Me ha llegado al corazón y creo que a mucha gente le pasará.'
+          : 'Hoy me ha pasado algo en el salón que quiero contarte… 👇'
+        : input.mode === 'camera'
+          ? `¿Llevas tiempo queriendo hacerte un ${input.service} pero algo te frena? Hoy quiero contarte algo que cambié en mi forma de trabajar y que puede cambiarte la idea completamente.`
+          : `¿Tu ${input.service} no dura lo que debería? Hay algo que casi nadie te cuenta… 👇`,
       sticker: {
         type: 'poll',
         label: `¿Has pensado en hacerte un ${input.service}?`,

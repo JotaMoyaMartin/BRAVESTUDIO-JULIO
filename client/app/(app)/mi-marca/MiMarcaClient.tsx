@@ -19,87 +19,93 @@ import {
   Eye, Clock, Palette, RefreshCw, Map as MapIcon,
 } from 'lucide-react'
 
-// ── 8 question blocks, 33 questions ──────────────────────────────────
+// ── 8 bloques, frases para completar (petición Jota 5-oct: nada de preguntas —
+// frases en 1ª persona tipo "Mi nombre es...", con ejemplos para facilitar) ──
 
-const QUESTION_BLOCKS = [
+interface GuidePhrase {
+  stem: string
+  examples: string
+}
+
+const PHRASE_BLOCKS: { title: string; icon: typeof Store; phrases: GuidePhrase[] }[] = [
   {
     title: 'Sobre tu salón',
     icon: Store,
-    questions: [
-      '¿Cómo se llama tu salón?',
-      '¿En qué ciudad estás?',
-      '¿Cuántos años llevas trabajando?',
-      '¿Trabajas sola o tienes equipo?',
+    phrases: [
+      { stem: 'Mi salón se llama...', examples: 'ej. Aura Hair Studio · Estética Raíz' },
+      { stem: 'Trabajo en la ciudad de...', examples: 'ej. Madrid · un barrio pequeño de Sevilla' },
+      { stem: 'Llevo...', examples: 'ej. 12 años en el sector · recién empezando' },
+      { stem: 'En mi día a día trabajando soy...', examples: 'ej. de autónoma · somos 2 en el equipo' },
     ],
   },
   {
     title: 'Servicios',
     icon: Scissors,
-    questions: [
-      '¿Qué servicios realizas?',
-      '¿Cuáles son tus 3 servicios principales?',
-      '¿Qué servicio quieres potenciar?',
-      '¿Qué servicio te deja más beneficio?',
+    phrases: [
+      { stem: 'Los servicios que realizo son...', examples: 'ej. color, corte, tratamientos, peinados' },
+      { stem: 'Mis 3 servicios principales son...', examples: 'ej. balayage, keratina y corte de mujer' },
+      { stem: 'El servicio que más quiero potenciar es...', examples: 'ej. las canas · el balayage' },
+      { stem: 'El servicio que más beneficio me deja es...', examples: 'ej. los tratamientos · el color' },
     ],
   },
   {
     title: 'Clienta ideal',
     icon: Heart,
-    questions: [
-      '¿Qué tipo de clienta quieres atraer?',
-      '¿Qué edad tiene tu clienta ideal?',
-      '¿Qué problemas suele tener tu clienta?',
-      '¿Qué desea conseguir cuando reserva contigo?',
-      '¿Qué dudas te preguntan con frecuencia?',
+    phrases: [
+      { stem: 'La clienta que quiero atraer es...', examples: 'ej. mujeres que cuidan su pelo de verdad · clientas fieles' },
+      { stem: 'Mi clienta ideal tiene...', examples: 'ej. entre 30 y 45 años · cualquier edad' },
+      { stem: 'A mi clienta le suele pasar que...', examples: 'ej. su rubio acaba amarillo · su pelo se apaga' },
+      { stem: 'Cuando reserva conmigo quiere conseguir...', examples: 'ej. despreocuparse del pelo · cambiar de look con seguridad' },
+      { stem: 'Las dudas que más me preguntan son...', examples: 'ej. "cuánto dura un balayage" · "qué tratamiento me va mejor"' },
     ],
   },
   {
     title: 'Contenido y objetivos',
     icon: Target,
-    questions: [
-      '¿Qué objetivo tienes ahora mismo?',
-      '¿Sobre qué temas quieres crear más contenido?',
-      '¿Qué te diferencia de otros salones?',
+    phrases: [
+      { stem: 'Mi objetivo ahora mismo es...', examples: 'ej. llenar las tardes libres · más reservas de color' },
+      { stem: 'Los temas sobre los que me gusta crear contenido son...', examples: 'ej. rutinas de cuidado · transformaciones reales' },
+      { stem: 'Lo que me hace distinta de otros salones es...', examples: 'ej. análisis del pelo antes de tocar nada · mi trato cercano' },
     ],
   },
   {
     title: 'Estilo y comunicación',
     icon: MessageCircle,
-    questions: [
-      '¿Cómo te comunicas con tus clientas? (formal/informal)',
-      '¿Sales tú en tus contenidos o solo muestras el trabajo?',
-      '¿Qué tono prefieres? (profesional/cercano/divertido)',
-      '¿Qué valores quieres transmitir?',
+    phrases: [
+      { stem: 'Mi forma de comunicar es...', examples: 'ej. cercana y con humor · profesional y elegante' },
+      { stem: 'En mis vídeos yo...', examples: 'ej. salgo hablando a cámara · solo se ve mi trabajo' },
+      { stem: 'El tono que prefiero es...', examples: 'ej. cercano · elegante · divertido' },
+      { stem: 'Los valores que quiero transmitir son...', examples: 'ej. honestidad · cuidado del pelo · confianza' },
     ],
   },
   {
     title: 'Competencia',
     icon: Eye,
-    questions: [
-      '¿Conoces a 3 salones o estilistas que admires en Instagram?',
-      '¿Qué hacen ellos que tú no haces?',
-      '¿Qué haces tú mejor que ellos?',
+    phrases: [
+      { stem: 'Salones o estilistas que admiro en Instagram son...', examples: 'ej. escriba 3 cuentas que sigas y admire' },
+      { stem: 'Cosas que hacen ellos y yo todavía no: ...', examples: 'ej. colaboraciones · reels todos los días' },
+      { stem: 'Lo que yo hago mejor que ellos es...', examples: 'ej. mi técnica de color · el cariño con la clienta' },
     ],
   },
   {
     title: 'Recursos y tiempo',
     icon: Clock,
-    questions: [
-      '¿Cuántas horas a la semana dedicas al contenido?',
-      '¿Quién hace las fotos y vídeos?',
-      '¿Tienes presupuesto para publicidad?',
-      '¿Usas alguna herramienta de edición?',
+    phrases: [
+      { stem: 'Cada semana dedico al contenido...', examples: 'ej. 3-4 horas · solo los fines de semana' },
+      { stem: 'Las fotos y vídeos los hace...', examples: 'ej. yo con mi móvil · una amiga que me ayuda' },
+      { stem: 'Mi presupuesto para publicidad es de...', examples: 'ej. 50 € al mes · por ahora nada' },
+      { stem: 'Para editar uso...', examples: 'ej. CapCut · las herramientas de Instagram' },
     ],
   },
   {
     title: 'Imagen y estética',
     icon: Palette,
-    questions: [
-      '¿Qué colores representan tu salón?',
-      '¿Cómo es la decoración de tu salón?',
-      '¿Qué estilo visual prefieres? (minimalista/colorido/elegante)',
-      '¿Tienes un logo o colores corporativos?',
-      '¿Cómo quieres que se sienta una clienta al entrar?',
+    phrases: [
+      { stem: 'Los colores de mi salón son...', examples: 'ej. blancos y madera · rosa y negro' },
+      { stem: 'La decoración de mi salón es...', examples: 'ej. minimalista · cálida y acogedora' },
+      { stem: 'Mi estilo visual es...', examples: 'ej. limpio y elegante · colorido y alegre' },
+      { stem: 'Sobre mi logo y colores corporativos: ...', examples: 'ej. no tengo logo · logo floral en verde' },
+      { stem: 'Cuando una clienta me visita quiero que se sienta...', examples: 'ej. cuidada · como en casa · confiando en mí' },
     ],
   },
 ]
@@ -124,6 +130,16 @@ export default function MiMarcaClient({ userId, brand }: { userId: string; brand
   const [roadmapError, setRoadmapError] = useState('')
   const strategyRef = useRef<HTMLDivElement>(null)
   const roadmapRef = useRef<HTMLDivElement>(null)
+  const textRef = useRef<HTMLTextAreaElement>(null)
+
+  /** Toca una frase → se añade al cuadro (en línea nueva) y el cursor va a completarla. */
+  function addPhrase(stem: string) {
+    setText(prev => (prev && prev.trim() ? `${prev.trimEnd()}\n${stem} ` : `${stem} `))
+    requestAnimationFrame(() => {
+      textRef.current?.focus()
+      textRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    })
+  }
 
   useEffect(() => {
     if (isDemoMode) {
@@ -375,16 +391,17 @@ export default function MiMarcaClient({ userId, brand }: { userId: string; brand
       <div className="rounded-[var(--radius-lg)] p-5 space-y-4 bg-white shadow-soft" style={{ border: '1.5px solid var(--color-buttermilk)' }}>
         <div className="p-4 rounded-[var(--radius-md)]" style={{ background: 'var(--color-buttermilk)' }}>
           <BraviTip
-            message={strategy ? '¿Quieres actualizar tu estrategia? Escribe cambios y regenera.' : 'Cuéntame sobre tu salón respondiendo las preguntas de abajo. No importa el orden ni el formato.'}
+            message={strategy ? '¿Quieres actualizar tu estrategia? Escribe cambios y regenera.' : 'Toca las frases de abajo, complétalas con tus palabras y genera tu estrategia. No importa el orden.'}
             size={48}
           />
         </div>
 
         <textarea
+          ref={textRef}
           rows={10}
           value={text}
           onChange={e => setText(e.target.value)}
-          placeholder="Escribe aquí toda la información de tu salón. Responde las preguntas de abajo en el orden que prefieras…"
+          placeholder="Toca una frase de abajo y complétala aquí con tus palabras… (o escríbelo/díctalo como prefieras)"
           className="w-full px-4 py-3 rounded-[var(--radius-md)] text-sm outline-none resize-none"
           style={{ border: '1.5px solid rgba(122,24,50,0.2)', background: 'var(--color-cream)', lineHeight: 1.6 }}
         />
@@ -401,13 +418,13 @@ export default function MiMarcaClient({ userId, brand }: { userId: string; brand
         {error && <p className="text-xs text-danger text-center">{error}</p>}
       </div>
 
-      {/* Preguntas guía — todas visibles, sin desplegables */}
+      {/* Frases para completar — tocables: se añaden al cuadro de arriba */}
       <div className="space-y-3">
         <p className="text-sm font-semibold text-cherry-dark px-1">
-          Preguntas guía — respóndelas en el cuadro de arriba:
+          Frases para completar — tócalas y se añaden al cuadro de arriba:
         </p>
         <div className="rounded-[var(--radius-md)] bg-white shadow-soft p-4 space-y-4" style={{ border: '1.5px solid var(--color-buttermilk)' }}>
-          {QUESTION_BLOCKS.map((block) => {
+          {PHRASE_BLOCKS.map((block) => {
             const Icon = block.icon
             return (
               <div key={block.title}>
@@ -415,12 +432,22 @@ export default function MiMarcaClient({ userId, brand }: { userId: string; brand
                   <Icon size={14} style={{ color: 'var(--color-cherry)' }} />
                   <span className="font-semibold text-sm text-ink">{block.title}</span>
                 </div>
-                <div className="space-y-1.5">
-                  {block.questions.map(q => (
-                    <div key={q} className="flex items-start gap-2 text-sm text-ink">
-                      <span style={{ color: 'var(--color-cherry)', opacity: 0.5 }}>•</span>
-                      <span style={{ lineHeight: 1.4 }}>{q}</span>
-                    </div>
+                <div className="space-y-2">
+                  {block.phrases.map(p => (
+                    <button
+                      key={p.stem}
+                      onClick={() => addPhrase(p.stem)}
+                      className="w-full text-left rounded-[var(--radius-sm)] px-3 py-2 transition-all hover:bg-[rgba(255,241,181,0.3)]"
+                      style={{ background: 'var(--color-cream)', border: '1px solid rgba(122,24,50,0.10)' }}
+                      title="Añadir al cuadro de arriba"
+                    >
+                      <span className="text-sm text-ink font-medium block" style={{ lineHeight: 1.4 }}>
+                        {p.stem}
+                      </span>
+                      <span className="text-xs text-ink opacity-55 block" style={{ lineHeight: 1.35 }}>
+                        {p.examples}
+                      </span>
+                    </button>
                   ))}
                 </div>
               </div>

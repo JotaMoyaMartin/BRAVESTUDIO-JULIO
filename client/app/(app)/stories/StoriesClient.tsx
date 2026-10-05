@@ -550,26 +550,22 @@ Visual: ${s.visualIdea}`
         </p>
       </div>
 
-      {/* Service */}
+      {/* Tema: Opción B — historia personal (dictada o escrita) */}
       <div className="rounded-2xl p-5" style={{ background: 'white', border: '1.5px solid rgba(255,241,181,0.8)' }}>
-        <p className="font-semibold text-sm mb-3" style={{ color: '#1a1a1a' }}>¿Sobre qué quieres crear Stories?</p>
-        <div className="flex flex-wrap gap-2 mb-3">
-          {SERVICES.map(s => (
-            <button
-              key={s}
-              onClick={() => setService(service === s ? '' : s)}
-              className="px-3 py-1.5 rounded-xl text-xs font-medium transition-all"
-              style={{ background: service === s ? '#7A1832' : '#F5F0E8', color: service === s ? 'white' : '#591427' }}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
-        <div className="flex items-center gap-2">
-          <input
+        <p className="font-semibold text-sm" style={{ color: '#1a1a1a' }}>Cuéntame de qué quieres hablar</p>
+        <p className="text-xs mt-1" style={{ color: '#591427', opacity: 0.6 }}>
+          Opción recomendada si es algo de tu día a día
+        </p>
+        <div className="flex items-stretch gap-2 mt-3">
+          <textarea
             value={freeText}
             onChange={e => setFreeText(e.target.value)}
-            placeholder={dictate.listening ? 'Escuchando…' : 'O escribe un tema libre (ej: antes y después de un color…)'}
+            rows={4}
+            placeholder={
+              dictate.listening
+                ? 'Escuchando… toca de nuevo para terminar.'
+                : 'Dale al micro y cuenta: "Hoy me vino Carmen con el pelo destrozado…" — la IA lo asimila y crea la secuencia con TU historia.'
+            }
             className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
             style={{ border: '1.5px solid rgba(122,24,50,0.2)', background: '#FFFDF5' }}
           />
@@ -577,8 +573,8 @@ Visual: ${s.visualIdea}`
             <button
               onClick={toggleDictate}
               aria-pressed={dictate.listening}
-              aria-label={dictate.listening ? 'Parar dictado por voz' : 'Dictar idea por voz'}
-              className="shrink-0 w-11 h-11 rounded-xl flex items-center justify-center transition-all"
+              aria-label={dictate.listening ? 'Parar dictado por voz' : 'Dictar historia por voz'}
+              className="shrink-0 w-12 rounded-xl flex items-center justify-center transition-all"
               style={{
                 background: dictate.listening ? '#7A1832' : '#F5F0E8',
                 color: dictate.listening ? 'white' : '#591427',
@@ -590,7 +586,7 @@ Visual: ${s.visualIdea}`
         </div>
         {dictate.listening && (
           <p className="text-xs mt-2" style={{ color: '#7A1832' }}>
-            Escuchando… habla y toca el micro al terminar.
+            Escuchando… toca de nuevo para terminar.
           </p>
         )}
         <input
@@ -600,6 +596,28 @@ Visual: ${s.visualIdea}`
           className="w-full px-3 py-2.5 rounded-xl text-sm outline-none mt-2"
           style={{ border: '1.5px solid rgba(122,24,50,0.2)', background: '#FFFDF5' }}
         />
+
+        <div className="mt-5 mb-4" style={{ height: 1.5, background: 'rgba(255,241,181,0.8)' }} />
+
+        {/* Tema: Opción A — servicio */}
+        <p className="font-semibold text-sm mb-3" style={{ color: '#1a1a1a' }}>O si prefieres, elige un servicio</p>
+        <div className="flex flex-wrap gap-2">
+          {SERVICES.map(s => (
+            <button
+              key={s}
+              onClick={() => setService(service === s ? '' : s)}
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-medium transition-all"
+              style={{
+                background: service === s ? '#7A1832' : '#F5F0E8',
+                color: service === s ? 'white' : '#591427',
+                boxShadow: service === s ? 'var(--shadow-soft)' : undefined,
+              }}
+            >
+              {service === s && <Check size={13} />}
+              {s}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Count */}
@@ -628,6 +646,15 @@ Visual: ${s.visualIdea}`
         disabled={generating}
         hasBrand={hasBrand}
       />
+      {freeText.trim() && (
+        <div
+          className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold"
+          style={{ background: '#FFF1B5', color: '#591427' }}
+        >
+          <Check size={14} />
+          Personalizaremos la secuencia con tu historia
+        </div>
+      )}
       <button
         onClick={generate}
         disabled={generating || (!service && !freeText)}
@@ -635,7 +662,7 @@ Visual: ${s.visualIdea}`
         style={{ opacity: (!service && !freeText) ? 0.5 : 1 }}
       >
         <LayoutGrid size={20} />
-        {generating ? 'Creando tus Stories...' : 'Crear Stories ✨'}
+        {generating ? 'Creando tus Stories...' : freeText ? 'Crear Stories con tu historia ✨' : 'Crear Stories ✨'}
       </button>
     </div>
   )

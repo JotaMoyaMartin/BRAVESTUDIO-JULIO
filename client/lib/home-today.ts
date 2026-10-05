@@ -26,6 +26,10 @@ export interface TodayInput {
   weekCreated: number
   weekPublished: number
   weeklyTarget: number | null
+  /** Opcionales para el checklist del asistente (Inicio "Asistente BRÄVE").
+   *  decideToday no los usa — así los tests actuales no cambian. */
+  totalItems?: number
+  storiesCount?: number
 }
 
 export interface TodayDecision {

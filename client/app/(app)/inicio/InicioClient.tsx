@@ -15,7 +15,8 @@ import {
   buildBraviLine,
 } from '@/lib/home-today'
 import Bravi from '@/components/bravi/Bravi'
-import TodayCard from '@/components/home/TodayCard'
+import BraviAssistant from '@/components/home/BraviAssistant'
+import { buildBraviChecklist } from '@/lib/home-bravi'
 import AppTile, { AppTileLive, AppTileProps } from '@/components/home/AppTile'
 import { TILES_NORMAL, TILES_PREMIUM } from '@/components/home/tiles'
 import InspirationPreview from '@/components/home/InspirationPreview'
@@ -89,12 +90,14 @@ export default function InicioClient({
   profile,
   todayInput,
   isPremium = false,
+  brandSummary = null,
   inspirations = [],
   transitions = [],
 }: {
   profile: Profile | null
   todayInput: TodayInput | null
   isPremium?: boolean
+  brandSummary?: string | null
   inspirations?: ReelInspiration[]
   transitions?: ReelTransition[]
 }) {
@@ -135,6 +138,8 @@ export default function InicioClient({
           getWeekKey(new Date(i.updated_at)) === wk,
       ).length,
       weeklyTarget: null,
+      totalItems: demoPlan.length,
+      storiesCount: demoPlan.filter(i => i.type === 'story').length,
     }
   }, [isDemo, demoPlan, demoBrand, profile?.last_visited_section])
 
@@ -159,6 +164,18 @@ export default function InicioClient({
   const hour = new Date().getHours()
   const brainIncomplete = plan?.primary.kind === 'marca'
 
+  // Asistente BRÄVE: checklist determinista con los contadores reales +
+  // contexto de marca (optimized_summary) para que Bravi hable del salón.
+  const braviSteps = buildBraviChecklist({
+    brandState: effectiveInput?.brandState ?? null,
+    isPremium,
+    totalItems: effectiveInput?.totalItems ?? 0,
+    storiesCount: effectiveInput?.storiesCount ?? 0,
+    weekCreated: effectiveInput?.weekCreated ?? 0,
+    weekPublished: effectiveInput?.weekPublished ?? 0,
+  })
+  const brandContext = brandSummary ?? (isDemo ? ((demoBrand?.optimized_summary as string | undefined) ?? null) : null)
+
   // --- Estado Brain incompleto: dirección clara + herramientas visibles ---
   if (brainIncomplete && plan && effectiveInput) {
     return (
@@ -170,7 +187,13 @@ export default function InicioClient({
           <p className="mt-1 text-base text-cherry-dark opacity-80">Tu plan para hoy</p>
         </div>
 
-        <TodayCard decision={plan.primary} />
+        <BraviAssistant
+          profileName={profile?.full_name ?? null}
+          steps={braviSteps}
+          suggestionTitle={plan.primary.title}
+          suggestionHref={plan.primary.ctaHref}
+          brandContext={brandContext}
+        />
 
         <ToolsSection tiles={TILES_NORMAL} inspirations={inspirations} transitions={transitions} />
       </div>
@@ -211,8 +234,16 @@ export default function InicioClient({
         </div>
       )}
 
-      {/* 4. Acción principal — domina la página */}
-      {plan && <TodayCard decision={plan.primary} retoNote={plan.retoNote} />}
+      {/* 4. Acción principal — domina la página (el asistente BRÄVE) */}
+      {plan && (
+        <BraviAssistant
+          profileName={profile?.full_name ?? null}
+          steps={braviSteps}
+          suggestionTitle={plan.primary.title}
+          suggestionHref={plan.primary.ctaHref}
+          brandContext={brandContext}
+        />
+      )}
 
       {/* 5. Después — máximo 2, solo reales */}
       {plan && plan.after.length > 0 && (

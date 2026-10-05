@@ -49,7 +49,7 @@ export default async function InicioPage() {
 
   const { data: brand } = await supabase
     .from('brand_profiles')
-    .select('completion_status, salon_name, main_priority, main_services, service_to_promote')
+    .select('completion_status, salon_name, main_priority, main_services, service_to_promote, optimized_summary')
     .eq('user_id', user!.id)
     .maybeSingle()
   const { data: items } = await supabase
@@ -114,13 +114,19 @@ export default async function InicioPage() {
     weekCreated: itemList.filter(i => inWeek(i.created_at)).length,
     weekPublished: itemList.filter(i => (i.reto_status === 'publicado' || i.status === 'done') && inWeek(i.done_at || i.updated_at)).length,
     weeklyTarget: retoActive ? (retoProgressRow?.posts_per_week ?? null) : null,
+    // Extras del asistente (checklist Bravi): totales reales, no afectan a decideToday.
+    totalItems: itemList.length,
+    storiesCount: itemList.filter(i => i.type === 'story').length,
   }
+
+  const brandSummary = brandRow?.optimized_summary ?? null
 
   return (
     <InicioClient
       profile={profile as Profile | null}
       todayInput={todayInput}
       isPremium={isPremium}
+      brandSummary={brandSummary}
       inspirations={(inspirations as ReelInspiration[] | null) ?? []}
       transitions={(transitions as ReelTransition[] | null) ?? []}
     />

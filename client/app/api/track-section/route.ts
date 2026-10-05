@@ -10,6 +10,7 @@ const VALID_SECTIONS = [
   'calendario',
   'stories',
   'inspiracion-reels',
+  'banco-ganchos',
   'transiciones-reels',
   'reto-10k',
   'mi-estrategia',

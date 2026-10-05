@@ -381,6 +381,8 @@ export interface Database {
           how_text: string | null
           cover_image: string
           instagram_url: string | null
+          /** Categoría — aún SIN columna en BD (2-oct-2026, se deriva en lib/reel-categories.ts). */
+          category?: string | null
           status: 'active' | 'hidden'
           created_at: string
         }
@@ -394,6 +396,7 @@ export interface Database {
           how_text?: string | null
           cover_image: string
           instagram_url?: string | null
+          category?: string | null
           status?: 'active' | 'hidden'
           created_at?: string
         }
@@ -406,6 +409,7 @@ export interface Database {
           how_text?: string | null
           cover_image?: string
           instagram_url?: string | null
+          category?: string | null
           status?: 'active' | 'hidden'
         }
       }
@@ -435,6 +439,8 @@ export interface Database {
           how_text: string | null
           cover_image: string
           instagram_url: string | null
+          /** Categoría — aún SIN columna en BD (2-oct-2026, se deriva en lib/reel-categories.ts). */
+          category?: string | null
           status: 'active' | 'hidden'
           created_at: string
         }
@@ -448,6 +454,7 @@ export interface Database {
           how_text?: string | null
           cover_image: string
           instagram_url?: string | null
+          category?: string | null
           status?: 'active' | 'hidden'
           created_at?: string
         }
@@ -460,6 +467,7 @@ export interface Database {
           how_text?: string | null
           cover_image?: string
           instagram_url?: string | null
+          category?: string | null
           status?: 'active' | 'hidden'
         }
       }
@@ -475,6 +483,27 @@ export interface Database {
           saved_at?: string
         }
         Update: {
+          saved_at?: string
+        }
+      }
+      saved_ganchos: {
+        Row: {
+          user_id: string
+          gancho_id: string
+          category_id: string
+          text: string
+          saved_at: string
+        }
+        Insert: {
+          user_id: string
+          gancho_id: string
+          category_id: string
+          text: string
+          saved_at?: string
+        }
+        Update: {
+          category_id?: string
+          text?: string
           saved_at?: string
         }
       }

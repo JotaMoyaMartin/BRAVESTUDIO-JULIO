@@ -12,6 +12,7 @@ const PATH_TO_SECTION: Record<string, string> = {
   '/calendario': 'calendario',
   '/stories': 'stories',
   '/inspiracion-reels': 'inspiracion-reels',
+  '/banco-ganchos': 'banco-ganchos',
   '/transiciones-reels': 'transiciones-reels',
   '/reto-10k': 'reto-10k',
   '/mi-estrategia': 'mi-estrategia',

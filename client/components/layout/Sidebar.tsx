@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Profile } from '@/types/database'
 import {
   Home, Sparkles, Star,
-  Film, LayoutGrid, BookOpen, Calendar, LogOut, Menu, X,
+  Film, LayoutGrid, BookOpen, Calendar, LogOut, Menu, X, Zap,
   Clapperboard, Wand2, Settings, Shield, Crown, GraduationCap, Users, BarChart3,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
@@ -30,7 +30,7 @@ const navItems: NavItem[] = [
   { href: '/crear-contenido', label: 'Guiones', icon: Film },
   { href: '/stories', label: 'Stories BRÄVE', icon: LayoutGrid },
   { href: '/inspiracion-reels', label: 'Inspiración Reels', icon: Clapperboard },
-  { href: '/transiciones-reels', label: 'Transiciones Reels', icon: Wand2 },
+  { href: '/banco-ganchos', label: 'Banco de Ganchos', icon: Zap },
   { href: '/biblioteca', label: 'Biblioteca', icon: BookOpen },
   { href: '/calendario', label: 'Calendario', icon: Calendar },
 ]
@@ -44,7 +44,7 @@ const premiumNavItems: NavItem[] = [
   { href: '/biblioteca', label: 'Biblioteca', icon: BookOpen },
   { href: '/stories', label: 'Stories BRÄVE', icon: LayoutGrid },
   { href: '/inspiracion-reels', label: 'Inspiración Reels', icon: Clapperboard },
-  { href: '/transiciones-reels', label: 'Transiciones Reels', icon: Wand2 },
+  { href: '/banco-ganchos', label: 'Banco de Ganchos', icon: Zap },
   { href: '/academia', label: 'Academia', icon: GraduationCap, badge: 'NUEVO', highlight: true },
 ]
 
@@ -61,6 +61,8 @@ export default function Sidebar({ profile }: { profile: Profile }) {
         { href: '/team', label: 'Modo Equipo', icon: Users },
         // TEMPORAL — POC visor de reels IG dentro de la app (quitar al integrarla).
         { href: '/prueba-reels', label: 'Prueba: reels IG', icon: LayoutGrid, badge: 'TEST', highlight: true },
+        // TEMPORAL — borrador sección "Referencias" (mock para aprobación de Jota).
+        { href: '/referencias-reels', label: 'Referencias', icon: Clapperboard, badge: 'TEST', highlight: true },
       ]
     : []
 

@@ -76,11 +76,11 @@ export const FOTO_INSPO_ITEMS: FotoInspoItem[] = [
     cover: '/foto-inspo/selfie-faena-outfit.jpg',
   },
   {
-    id: 'pose-estacion',
+    id: 'pose-sillon-trabajo',
     categoryId: 'poses',
-    title: 'De pie junto a tu estación',
-    tip: 'La imagen de quien domina el espacio vende seguridad. Colócate de tres cuartos, no de frente: saldrás más natural.',
-    cover: null,
+    title: 'Apoyada en tu sillón de trabajo',
+    tip: 'Sentirte dueña de tu salón en la pose da autoridad tranquila: no posas, presentas tu sitio. Salón claro al fondo, hombros sueltos y sonrisa media.',
+    cover: '/foto-inspo/pose-sillon-trabajo.jpg',
   },
   {
     id: 'pose-brazos-cruzados',

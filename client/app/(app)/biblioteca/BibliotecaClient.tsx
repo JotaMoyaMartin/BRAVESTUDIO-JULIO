@@ -1,6 +1,6 @@
 'use client'
 import { useState, useMemo, useEffect } from 'react'
-import { Search, Filter, Check, Copy, BookOpen, X, Film, LayoutGrid, MessageSquare, Clapperboard, Trash2, ArrowRight, Rocket, Wand2 } from 'lucide-react'
+import { Search, Filter, Check, Copy, BookOpen, X, Film, LayoutGrid, MessageSquare, Clapperboard, Trash2, ArrowRight, Wand2 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -13,14 +13,14 @@ import { formatMultipleForCopy, copyToClipboard } from '@/lib/content-utils'
 
 type PartialBrand = Pick<BrandProfile, 'optimized_summary' | 'salon_name' | 'main_services' | 'service_to_promote'> | null
 
-type FilterType = 'all' | 'reel' | 'carrusel' | 'story' | 'inspiraciones' | 'transiciones' | 'reto-10k'
+type FilterType = 'all' | 'reel' | 'carrusel' | 'story' | 'inspiraciones' | 'transiciones'
 
 const FILTER_OPTIONS: { id: FilterType; label: string; icon: typeof Film | null }[] = [
   { id: 'all', label: 'Todos', icon: null },
   { id: 'reel', label: 'Reels', icon: Film },
   { id: 'carrusel', label: 'Carruseles', icon: LayoutGrid },
   { id: 'story', label: 'Stories', icon: MessageSquare },
-  { id: 'reto-10k', label: 'Reto 10K', icon: Rocket },
+  // Reto 10K quitado del filtro (petición Jota, 5-oct — tema eliminado).
   { id: 'inspiraciones', label: 'Inspiraciones', icon: Clapperboard },
   { id: 'transiciones', label: 'Transiciones', icon: Wand2 },
 ]
@@ -50,11 +50,8 @@ export default function BibliotecaClient({ userId, items, brandContext, savedIns
 
   const filtered = useMemo(() => {
     let result = effectiveItems
-    if (filter !== 'all' && filter !== 'inspiraciones' && filter !== 'transiciones' && filter !== 'reto-10k') {
+    if (filter !== 'all' && filter !== 'inspiraciones' && filter !== 'transiciones') {
       result = result.filter(i => i.type === filter)
-    }
-    if (filter === 'reto-10k') {
-      result = result.filter(i => i.tag === 'reto-10k')
     }
     if (search.trim()) {
       const q = search.toLowerCase().trim()
@@ -269,9 +266,7 @@ export default function BibliotecaClient({ userId, items, brandContext, savedIns
                 ? inspirations.length
                 : opt.id === 'transiciones'
                   ? transitions.length
-                  : opt.id === 'reto-10k'
-                    ? items.filter(i => i.tag === 'reto-10k').length
-                    : items.filter(i => i.type === opt.id).length
+                  : items.filter(i => i.type === opt.id).length
             return (
               <button
                 key={opt.id}

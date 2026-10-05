@@ -460,16 +460,19 @@ function GanchoPanel({
     if (res.mock) toast.show('IA no disponible ahora mismo — te dejo una variación de ejemplo', 'info')
   }
 
-  async function makeGuion(regen = false) {
+  async function makeGuion() {
     setGuionLoading(true)
-    if (regen) setGenTick(t => t + 1)
+    // Cada generación rota el ángulo del desarrollo — 2 guiones del mismo
+    // gancho nunca salen gemelos (petición Jota 5-oct: "todos parecidos").
+    const tick = genTick + 1
+    setGenTick(tick)
     // Genera SIEMPRE desde el texto actual (si lo adaptaste a tu servicio, así sale).
     const res = await generateGanchoGuionChecked({
       gancho: text.trim() || gancho.text,
       categoryId: gancho.categoryId,
       brandContext,
       avoidHooks: recentHooks,
-    }, { seed: genTick })
+    }, { seed: tick })
     setGuion(res.reel)
     setGuionMock(res.mock)
     setSaved(false)
@@ -725,7 +728,7 @@ function GanchoPanel({
                     >
                       Copiar guion
                     </Button>
-                    <Button onClick={() => makeGuion(true)} variant="ghost" size="sm" icon={<RefreshCw size={13} />}>
+                    <Button onClick={() => makeGuion()} variant="ghost" size="sm" icon={<RefreshCw size={13} />}>
                       Otro ángulo
                     </Button>
                   </div>

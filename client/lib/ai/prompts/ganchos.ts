@@ -22,6 +22,8 @@ export interface GanchoGuionInput {
   brandContext?: string
   /** Ganchos de guiones ya generados — la variación nueva no parte igual. */
   avoidHooks?: string[]
+  /** Rotación del ángulo del desarrollo: guiones del mismo gancho distinto. */
+  angleIndex?: number
 }
 
 function categoryRules(categoryId: GanchoCategoryId): string {
@@ -37,6 +39,23 @@ function categoryRules(categoryId: GanchoCategoryId): string {
   }
 }
 
+/** Ángulos de desarrollo (se rotan por tanda para que 2 guiones del mismo
+ *  gancho no sean gemelos — petición Jota 5-oct: "salen todos parecidos"). */
+const SOLUTION_ANGLES: string[] = [
+  'Una clienta concreta con una situación específica (inventada, sin datos reales): cómo llegó, qué le pasaba, qué hiciste y cómo terminó. La historia manda, la técnica entra de refilón.',
+  'Tu método paso a paso CON DETALLES OPERATIVOS: qué haces primero, cuánto tarda, qué productos/procesos reales usas (matiz, porcentaje de oxidante, plancha, baño de agua, tiempo de pose...) y qué cambiarías si el caso fuera distinto. Todo dicho sin dar clase.',
+  'El ERROR común que ves en otras casas o en internet — y qué haces tú al contrario. Contraste: "lo que se suele hacer" vs "lo que hago yo", con la consecuencia práctica de cada camino.',
+  'Un ANTES y DESPUÉS narrado: cómo se va transformando el cabello a lo largo del proceso (semana a semana o fase a fase) y qué señal le indica a la clienta que va bien.',
+  'Una CONVERSACIÓN REAL contada con sus palabras: lo que la clienta te preguntó o pidió (sin datos identificativos) y cómo se lo explicaste con una analogía del día a día.',
+]
+
+/** Elige el ángulo del desarrollo: la rotación determinística por tick evita
+ *  guiones gemelos cuando se regenera o se piden varios del mismo gancho. */
+function angleForTick(tick?: number): string {
+  if (tick === undefined) return ''
+  return `ÁNGULO DEL DESARROLLO (obligatorio este enfoque, distinto a otros guiones): ${SOLUTION_ANGLES[Math.abs(tick) % SOLUTION_ANGLES.length]}\n`
+}
+
 export function buildGanchoGuionPrompt(input: GanchoGuionInput): string {
   const meta = GANCHO_CATEGORY_META.find(c => c.id === input.categoryId)
   const pattern = meta?.pattern || ''
@@ -44,22 +63,28 @@ export function buildGanchoGuionPrompt(input: GanchoGuionInput): string {
     ? `\nEN ESTA TANDA YA HAS GENERADO GUIONES ARRANCANDO DE ESTOS GANCHOS (cambia el ángulo interno del desarrollo, no repitas sus frases):\n${input.avoidHooks!.map(h => `- ${h}`).join('\n')}\n`
     : ''
 
-  return `Eres un experto en contenido para salones de belleza. Vas a escribir un guion de Reel a partir de UN GANCHO ya elegido por la estilista. El gancho es la PRIMERA LÍNEA del vídeo, literal o casi literal (puedes ajustar 1-2 palabras para que suene natural hablando).
+  return `Eres un experto en contenido para salones de belleza, con oído para las palabras que suenan a persona de verdad y NO a plantilla. Vas a escribir un guion de Reel a partir de UN GANCHO ya elegido por la estilista. El gancho es la PRIMERA LÍNEA del vídeo, literal o casi literal (puedes ajustar 1-2 palabras para que suene natural hablando).
 
 CATEGORÍA: ${ganchoCategoryName(input.categoryId)}
 ${categoryRules(input.categoryId)}
 
 GANCHO ELEGIDO POR LA ESTILISTA (respétalo como primer plano del vídeo):
 "${input.gancho}"
-Patrón de esta categoría para tu referencia: ${pattern}${input.brandContext ? `\nCONTEXTO DEL SALÓN (personaliza servicios, voz y ejemplos con esto cuando aporte): ${input.brandContext}` : ''}${avoidBlock}
+Patrón de esta categoría para tu referencia: ${pattern}${input.brandContext ? `\nCONTEXTO DEL SALÓN (usa SIEMPRE sus servicios reales en los ejemplos y la voz de la estilista): ${input.brandContext}` : ''}${avoidBlock}${angleForTick(input.angleIndex)}
+
+REGLAS ANTI-GENÉRICO (lo más importante, incumplir esto arruina el guion):
+- CERO frases plantilla. PROHIBIDAS (y parecidas): "El secreto está en...", "el protocolo correcto...", "La confianza es la base", "No es solo un corte, es una experiencia", "cada cabello cuenta una historia", "Cuidamos cada detalle", "Resultados que hablan por sí solos".
+- El desarrollo (solution) DEBE traer al menos 2 detalles CONCRETOS: cifras ("15 minutos", "2 sesiones", "porcentaje de oxidante"), pasos con nombre real de salón (matizado, porras, baño de color, porra, plancha, matiz, baño de aceite...) o una situación concreta con su minihistoria.
+- Sonará a habla hablada: frases cortas, muletillas ocasionales ("mira", "te lo digo por experiencia"), segunda persona (tú). Sin aula, sin jerga científica.
+- Nada de "muchas clientas me lo preguntan" si lo puedes sustituir por una escena concreta.
 
 ESTRUCTURA OBLIGATORIA — sigue este orden exacto:
 
 1. GANCHO (3-5 segundos): el gancho elegido, adaptado mínimamente para hablarlo.
-2. CONTEXTO (5-10 segundos): identificación. La clienta debe verse reflejada en el problema o la situación. NO des la solución todavía.
+2. CONTEXTO (5-10 segundos): una escena concreta e identificable (la clienta que se lo pregunta, el pelo que se ve). NO des la solución todavía.
 3. DESARROLLO / SOLUCIÓN (20-30 segundos) — la parte MÁS IMPORTANTE:
    - Explica QUÉ haces, CÓMO lo haces y POR QUÉ queda así de bien.
-   - Incluye AUTORIDAD O EJEMPLO: un caso real sin datos identificativos, tu criterio profesional o lo que haces distinto a lo habitual.
+   - Incluye AUTORIDAD O EJEMPLO con el ángulo indicado arriba (si no hay ángulo: elige tú el más natural): un caso, tu criterio o lo que haces distinto.
    - La clienta debe pensar: "Aquí saben lo que hacen."
 4. CTA (3-5 segundos):
    - Conversacional: "Si estás pensando en este servicio, escríbeme y te ayudamos." / "Reserva tu diagnóstico y vemos tu caso."
@@ -72,12 +97,12 @@ Duración total: 35-45 segundos hablando natural.
 
 Devuelve EXACTAMENTE este JSON sin texto adicional:
 {
-  "title": "Título corto y atractivo",
+  "title": "Título corto y atractivo, con palabras distintas a las del gancho",
   "coverText": "Texto de portada (máx 8 palabras, impactante)",
   "script": {
     "hook": "Gancho hablado (1-2 frases)",
-    "context": "Contexto (2-3 frases)",
-    "solution": "Desarrollo/solución con QUÉ, CÓMO, POR QUÉ + autoridad o ejemplo (4-6 frases)",
+    "context": "Contexto: escena concreta (2-3 frases)",
+    "solution": "Desarrollo/solución con QUÉ, CÓMO, POR QUÉ + autoridad o ejemplo, con al menos 2 detalles concretos (4-6 frases)",
     "cta": "CTA conversacional (1 frase)"
   },
   "visualIdea": "Idea visual natural para grabar (1-2 frases)",
@@ -129,7 +154,7 @@ export async function generateGanchoGuionChecked(
   opts?: { seed?: number }
 ): Promise<{ reel: GanchoGuionOutput; mock: boolean }> {
   try {
-    const prompt = buildGanchoGuionPrompt(input)
+    const prompt = buildGanchoGuionPrompt({ ...input, angleIndex: input.angleIndex ?? opts?.seed })
     const raw = await generateAIContent(prompt)
     const parsed = extractJSON<GanchoGuionOutput>(raw)
     if (
@@ -167,12 +192,13 @@ export function buildGanchoVariationsPrompt(input: GanchoVariationInput): string
 Patrón de la categoría (${ganchoCategoryName(input.categoryId)}): ${meta?.pattern || ''}
 Gancho original:
 "${input.gancho}"
-${input.brandContext ? `CONTEXTO DEL SALÓN: ${input.brandContext}` : ''}
+${input.brandContext ? `SERVICIOS Y CONTEXTO DEL SALÓN (cada versión debe apoyarse en uno distinto): ${input.brandContext}` : ''}
 
 Escribe 3 NUEVAS versiones de ese gancho:
-- Mismo patrón, mismas intención y emoción, PERO distinto tema, servicio o ángulo (no reordenar las palabras del original).
+- Mismo patrón, misma intención y emoción, PERO cada una cambia el TEMA: versión 1 sobre color/queratina/liso, versión 2 sobre corte/estilo de pelo, versión 3 sobre cuidado/mantenimiento (o tres situaciones de clienta distintas: la que lo dejó para tarde, la que se lo hizo en casa, la que viene con el pelo maltratado).
+- Mencionan algo concreto del servicio (el problema específico o el momento), no frases huecas.
 - Frases que suenen natural hablando a cámara; máximo 14 palabras cada una.
-- Nada de clichés de IA ("no vas a creer esto", "el secreto mejor guardado"...).
+- Nada de clichés de IA ("no vas a creer esto", "el secreto mejor guardado", "la verdad sobre...").
 
 Devuelve EXACTAMENTE este JSON sin texto adicional:
 {

@@ -22,7 +22,10 @@ export default function FotoInspoClient() {
 
   const counts = new Map<FotoInspoCategoryId, number>()
   for (const it of FOTO_INSPO_ITEMS) counts.set(it.categoryId, (counts.get(it.categoryId) || 0) + 1)
-  const items = !filter ? FOTO_INSPO_ITEMS : FOTO_INSPO_ITEMS.filter(it => it.categoryId === filter)
+  // Petición Jota (5-oct): las que YA tienen foto de referencia van arriba;
+  // los placeholders "Foto por añadir", abajo. Orden estable por categoría.
+  const base = !filter ? FOTO_INSPO_ITEMS : FOTO_INSPO_ITEMS.filter(it => it.categoryId === filter)
+  const items = [...base.filter(it => it.cover), ...base.filter(it => !it.cover)]
 
   return (
     <div className="space-y-6">

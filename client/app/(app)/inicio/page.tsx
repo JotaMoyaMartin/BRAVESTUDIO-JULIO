@@ -6,6 +6,7 @@ import type { ReelInspiration, ReelTransition } from '@/types/database'
 import { Reto10kProgress, Reto10kConfig } from '@/types/reto10k'
 import { computeCurrentDay } from '@/lib/reto-plan'
 import { TodayInput, localISODate, getWeekKey, pickLastPendingItem, pickRetoTodayStatus } from '@/lib/home-today'
+import { DEMO_REAL_INSPIRATIONS, DEMO_REAL_TRANSITIONS } from '../inspiracion-reels/demo-data'
 
 const IS_CONFIGURED = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').startsWith('http')
 
@@ -24,26 +25,15 @@ const DEMO_PROFILE: Profile = {
 
 export default async function InicioPage() {
   if (!IS_CONFIGURED) {
-    // Demo: portadas de relleno (SOLO visual, son banners locales) para que
-    // los bloques de Inspiración/Transiciones y los tiles vivos se vean con
-    // datos — en producción nacen de reel_inspirations/reel_transitions.
-    const demoInsp = [
-      { id: 'd1', title: 'Lo que nadie te cuenta del balayage', short_description: '', cover_image: '/tiles/guiones-banner.jpg' },
-      { id: 'd2', title: 'Tu rubio dura menos y es tu culpa', short_description: '', cover_image: '/tiles/stories-banner.jpg' },
-      { id: 'd3', title: '5 cortes que despiertan', short_description: '', cover_image: '/tiles/calendario-banner.jpg' },
-    ] as unknown as ReelInspiration[]
-    const demoTrans = [
-      { id: 't1', title: 'Whip pan: el corte más rápido', short_description: '', cover_image: '/tiles/teleprompter-banner.jpg' },
-      { id: 't2', title: 'Match cut de manos', short_description: '', cover_image: '/tiles/biblioteca-banner.jpg' },
-      { id: 't3', title: 'Zoom brusco al detalle', short_description: '', cover_image: '/tiles/planificar-banner.jpg' },
-    ] as unknown as ReelTransition[]
+    // Demo: snapshot real congelado de producción (27 reels con sus análisis)
+    // para que home y sección se vean EXACTO a lo que habrá con cuenta real.
     return (
       <InicioClient
         profile={DEMO_PROFILE}
         todayInput={null}
         isPremium={false}
-        inspirations={demoInsp}
-        transitions={demoTrans}
+        inspirations={DEMO_REAL_INSPIRATIONS}
+        transitions={DEMO_REAL_TRANSITIONS as unknown as ReelTransition[]}
       />
     )
   }
@@ -68,10 +58,11 @@ export default async function InicioPage() {
     .eq('user_id', user!.id)
     .order('updated_at', { ascending: false })
 
-  // Portadas reales para los bloques grandes de Inspiración / Transiciones (Home explora).
+  // Portadas reales para el hero vivo de Inspiración Reels — instagram_url
+  // viene para derivar la categoría de cada portada (lib/reel-categories.ts).
   const [{ data: inspirations }, { data: transitions }] = await Promise.all([
-    supabase.from('reel_inspirations').select('id, title, short_description, cover_image').eq('status', 'active'),
-    supabase.from('reel_transitions').select('id, title, short_description, cover_image').eq('status', 'active'),
+    supabase.from('reel_inspirations').select('id, title, short_description, cover_image, instagram_url').eq('status', 'active'),
+    supabase.from('reel_transitions').select('id, title, short_description, cover_image, instagram_url').eq('status', 'active'),
   ])
 
   // RETO 10K OCULTO (30 sep, petición Jota): simplificar la Home. La lógica del

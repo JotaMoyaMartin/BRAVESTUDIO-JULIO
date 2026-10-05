@@ -16,11 +16,12 @@ import {
 } from '@/lib/home-today'
 import Bravi from '@/components/bravi/Bravi'
 import TodayCard from '@/components/home/TodayCard'
-import AppTile, { AppTileProps } from '@/components/home/AppTile'
+import AppTile, { AppTileLive, AppTileProps } from '@/components/home/AppTile'
 import { TILES_NORMAL, TILES_PREMIUM } from '@/components/home/tiles'
 import InspirationPreview from '@/components/home/InspirationPreview'
 import TransitionsPreview from '@/components/home/TransitionsPreview'
 import type { ReelInspiration, ReelTransition } from '@/types/database'
+import { reelCategory, categoryLabel } from '@/lib/reel-categories'
 
 // HOME v2 — "BRÄVE me guía": una dirección, una señal de progreso, libertad debajo.
 // Sin catálogo (los tiles viven en /herramientas), sin XP/niveles, sin banners duales.
@@ -43,17 +44,23 @@ function ToolsSection({
   inspirations: ReelInspiration[]
   transitions: ReelTransition[]
 }) {
-  // Tiles VIVOS: los de Inspiración/Transiciones muestran portadas reales de
-  // la base de datos (rotan solas) — presencia de banner sin imagen estática.
-  const liveCovers = useMemo(() => {
-    const coversOf = (rows: Array<{ cover_image?: string | null }> | null | undefined) =>
-      (rows ?? []).map(r => r?.cover_image).filter((v): v is string => !!v).slice(0, 12)
-    const insp = coversOf(inspirations)
-    const tr = coversOf(transitions)
-    return {
-      '/inspiracion-reels': insp,
-      '/transiciones-reels': tr,
-    } as Record<string, string[]>
+  // Tiles VIVOS: el hero de Inspiración Reels mezcla portadas de las DOS tablas
+  // (inspiraciones + transiciones ya viven juntas) y muestra la categoría de
+  // cada portada flotando mientras pasan. El deck solo usa portadas de Storage
+  // (absolutas): las locales (/reels/..., aún no desplegadas) no van al hero.
+  const liveDeck = useMemo(() => {
+    const covers: string[] = []
+    const tags: (string | null)[] = []
+    let total = 0
+    for (const r of [...(inspirations ?? []), ...(transitions ?? [])]) {
+      if (!r?.cover_image) continue
+      total++
+      if (!r.cover_image.startsWith('http')) continue
+      covers.push(r.cover_image)
+      tags.push(categoryLabel(reelCategory(r)))
+    }
+    if (covers.length === 0) return null
+    return { covers, tags, total }
   }, [inspirations, transitions])
 
   return (
@@ -63,10 +70,10 @@ function ToolsSection({
       <TransitionsPreview transitions={transitions} />
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
         {tiles.map(t => {
-          const covers = liveCovers[t.href]
-          const live = covers && covers.length > 0 && t.liveCaption
-            ? { covers, caption: t.liveCaption, noun: t.liveNoun ?? 'ideas' }
-            : undefined
+          const live: AppTileLive | undefined =
+            t.href === '/inspiracion-reels' && liveDeck && t.liveCaption
+              ? { ...liveDeck, caption: t.liveCaption, noun: t.liveNoun ?? 'ideas' }
+              : undefined
           return (
             <div key={t.href} className={t.image || live ? 'col-span-2' : ''}>
               <AppTile {...t} live={live} />

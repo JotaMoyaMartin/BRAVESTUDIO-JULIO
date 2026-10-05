@@ -1,43 +1,7 @@
-import { createClient } from '@/lib/supabase/server'
-import TransicionesReelsClient from './TransicionesReelsClient'
-import PageTransition from '@/components/ui/PageTransition'
-import { ReelTransition } from '@/types/database'
+import { redirect } from 'next/navigation'
 
-const IS_CONFIGURED = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').startsWith('http')
-
-export default async function TransicionesReelsPage() {
-  if (!IS_CONFIGURED) {
-    return (
-      <PageTransition>
-        <TransicionesReelsClient userId="demo" transitions={[]} savedIds={[]} />
-      </PageTransition>
-    )
-  }
-
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  const [{ data: transitions }, { data: saved }] = await Promise.all([
-    supabase
-      .from('reel_transitions')
-      .select('*')
-      .eq('status', 'active')
-      .order('created_at', { ascending: false }),
-    supabase
-      .from('saved_transitions')
-      .select('transition_id')
-      .eq('user_id', user!.id),
-  ])
-
-  const savedIds = ((saved as { transition_id: string }[]) || []).map(s => s.transition_id)
-
-  return (
-    <PageTransition>
-      <TransicionesReelsClient
-        userId={user!.id}
-        transitions={(transitions as ReelTransition[]) || []}
-        savedIds={savedIds}
-      />
-    </PageTransition>
-  )
+// Transiciones es ahora una CATEGORÍA dentro de Inspiración Reels (2-oct-2026).
+// La URL antigua se mantiene viva: redirige a la pestaña correspondiente.
+export default function TransicionesReelsPage() {
+  redirect('/inspiracion-reels?cat=transiciones')
 }

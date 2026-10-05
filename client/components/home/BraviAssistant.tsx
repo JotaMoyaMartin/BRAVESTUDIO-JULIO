@@ -155,14 +155,14 @@ export default function BraviAssistant({
           alt="Bravi"
           draggable={false}
           aria-hidden
-          animate={{ y: [0, -7, 0], rotate: [0, -6, 3, 0] }}
+          animate={{ y: [0, -10, 0], rotate: [0, -7, 4, 0] }}
           transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
-          className="w-14 h-14 sm:w-16 sm:h-16 object-contain flex-shrink-0 -mt-4 -mb-2"
-          style={{ filter: 'drop-shadow(0 3px 6px rgba(89,20,39,0.22))' }}
+          className="w-24 h-24 sm:w-28 sm:h-28 object-contain flex-shrink-0 -mt-10 -mb-6 -mr-1"
+          style={{ filter: 'drop-shadow(0 6px 12px rgba(89,20,39,0.28))' }}
         />
       </div>
 
-      <div className="-mt-5">
+      <div className="-mt-2">
         <h2 className="text-2xl sm:text-3xl font-bold text-ink" style={{ letterSpacing: '-0.5px' }}>
           Hola{nombre ? `, ${nombre}` : ''}
         </h2>
@@ -240,7 +240,7 @@ export default function BraviAssistant({
                     src="/bravi2.png"
                     alt=""
                     aria-hidden
-                    className="w-5 h-5 object-contain flex-shrink-0 mt-1"
+                    className="w-6 h-6 object-contain flex-shrink-0 mt-0.5"
                     draggable={false}
                   />
                   <div

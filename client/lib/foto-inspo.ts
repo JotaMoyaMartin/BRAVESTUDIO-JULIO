@@ -63,17 +63,17 @@ export const FOTO_INSPO_ITEMS: FotoInspoItem[] = [
     id: 'selfie-espejo-look',
     categoryId: 'selfie',
     title: 'Selfie de espejo con tu look',
-    tip: 'Tu propio corte o color es tu mejor tarjeta: quien lo ve puesto se lo quiere hacer igual. Luz de ventana y poco más.',
-    cover: null,
+    tip: 'Tu propio corte o color es tu mejor tarjeta: mirada de lado, móvil a media cara y el salón al fondo. Quien lo ve puesto se lo quiere hacer igual.',
+    cover: '/foto-inspo/selfie-espejo-look.jpg',
   },
 
   // ── Posando ──────────────────────────────────────────────────
   {
-    id: 'pose-sillon-trabajo',
+    id: 'pose-outfit-espejo',
     categoryId: 'poses',
-    title: 'Apoyada en tu sillón de trabajo',
-    tip: 'Sentirte dueña de tu salón en la pose da autoridad tranquila: no posas, presentas tu sitio. Hombros sueltos y sonrisa media.',
-    cover: null,
+    title: 'Tu outfit completo en el espejo',
+    tip: 'La pose de cuerpo entero con tu ropa de trabajar dice estilista moderna y segura. Móvil tapando media cara y actitud: el foco es tu presencia.',
+    cover: '/foto-inspo/selfie-faena-outfit.jpg',
   },
   {
     id: 'pose-estacion',
@@ -114,6 +114,13 @@ export const FOTO_INSPO_ITEMS: FotoInspoItem[] = [
   },
 
   // ── Tijeras y detalles ───────────────────────────────────────
+  {
+    id: 'detalle-tijeras-al-aire',
+    categoryId: 'detalles',
+    title: 'Tijeras al aire',
+    tip: 'Sujetar tus tijeras con seguridad y mirada firme dice "aquí manda el oficio". Blanco y negro va bien si la luz es sencilla.',
+    cover: '/foto-inspo/tijeras-al-aire.jpg',
+  },
   {
     id: 'detalle-tijeras-peine',
     categoryId: 'detalles',

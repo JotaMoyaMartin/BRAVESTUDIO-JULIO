@@ -170,12 +170,18 @@ function CameraView({ item, onBack }: { item: FotoInspoItem; onBack: () => void 
       return
     }
     setStatus('loading')
+    // Timeout: si el permiso queda pendiente demasiado tiempo (o el navegador
+    // in-app bloquea la cámara sin avisar), pasamos al fallback sin colgar.
+    const timeout = setTimeout(() => {
+      if (!cancelled) setStatus('unsupported')
+    }, 10000)
     navigator.mediaDevices
       .getUserMedia({
         video: { facingMode: { ideal: facing }, width: { ideal: 1080 }, height: { ideal: 1920 } },
         audio: false,
       })
       .then(s => {
+        clearTimeout(timeout)
         if (cancelled) {
           s.getTracks().forEach(t => t.stop())
           return
@@ -185,10 +191,12 @@ function CameraView({ item, onBack }: { item: FotoInspoItem; onBack: () => void 
         setStatus('ready')
       })
       .catch(() => {
+        clearTimeout(timeout)
         if (!cancelled) setStatus('error')
       })
     return () => {
       cancelled = true
+      clearTimeout(timeout)
       // Detener el stream al desmontar (volver) y al invertir cámara.
       const s = streamRef.current
       streamRef.current = null

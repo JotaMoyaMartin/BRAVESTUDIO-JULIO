@@ -75,7 +75,7 @@ function ToolsSection({
               ? { ...liveDeck, caption: t.liveCaption, noun: t.liveNoun ?? 'ideas' }
               : undefined
           return (
-            <div key={t.href} className={t.image || live ? 'col-span-2' : ''}>
+            <div key={t.href} className={t.image || live ? 'col-span-2 sm:col-span-3' : ''}>
               <AppTile {...t} live={live} />
             </div>
           )

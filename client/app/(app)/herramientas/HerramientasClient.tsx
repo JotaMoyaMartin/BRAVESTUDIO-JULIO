@@ -7,7 +7,7 @@ export default function HerramientasClient({ isPremium = false }: { isPremium?: 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
       {tiles.map(tile => (
-        <div key={tile.href} className={tile.image ? 'col-span-2' : ''}>
+        <div key={tile.href} className={tile.image ? 'col-span-2 sm:col-span-3' : ''}>
           <AppTile {...tile} />
         </div>
       ))}

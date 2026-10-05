@@ -13,6 +13,7 @@ const PATH_TO_SECTION: Record<string, string> = {
   '/stories': 'stories',
   '/inspiracion-reels': 'inspiracion-reels',
   '/banco-ganchos': 'banco-ganchos',
+  '/foto-inspo': 'foto-inspo',
   '/transiciones-reels': 'transiciones-reels',
   '/reto-10k': 'reto-10k',
   '/mi-estrategia': 'mi-estrategia',

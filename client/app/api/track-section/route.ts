@@ -11,6 +11,7 @@ const VALID_SECTIONS = [
   'stories',
   'inspiracion-reels',
   'banco-ganchos',
+  'foto-inspo',
   'transiciones-reels',
   'reto-10k',
   'mi-estrategia',

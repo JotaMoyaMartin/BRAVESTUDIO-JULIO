@@ -1,4 +1,4 @@
-import { Sparkles, Film, LayoutGrid, Star, Clapperboard, BookOpen, Calendar, BarChart3, GraduationCap, Captions, Images, Zap } from 'lucide-react'
+import { Sparkles, Film, LayoutGrid, Star, Clapperboard, BookOpen, Calendar, BarChart3, GraduationCap, Captions, Images, Zap, Camera } from 'lucide-react'
 import { AppTileProps } from './AppTile'
 
 // Launcher de mini-apps — vive en /herramientas (Home v2 ya no es catálogo).
@@ -10,6 +10,8 @@ export const TILES_NORMAL: AppTileProps[] = [
   { href: '/teleprompter', icon: Captions, label: 'Teleprompter', desc: 'Graba hablando a cámara', tone: 'cream', image: '/tiles/teleprompter-banner.jpg' },
   // Banco de Ganchos — los 80 ganchos de Jota en 4 intenciones (5-oct-2026).
   { href: '/banco-ganchos', icon: Zap, label: 'Banco de Ganchos', desc: '80 ganchos → guion en 1 toque', tone: 'pink' },
+  // Foto inspo — 5 oct (petición Jota)
+  { href: '/foto-inspo', icon: Camera, label: 'Foto inspo', desc: 'Replica fotos de referencia con tu cámara', tone: 'cream' },
   // Botón hero interactivo (petición Jota, 2-oct-2026): fuera la imagen
   // estática — texto grande a la izquierda + portadas reales pasando a la
   // derecha con su categoría flotando (AppTile.live).
@@ -28,6 +30,7 @@ export const TILES_PREMIUM: AppTileProps[] = [
   { href: '/plan-contenidos', icon: Sparkles, label: 'Plan de Contenidos', desc: 'Tus guiones asignados', tone: 'pink' },
   { href: '/metricas', icon: BarChart3, label: 'Métricas', desc: 'Resultados y crecimiento', tone: 'blue' },
   { href: '/banco-ganchos', icon: Zap, label: 'Banco de Ganchos', desc: '80 ganchos → guion en 1 toque', tone: 'blue' },
+  { href: '/foto-inspo', icon: Camera, label: 'Foto inspo', desc: 'Replica fotos de referencia con tu cámara', tone: 'cream' },
   { href: '/crear-contenido', icon: Film, label: 'Guiones', desc: '5 ideas → guion listo', tone: 'green', image: '/tiles/guiones-banner.jpg' },
   { href: '/carrusel', icon: Images, label: 'Carrusel', desc: 'Carrusel listo para publicar', tone: 'buttermilk' },
   { href: '/stories', icon: LayoutGrid, label: 'Stories BRÄVE', desc: 'Stories y encuestas', tone: 'cream', image: '/tiles/stories-banner.jpg', imageAspect: '1862 / 845' },

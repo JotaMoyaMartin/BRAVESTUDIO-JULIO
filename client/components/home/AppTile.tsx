@@ -1,6 +1,6 @@
 'use client'
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { LucideIcon } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ArrowRight } from 'lucide-react'
@@ -47,6 +47,14 @@ const TONES = {
 }
 
 const LIVE_ROTATE_MS = 2600
+
+/** Destello de actividad: delay determinista por tile (petición Jota, 5-oct).
+ *  Reparte los barridos en el ciclo de 6s — Inicio siempre vivo, sin caos. */
+function tileShineDelay(href: string): CSSProperties {
+  let h = 0
+  for (let i = 0; i < href.length; i++) h = (h * 31 + href.charCodeAt(i)) % 60
+  return { '--shine-delay': `${(h / 10).toFixed(1)}s` } as CSSProperties
+}
 
 // Deck del hero: la portada protagonista con un leve giro y dos asomando detrás.
 const HERO_TILTS = [-3, -7, 6]
@@ -178,8 +186,8 @@ export default function AppTile({ href, icon: Icon, label, desc, tone, image, im
         <motion.div
           whileHover={{ y: -4, scale: 1.02 }}
           transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-          className="rounded-[var(--radius-md)] overflow-hidden"
-          style={{ boxShadow: 'var(--shadow-soft)' }}
+          className="tile-shine rounded-[var(--radius-md)] overflow-hidden"
+          style={{ boxShadow: 'var(--shadow-soft)', ...tileShineDelay(href) }}
         >
           <img
             src={image}
@@ -202,8 +210,8 @@ export default function AppTile({ href, icon: Icon, label, desc, tone, image, im
       <motion.div
         whileHover={{ y: -4, scale: 1.02 }}
         transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-        className="min-h-[168px] sm:min-h-[176px] p-5 rounded-[var(--radius-md)] flex flex-col items-start gap-3"
-        style={{ background: bg, color, border, boxShadow: 'var(--shadow-soft)' }}
+        className="tile-shine min-h-[168px] sm:min-h-[176px] p-5 rounded-[var(--radius-md)] flex flex-col items-start gap-3"
+        style={{ background: bg, color, border, boxShadow: 'var(--shadow-soft)', ...tileShineDelay(href) }}
       >
         <span
           className="w-12 h-12 rounded-[var(--radius-sm)] flex items-center justify-center"

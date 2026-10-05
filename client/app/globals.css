@@ -326,6 +326,30 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .reto-glow { animation: none; }
 }
+
+/* ── Destello de actividad en tiles (petición Jota, 5-oct) ──
+   Una luz barre el botón de vez en cuando: Inicio siempre vivo.
+   El delay se reparte por tile con --shine-delay (determinista en AppTile). */
+.tile-shine { position: relative; overflow: hidden; }
+.tile-shine::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.55) 50%, transparent 70%);
+  mix-blend-mode: overlay;
+  transform: translateX(-130%);
+  animation: tile-shine-sweep 6s ease-in-out infinite;
+  animation-delay: var(--shine-delay, 0s);
+  pointer-events: none;
+}
+@keyframes tile-shine-sweep {
+  0%   { transform: translateX(-130%); }
+  30%  { transform: translateX(130%); }
+  100% { transform: translateX(130%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile-shine::after { animation: none; }
+}
 /* ── Landing gallery marquee ── */
 @keyframes marquee-scroll {
   from { transform: translateX(0); }

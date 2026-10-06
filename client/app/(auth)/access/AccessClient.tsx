@@ -4,10 +4,6 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Profile } from '@/types/database'
 
-const MONTHLY_PRICE_ID = process.env.NEXT_PUBLIC_STRIPE_MONTHLY_PRICE_ID
-const YEARLY_PRICE_ID = process.env.NEXT_PUBLIC_STRIPE_YEARLY_PRICE_ID
-const STRIPE_READY = !!(MONTHLY_PRICE_ID && YEARLY_PRICE_ID)
-
 interface Props {
   profile: Profile | null
 }
@@ -21,14 +17,12 @@ export default function AccessClient({ profile }: Props) {
   const [checkoutLoading, setCheckoutLoading] = useState<'monthly' | 'yearly' | null>(null)
 
   async function handleCheckout(plan: 'monthly' | 'yearly') {
-    if (!STRIPE_READY) return
     setCheckoutLoading(plan)
-    const priceId = plan === 'monthly' ? MONTHLY_PRICE_ID : YEARLY_PRICE_ID
     try {
       const res = await fetch('/api/stripe/create-checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ priceId }),
+        body: JSON.stringify({ plan, currency: 'eur' }),
       })
       const data = await res.json()
       if (data.url) window.location.href = data.url
@@ -125,25 +119,25 @@ export default function AccessClient({ profile }: Props) {
               className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-2.5 py-0.5 rounded-full text-xs font-bold whitespace-nowrap"
               style={{ background: '#e8f5e9', color: '#2a8a4a' }}
             >
-              3 días gratis
+              7 días gratis
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#7A1832', opacity: 0.6 }}>Mensual</p>
-              <p className="text-2xl font-bold mt-1" style={{ color: '#591427' }}>29€</p>
+              <p className="text-2xl font-bold mt-1" style={{ color: '#591427' }}>19€</p>
               <p className="text-xs" style={{ color: '#591427', opacity: 0.5 }}>por mes</p>
             </div>
             <button
               onClick={() => handleCheckout('monthly')}
-              disabled={!STRIPE_READY || checkoutLoading !== null}
+              disabled={checkoutLoading !== null}
               className="w-full py-2.5 rounded-xl text-sm font-semibold"
               style={{
-                background: STRIPE_READY ? '#7A1832' : '#d8d0c4',
+                background: '#7A1832',
                 color: 'white',
-                cursor: STRIPE_READY && !checkoutLoading ? 'pointer' : 'not-allowed',
+                cursor: checkoutLoading !== null ? 'not-allowed' : 'pointer',
                 opacity: checkoutLoading === 'monthly' ? 0.65 : 1,
               }}
             >
-              {checkoutLoading === 'monthly' ? '...' : STRIPE_READY ? 'Empezar prueba' : 'Próximamente'}
+              {checkoutLoading === 'monthly' ? '...' : 'Empezar prueba'}
             </button>
           </div>
 
@@ -156,25 +150,25 @@ export default function AccessClient({ profile }: Props) {
               className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-2.5 py-0.5 rounded-full text-xs font-bold whitespace-nowrap"
               style={{ background: '#FFF1B5', color: '#591427' }}
             >
-              3 días gratis
+              7 días gratis
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'rgba(255,241,181,0.8)' }}>Anual</p>
-              <p className="text-2xl font-bold mt-1 text-white">199€</p>
-              <p className="text-xs" style={{ color: 'rgba(255,255,255,0.6)' }}>por año · ahorra 149€</p>
+              <p className="text-2xl font-bold mt-1 text-white">190€</p>
+              <p className="text-xs" style={{ color: 'rgba(255,255,255,0.6)' }}>por año · ahorra 38€</p>
             </div>
             <button
               onClick={() => handleCheckout('yearly')}
-              disabled={!STRIPE_READY || checkoutLoading !== null}
+              disabled={checkoutLoading !== null}
               className="w-full py-2.5 rounded-xl text-sm font-semibold"
               style={{
-                background: STRIPE_READY ? '#FFF1B5' : 'rgba(255,255,255,0.2)',
+                background: '#FFF1B5',
                 color: '#591427',
-                cursor: STRIPE_READY && !checkoutLoading ? 'pointer' : 'not-allowed',
+                cursor: checkoutLoading !== null ? 'not-allowed' : 'pointer',
                 opacity: checkoutLoading === 'yearly' ? 0.65 : 1,
               }}
             >
-              {checkoutLoading === 'yearly' ? '...' : STRIPE_READY ? 'Empezar prueba' : 'Próximamente'}
+              {checkoutLoading === 'yearly' ? '...' : 'Empezar prueba'}
             </button>
           </div>
         </div>

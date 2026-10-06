@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json()
   let priceId: string | null = null
-  let trialDays = 3
+  let trialDays = 7
 
   // Legacy: direct priceId (still accepted for backwards compatibility)
   if (body.priceId) {

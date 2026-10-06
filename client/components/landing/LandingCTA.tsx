@@ -55,7 +55,7 @@ export default function LandingCTA() {
           </div>
 
           <p className="text-xs mt-5" style={{ color: 'rgba(255,241,181,0.6)' }}>
-            Prueba gratuita de 3 días · Sin permanencia · Cancela cuando quieras
+            Prueba gratuita de 7 días · Sin permanencia · Cancela cuando quieras
           </p>
         </motion.div>
       </div>

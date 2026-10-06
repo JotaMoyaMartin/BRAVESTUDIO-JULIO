@@ -64,9 +64,10 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Public auth routes (incluye landing page /)
+  // Public auth routes (incluye landing page / y la landing V2 de test A/B)
   const isPublicAuthRoute =
     pathname === '/' ||
+    pathname.startsWith('/landing-v2') ||
     pathname.startsWith('/login') ||
     pathname.startsWith('/signup') ||
     pathname.startsWith('/reset-password') ||
@@ -78,6 +79,8 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/api/auth') ||
     pathname.startsWith('/auth/') ||
     pathname.startsWith('/api/stripe/webhook') ||
+    // Solo GET, devuelve datos públicos de planes (precios) para landings
+    pathname.startsWith('/api/plans') ||
     pathname.startsWith('/team') ||
     pathname.startsWith('/api/team') ||
     // OAuth de Instagram: el redirect de vuelta viene de Meta con cookies
@@ -89,6 +92,7 @@ export async function middleware(request: NextRequest) {
     // Redirect authenticated users with active access away from public marketing/auth pages
     const isMarketingOrAuthPage =
       pathname === '/' ||
+      pathname.startsWith('/landing-v2') ||
       pathname.startsWith('/login') ||
       pathname.startsWith('/signup') ||
       pathname.startsWith('/forgot-password') ||

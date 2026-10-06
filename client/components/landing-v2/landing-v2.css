@@ -1,0 +1,335 @@
+/*
+ * LANDING V2 — estilos y tokens propios, escopados bajo `.landing-v2`.
+ * NO modifica globals.css ni las landing existentes.
+ * Base: tokens de marca (cherry/cream/buttermilk de globals.css) + capa vino/blush.
+ */
+
+.landing-v2 {
+  --v2-vino: #4a0f1e;
+  --v2-vino-deep: #2e0812;
+  --v2-vino-mid: #64152a;
+  --v2-blush: #f6e3e0;
+  --v2-blush-deep: #eccfc9;
+  --v2-ivory: #fdfaf2;
+  --v2-sand: #f3ead9;
+  --v2-paper: #ffffff;
+  --v2-ink: #2a0b12;
+  --v2-on-dark: #fff6ec;
+  --v2-on-dark-soft: rgba(255, 246, 236, 0.68);
+  --v2-border-dark: rgba(255, 241, 181, 0.14);
+  --v2-border-light: rgba(74, 15, 30, 0.1);
+
+  background: var(--v2-ivory);
+  color: var(--v2-ink);
+}
+
+/* ── Tipografía ──────────────────────────────────────────────── */
+.landing-v2 .v2-display {
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+  line-height: 1.04;
+}
+.landing-v2 .v2-h2 {
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+.landing-v2 .v2-eyebrow {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+}
+
+/* ── Botones ─────────────────────────────────────────────────── */
+.landing-v2 .v2-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  border-radius: 999px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  padding: 0.95rem 1.6rem;
+  cursor: pointer;
+  border: none;
+  transition: transform 0.22s ease, box-shadow 0.22s ease, background 0.22s ease, opacity 0.22s ease;
+  white-space: nowrap;
+}
+.landing-v2 .v2-btn:focus-visible {
+  outline: 3px solid rgba(255, 241, 181, 0.9);
+  outline-offset: 2px;
+}
+.landing-v2 .v2-btn-light {
+  background: var(--color-buttermilk);
+  color: var(--color-cherry-dark);
+}
+.landing-v2 .v2-btn-light:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(255, 241, 181, 0.25);
+}
+.landing-v2 .v2-btn-dark {
+  background: var(--color-cherry);
+  color: #fff;
+}
+.landing-v2 .v2-btn-dark:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px rgba(122, 24, 50, 0.35);
+  background: #8b1e3c;
+}
+.landing-v2 .v2-btn-outline {
+  background: transparent;
+  color: inherit;
+  border: 1.5px solid rgba(255, 246, 236, 0.35);
+}
+.landing-v2 .v2-btn-outline:hover {
+  border-color: rgba(255, 246, 236, 0.7);
+  transform: translateY(-2px);
+}
+.landing-v2 .v2-btn-outline-dark {
+  background: transparent;
+  color: inherit;
+  border: 1.5px solid var(--v2-border-light);
+}
+.landing-v2 .v2-btn-outline-dark:hover {
+  border-color: rgba(74, 15, 30, 0.35);
+  transform: translateY(-2px);
+}
+
+/* ── Header sticky ───────────────────────────────────────────── */
+.landing-v2 .v2-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 60;
+  transition: background 0.3s ease, border-color 0.3s ease, backdrop-filter 0.3s ease;
+  border-bottom: 1px solid transparent;
+}
+.landing-v2 .v2-header[data-scrolled='true'] {
+  background: rgba(46, 8, 18, 0.82);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  border-bottom-color: var(--v2-border-dark);
+}
+
+/* ── Mockups / tarjetas de producto ──────────────────────────── */
+.landing-v2 .v2-device {
+  background: linear-gradient(145deg, #fdfaf2, #ece1d2);
+  border: 2px solid rgba(74, 15, 30, 0.16);
+  box-shadow: 0 24px 60px rgba(20, 4, 8, 0.5), 0 6px 18px rgba(20, 4, 8, 0.25);
+  border-radius: 18px;
+}
+.landing-v2 .v2-float {
+  animation: v2-float 6s ease-in-out infinite;
+}
+.landing-v2 .v2-float-slow {
+  animation: v2-float 8.5s ease-in-out infinite;
+}
+@keyframes v2-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-7px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing-v2 .v2-float,
+  .landing-v2 .v2-float-slow {
+    animation: none;
+  }
+  .landing-v2 * { scroll-behavior: auto; }
+}
+
+/* ── Chips flotantes sobre mockups ───────────────────────────── */
+.landing-v2 .v2-float-chip {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: var(--v2-paper);
+  border: 1px solid var(--v2-border-light);
+  border-radius: 999px;
+  padding: 0.5rem 0.9rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-cherry-dark);
+  box-shadow: 0 10px 30px rgba(20, 4, 8, 0.22);
+}
+
+/* ── Bento tools ─────────────────────────────────────────────── */
+.landing-v2 .v2-tool {
+  border-radius: 22px;
+  overflow: hidden;
+  position: relative;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  will-change: transform;
+}
+.landing-v2 .v2-tool:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 18px 40px rgba(74, 15, 30, 0.18);
+}
+.landing-v2 .v2-tool img {
+  transition: transform 0.6s ease;
+}
+.landing-v2 .v2-tool:hover img {
+  transform: scale(1.04);
+}
+
+/* ── FAQ accordion ───────────────────────────────────────────── */
+.landing-v2 .v2-faq summary {
+  cursor: pointer;
+  list-style: none;
+}
+.landing-v2 .v2-faq summary::-webkit-details-marker {
+  display: none;
+}
+.landing-v2 .v2-faq .v2-faq-chevron {
+  transition: transform 0.25s ease;
+}
+.landing-v2 .v2-faq details[open] .v2-faq-chevron {
+  transform: rotate(180deg);
+}
+.landing-v2 .v2-faq details {
+  border: 1px solid var(--v2-border-light);
+  border-radius: 18px;
+  background: var(--v2-paper);
+  transition: box-shadow 0.25s ease;
+}
+.landing-v2 .v2-faq details[open] {
+  box-shadow: var(--shadow-soft);
+  border-color: rgba(74, 15, 30, 0.22);
+}
+
+/* ── Franja marcada (secciones oscuras) ──────────────────────── */
+.landing-v2 .v2-dark {
+  background:
+    radial-gradient(90% 90% at 10% 10%, rgba(160, 64, 96, 0.28) 0%, transparent 50%),
+    radial-gradient(90% 90% at 95% 90%, rgba(160, 64, 96, 0.22) 0%, transparent 55%),
+    linear-gradient(150deg, var(--v2-vino), var(--v2-vino-deep));
+  color: var(--v2-on-dark);
+}
+.landing-v2 .v2-hairline {
+  border-top: 1px solid var(--v2-border-dark);
+}
+
+/* ── Sticky CTA móvil ────────────────────────────────────────── */
+.landing-v2 .v2-sticky-cta {
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+/* ── Focus accesible en links ────────────────────────────────── */
+.landing-v2 a:focus-visible,
+.landing-v2 button:focus-visible,
+.landing-v2 summary:focus-visible {
+  outline: 3px solid rgba(160, 64, 96, 0.55);
+  outline-offset: 2px;
+}
+.landing-v2 .v2-header a:focus-visible,
+.landing-v2 .v2-header button:focus-visible {
+  outline-color: rgba(255, 241, 181, 0.9);
+}
+
+/* ── Resultados: cards de prueba social (hover sutil −2px desktop) ── */
+.landing-v2 .v2-result-card {
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.landing-v2 .v2-result-card:hover {
+  transform: translateY(-2px);
+}
+.landing-v2 .v2-shot {
+  box-shadow: 0 10px 26px rgba(74, 15, 30, 0.14);
+  border: 2px solid #fff;
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing-v2 .v2-result-card,
+  .landing-v2 .v2-result-card:hover {
+    transform: none;
+    transition: none;
+  }
+}
+
+/* ── Franja de chats: scroll horizontal sin scrollbar en móvil ── */
+.landing-v2 .v2-chat-strip {
+  scrollbar-width: none;
+}
+.landing-v2 .v2-chat-strip::-webkit-scrollbar {
+  display: none;
+}
+
+/* ── CTA principal animado: pulso + destello continuo ✦ ─────── */
+.landing-v2 .v2-cta {
+  position: relative;
+  overflow: hidden;
+  padding: 16px 34px;
+  font-size: 16px;
+  animation: v2-cta-pulse 2.4s ease-in-out infinite;
+  transition: transform 0.2s ease;
+}
+.landing-v2 .v2-cta-light {
+  animation-name: v2-cta-pulse-light;
+}
+.landing-v2 .v2-cta:hover {
+  transform: translateY(-2px) scale(1.04);
+  animation-play-state: paused;
+}
+.landing-v2 .v2-cta::before {
+  content: '✦';
+  position: absolute;
+  top: 6px;
+  right: 12px;
+  font-size: 13px;
+  pointer-events: none;
+  animation: v2-twinkle 1.8s ease-in-out infinite;
+}
+.landing-v2 .v2-cta::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 38%, rgba(255, 255, 255, 0.6) 50%, transparent 62%);
+  transform: translateX(-130%);
+  animation: v2-cta-shine 2.8s ease-in-out infinite;
+  pointer-events: none;
+}
+.landing-v2 .v2-cta:hover::after {
+  animation-play-state: paused;
+}
+@keyframes v2-cta-pulse {
+  0%, 100% {
+    box-shadow: 0 10px 26px rgba(122, 24, 50, 0.4), 0 0 0 0 rgba(122, 24, 50, 0.45);
+  }
+  50% {
+    box-shadow: 0 12px 30px rgba(122, 24, 50, 0.5), 0 0 0 15px rgba(122, 24, 50, 0);
+  }
+}
+@keyframes v2-cta-pulse-light {
+  0%, 100% {
+    box-shadow: 0 10px 26px rgba(255, 241, 181, 0.28), 0 0 0 0 rgba(255, 241, 181, 0.5);
+  }
+  50% {
+    box-shadow: 0 12px 32px rgba(255, 241, 181, 0.42), 0 0 0 15px rgba(255, 241, 181, 0);
+  }
+}
+@keyframes v2-cta-shine {
+  0% { transform: translateX(-130%); }
+  55%, 100% { transform: translateX(130%); }
+}
+@keyframes v2-twinkle {
+  0%, 100% { opacity: 0.15; transform: scale(0.6); }
+  50% { opacity: 1; transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing-v2 .v2-cta,
+  .landing-v2 .v2-cta:hover,
+  .landing-v2 .v2-cta::before,
+  .landing-v2 .v2-cta::after {
+    animation: none;
+    transform: none;
+  }
+}
+
+/* ── Scroll suave con offset por header sticky ───────────────── */
+.landing-v2 section[id] {
+  scroll-margin-top: 84px;
+}

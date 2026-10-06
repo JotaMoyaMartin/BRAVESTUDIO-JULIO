@@ -132,7 +132,7 @@ export default function LandingBenefits() {
                 Tu agenda llena empieza hoy
               </h3>
               <p className="text-sm sm:text-base leading-relaxed" style={{ color: 'rgba(255,255,255,0.8)' }}>
-                3 días gratis. Sin permanencia. Bravi te espera.
+                7 días gratis. Sin permanencia. Bravi te espera.
               </p>
             </div>
             <span

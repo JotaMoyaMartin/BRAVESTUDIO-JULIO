@@ -25,7 +25,7 @@ No es una colección de herramientas de IA. Es un producto que conoce el negocio
 
 | Rol | Cómo entra | Experiencia |
 |---|---|---|
-| **user** (normal) | Stripe (trial 3d) / promo / skool | Self-serve: Mi Marca → Planificar → Crear → Stories → Reto 10K → Calendario |
+| **user** (normal) | Stripe (trial 7d) / promo / skool | Self-serve: Mi Marca → Planificar → Crear → Stories → Reto 10K → Calendario |
 | **premium** (servicio gestionado) | Creado por admin | Recibe estrategia + guiones del equipo (BRÄVE CONTENT); ve Mi Estrategia, Plan de Contenidos, Métricas, Academia |
 | **team** (BRÄVE CONTENT) | /team (workspace interno) | CMs producen estrategia, ideas, guiones y planificación para clientas premium; sincronizan métricas Metricool |
 | **admin / superadmin** | /admin | 11 tabs de gestión + Vista Premium + Modo Equipo + Finanzas |

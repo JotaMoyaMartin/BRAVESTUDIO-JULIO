@@ -124,14 +124,14 @@ export default function LandingHero() {
                 href="/signup"
                 className="btn-primary glow-ready justify-center text-lg px-8 py-4 shadow-strong"
               >
-                Empieza gratis 3 días →
+                Empieza gratis 7 días →
               </Link>
               <a href="#planes" className="btn-secondary justify-center text-lg px-8 py-4">
                 Ver planes
               </a>
             </div>
             <p className="text-xs text-cherry-dark opacity-55">
-              Prueba gratuita de 3 días. Cancela cuando quieras. Acceso inmediato.
+              Prueba gratuita de 7 días. Cancela cuando quieras. Acceso inmediato.
             </p>
           </motion.div>
 

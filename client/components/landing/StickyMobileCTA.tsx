@@ -41,7 +41,7 @@ export default function StickyMobileCTA() {
           <div className="flex items-center gap-3 max-w-md mx-auto">
             <div className="flex-1 min-w-0">
               <p className="text-xs font-bold text-cherry-dark leading-tight truncate">
-                Prueba 3 días gratis 🎁
+                Prueba 7 días gratis 🎁
               </p>
               <p className="text-[10px] text-cherry-dark opacity-60 leading-tight">
                 Sin permanencia · Cancela cuando quieras

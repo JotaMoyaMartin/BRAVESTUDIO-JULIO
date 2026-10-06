@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
-import { isUsdReady, Currency, PlanKey, PublicPlan } from '@/lib/plans'
+import { Currency, PlanKey, PublicPlan } from '@/lib/plans'
 
 function fmt(amount: number, currency: Currency): string {
   const symbol = currency === 'eur' ? '€' : '$'
@@ -14,7 +14,7 @@ const TRUST_BADGES = [
   'Sin permanencia',
   'Cancela cuando quieras',
   'Acceso inmediato',
-  '3 días gratis',
+  '7 días gratis',
 ]
 
 export default function LandingPricing() {
@@ -27,7 +27,11 @@ export default function LandingPricing() {
   const [checkoutError, setCheckoutError] = useState('')
 
   useEffect(() => {
-    isUsdReady().then(setUsdReady)
+    // isUsdReady vive en servidor (service role); en cliente deducimos del API público
+    fetch('/api/plans?currency=usd')
+      .then(r => r.json())
+      .then(d => setUsdReady(Array.isArray(d.plans) && d.plans.length > 0))
+      .catch(() => {})
     const supabase = createClient()
     supabase.auth.getSession().then(({ data: { session } }) => {
       setHasSession(!!session)
@@ -73,6 +77,8 @@ export default function LandingPricing() {
   const yearly = plans.find(p => p.name === 'yearly')
   const monthlyEquivalent = yearly ? (yearly.current_price / 12).toFixed(2).replace('.', ',') : null
   const yearlySavings = yearly && yearly.original_price ? yearly.original_price - yearly.current_price : null
+  const yearlyDiscountPct =
+    monthly && yearly ? Math.round((1 - yearly.current_price / 12 / monthly.current_price) * 100) : null
 
   return (
     <section id="planes" className="bg-cream py-16 lg:py-24">
@@ -88,7 +94,7 @@ export default function LandingPricing() {
             Planes simples. Empieza gratis.
           </h2>
           <p className="text-sm sm:text-base text-cherry-dark opacity-70">
-            Prueba 3 días sin coste. Sin permanencia. Cancela cuando quieras.
+            Prueba 7 días sin coste. Sin permanencia. Cancela cuando quieras.
           </p>
         </motion.div>
 
@@ -144,13 +150,13 @@ export default function LandingPricing() {
                   </span>
                 )}
                 <p className="text-3xl font-bold mt-1 text-cherry-dark">
-                  {monthly ? fmt(monthly.current_price, currency) : fmt(29, currency)}
+                  {monthly ? fmt(monthly.current_price, currency) : fmt(19, currency)}
                   <span className="text-sm font-normal opacity-50">/mes</span>
                 </p>
               </div>
             </div>
             <p className="text-sm text-cherry-dark opacity-70">
-              {monthly ? `Prueba gratuita de ${monthly.trial_days} días` : 'Prueba gratuita de 3 días'}
+              {monthly ? `Prueba gratuita de ${monthly.trial_days} días` : 'Prueba gratuita de 7 días'}
             </p>
             <button
               onClick={() => handlePlanClick('monthly')}
@@ -161,7 +167,7 @@ export default function LandingPricing() {
               {checkoutLoading === 'monthly' ? 'Redirigiendo...' : 'Empieza gratis'}
             </button>
             <p className="text-[11px] leading-snug text-center text-cherry-dark opacity-55">
-              Te pediremos tu método de pago, pero no se cobra nada hasta pasados los 3 días. Puedes cancelar antes de eso — si no te convence, no pagas nada.
+              Te pediremos tu método de pago, pero no se cobra nada hasta pasados los 7 días. Puedes cancelar antes de eso — si no te convence, no pagas nada.
             </p>
           </motion.div>
 
@@ -197,7 +203,7 @@ export default function LandingPricing() {
                   </span>
                 )}
                 <p className="text-3xl font-bold mt-1 text-white">
-                  {yearly ? fmt(yearly.current_price, currency) : fmt(199, currency)}
+                  {yearly ? fmt(yearly.current_price, currency) : fmt(190, currency)}
                   <span className="text-sm font-normal" style={{ opacity: 0.6 }}>/año</span>
                 </p>
               </div>
@@ -213,12 +219,14 @@ export default function LandingPricing() {
                   Ahorra {fmt(yearlySavings, currency)}/año
                 </p>
               )}
-              <p className="text-xs" style={{ color: 'rgba(255,255,255,0.6)' }}>
-                Ahorro aproximado: 63%
-              </p>
+              {yearlyDiscountPct !== null && (
+                <p className="text-xs" style={{ color: 'rgba(255,255,255,0.6)' }}>
+                  Ahorro aproximado: {yearlyDiscountPct}%
+                </p>
+              )}
             </div>
             <p className="text-sm" style={{ color: 'rgba(255,255,255,0.7)' }}>
-              {yearly ? `Prueba gratuita de ${yearly.trial_days} días` : 'Prueba gratuita de 3 días'}
+              {yearly ? `Prueba gratuita de ${yearly.trial_days} días` : 'Prueba gratuita de 7 días'}
             </p>
             <button
               onClick={() => handlePlanClick('yearly')}
@@ -234,7 +242,7 @@ export default function LandingPricing() {
               {checkoutLoading === 'yearly' ? 'Redirigiendo...' : 'Empieza gratis'}
             </button>
             <p className="text-[11px] leading-snug text-center" style={{ color: 'rgba(255,255,255,0.65)' }}>
-              Te pediremos tu método de pago, pero no se cobra nada hasta pasados los 3 días. Puedes cancelar antes de eso — si no te convence, no pagas nada.
+              Te pediremos tu método de pago, pero no se cobra nada hasta pasados los 7 días. Puedes cancelar antes de eso — si no te convence, no pagas nada.
             </p>
           </motion.div>
         </div>

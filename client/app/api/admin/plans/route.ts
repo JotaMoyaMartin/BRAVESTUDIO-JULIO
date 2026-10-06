@@ -70,7 +70,7 @@ export async function POST() {
     seeds.push({
       name: 'monthly', display_name: 'Mensual', interval: 'month', currency: 'eur',
       current_price: 29, original_price: 45, stripe_price_id: EUR_PRICES.monthly,
-      badge_text: null, description: 'Plan mensual con prueba gratuita de 3 días.',
+      badge_text: null, description: 'Plan mensual con prueba gratuita de 7 días.',
     })
   }
   if (EUR_PRICES.yearly) {
@@ -84,7 +84,7 @@ export async function POST() {
     seeds.push({
       name: 'monthly', display_name: 'Mensual', interval: 'month', currency: 'usd',
       current_price: 29, original_price: 45, stripe_price_id: USD_PRICES.monthly,
-      badge_text: null, description: 'Monthly plan with 3-day free trial.',
+      badge_text: null, description: 'Monthly plan with 7-day free trial.',
     })
   }
   if (USD_READY && USD_PRICES.yearly) {
@@ -124,7 +124,7 @@ export async function POST() {
       stripe_price_id: s.stripe_price_id,
       is_active: true,
       is_visible: true,
-      trial_days: 3,
+      trial_days: 7,
       badge_text: s.badge_text,
       description: s.description,
       features: [],

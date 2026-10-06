@@ -54,7 +54,7 @@ export type PublicPlan = {
   stripe_price_id: string | null
 }
 
-/** Hardcoded fallback with correct prices (29 / 199). Used when DB is empty. */
+/** Hardcoded fallback with correct prices (19 / 190). Used when DB is empty. */
 const FALLBACK_PLANS: PlanRow[] = [
   {
     id: 1,
@@ -62,15 +62,15 @@ const FALLBACK_PLANS: PlanRow[] = [
     display_name: 'Mensual',
     interval: 'month',
     currency: 'eur',
-    current_price: 29,
+    current_price: 19,
     original_price: 45,
     stripe_product_id: null,
     stripe_price_id: EUR_PRICES.monthly,
     is_active: true,
     is_visible: true,
-    trial_days: 3,
+    trial_days: 7,
     badge_text: null,
-    description: 'Plan mensual con prueba gratuita de 3 días.',
+    description: 'Plan mensual con prueba gratuita de 7 días.',
     features: [],
     created_at: new Date(0).toISOString(),
     updated_at: new Date(0).toISOString(),
@@ -81,13 +81,13 @@ const FALLBACK_PLANS: PlanRow[] = [
     display_name: 'Anual',
     interval: 'year',
     currency: 'eur',
-    current_price: 199,
-    original_price: 540,
+    current_price: 190,
+    original_price: 228,
     stripe_product_id: null,
     stripe_price_id: EUR_PRICES.yearly,
     is_active: true,
     is_visible: true,
-    trial_days: 3,
+    trial_days: 7,
     badge_text: 'Mejor precio',
     description: 'Plan anual con ahorro aproximado del 63%.',
     features: [],
@@ -100,15 +100,15 @@ const FALLBACK_PLANS: PlanRow[] = [
     display_name: 'Mensual',
     interval: 'month',
     currency: 'usd',
-    current_price: 29,
+    current_price: 19,
     original_price: 45,
     stripe_product_id: null,
     stripe_price_id: USD_PRICES.monthly,
     is_active: USD_READY,
     is_visible: USD_READY,
-    trial_days: 3,
+    trial_days: 7,
     badge_text: null,
-    description: 'Monthly plan with 3-day free trial.',
+    description: 'Monthly plan with 7-day free trial.',
     features: [],
     created_at: new Date(0).toISOString(),
     updated_at: new Date(0).toISOString(),
@@ -119,13 +119,13 @@ const FALLBACK_PLANS: PlanRow[] = [
     display_name: 'Anual',
     interval: 'year',
     currency: 'usd',
-    current_price: 199,
-    original_price: 540,
+    current_price: 190,
+    original_price: 228,
     stripe_product_id: null,
     stripe_price_id: USD_PRICES.yearly,
     is_active: USD_READY,
     is_visible: USD_READY,
-    trial_days: 3,
+    trial_days: 7,
     badge_text: 'Mejor precio',
     description: 'Yearly plan with ~63% savings.',
     features: [],
@@ -216,7 +216,7 @@ export async function getPlanForCheckout(
 
   // Fallback to env-var resolution
   const envPriceId = getPriceIdEnv(plan, currency)
-  return envPriceId ? { stripe_price_id: envPriceId, trial_days: 3 } : null
+  return envPriceId ? { stripe_price_id: envPriceId, trial_days: 7 } : null
 }
 
 /** Detects the plan (monthly/yearly) from a Stripe Price ID. */

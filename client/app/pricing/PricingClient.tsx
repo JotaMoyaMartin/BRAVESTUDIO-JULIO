@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { isUsdReady, Currency, PlanKey, PublicPlan } from '@/lib/plans'
+import { Currency, PlanKey, PublicPlan } from '@/lib/plans'
 
 function fmt(amount: number, currency: Currency): string {
   const symbol = currency === 'eur' ? '€' : '$'
@@ -21,7 +21,11 @@ export default function PricingClient() {
   const [checkoutError, setCheckoutError] = useState('')
 
   useEffect(() => {
-    isUsdReady().then(setUsdReady)
+    // isUsdReady vive en servidor (service role); en cliente deducimos del API público
+    fetch('/api/plans?currency=usd')
+      .then(r => r.json())
+      .then(d => setUsdReady(Array.isArray(d.plans) && d.plans.length > 0))
+      .catch(() => {})
     const supabase = createClient()
     supabase.auth.getSession().then(({ data: { session } }) => {
       setHasSession(!!session)
@@ -75,6 +79,8 @@ export default function PricingClient() {
   const yearly = plans.find(p => p.name === 'yearly')
   const monthlyEquivalent = yearly ? (yearly.current_price / 12).toFixed(2).replace('.', ',') : null
   const yearlySavings = yearly && yearly.original_price ? yearly.original_price - yearly.current_price : null
+  const yearlyDiscountPct =
+    monthly && yearly ? Math.round((1 - yearly.current_price / 12 / monthly.current_price) * 100) : null
 
   return (
     <div className="min-h-screen bg-warm-light">
@@ -154,13 +160,13 @@ export default function PricingClient() {
                   </span>
                 )}
                 <p className="text-3xl font-bold mt-1 text-cherry-dark">
-                  {monthly ? fmt(monthly.current_price, currency) : fmt(29, currency)}
+                  {monthly ? fmt(monthly.current_price, currency) : fmt(19, currency)}
                   <span className="text-sm font-normal opacity-50">/mes</span>
                 </p>
               </div>
             </div>
             <p className="text-sm text-cherry-dark opacity-70">
-              {trialUsed ? 'Suscripción inmediata' : (monthly ? `Prueba gratuita de ${monthly.trial_days} días` : 'Prueba gratuita de 3 días')}
+              {trialUsed ? 'Suscripción inmediata' : (monthly ? `Prueba gratuita de ${monthly.trial_days} días` : 'Prueba gratuita de 7 días')}
             </p>
             <button
               onClick={() => handlePlanClick('monthly')}
@@ -196,7 +202,7 @@ export default function PricingClient() {
                   </span>
                 )}
                 <p className="text-3xl font-bold mt-1 text-white">
-                  {yearly ? fmt(yearly.current_price, currency) : fmt(199, currency)}
+                  {yearly ? fmt(yearly.current_price, currency) : fmt(190, currency)}
                   <span className="text-sm font-normal" style={{ opacity: 0.6 }}>/año</span>
                 </p>
               </div>
@@ -212,12 +218,14 @@ export default function PricingClient() {
                   Ahorra {fmt(yearlySavings, currency)}/año
                 </p>
               )}
-              <p className="text-xs" style={{ color: 'rgba(255,255,255,0.6)' }}>
-                Ahorro aproximado: 63%
-              </p>
+              {yearlyDiscountPct !== null && (
+                <p className="text-xs" style={{ color: 'rgba(255,255,255,0.6)' }}>
+                  Ahorro aproximado: {yearlyDiscountPct}%
+                </p>
+              )}
             </div>
             <p className="text-sm" style={{ color: 'rgba(255,255,255,0.7)' }}>
-              {trialUsed ? 'Suscripción inmediata' : (yearly ? `Prueba gratuita de ${yearly.trial_days} días` : 'Prueba gratuita de 3 días')}
+              {trialUsed ? 'Suscripción inmediata' : (yearly ? `Prueba gratuita de ${yearly.trial_days} días` : 'Prueba gratuita de 7 días')}
             </p>
             <button
               onClick={() => handlePlanClick('yearly')}

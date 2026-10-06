@@ -18,6 +18,7 @@ const VALID_SECTIONS = [
   'plan-contenidos',
   'teleprompter',
   'carrusel',
+  'analisis',
 ]
 
 export async function POST(request: NextRequest) {

@@ -79,7 +79,11 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/auth/') ||
     pathname.startsWith('/api/stripe/webhook') ||
     pathname.startsWith('/team') ||
-    pathname.startsWith('/api/team')
+    pathname.startsWith('/api/team') ||
+    // OAuth de Instagram: el redirect de vuelta viene de Meta con cookies
+    // ajenas — publica el callback y deja que la propia ruta valide sesión
+    // y `state` (timing-safe) antes de tocar datos.
+    pathname.startsWith('/api/social/oauth/callback')
 
   if (isPublicAuthRoute) {
     // Redirect authenticated users with active access away from public marketing/auth pages

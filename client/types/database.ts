@@ -728,6 +728,192 @@ export interface Database {
           updated_at?: string
         }
       }
+      social_connections: {
+        Row: {
+          id: string
+          user_id: string
+          provider: 'instagram' | 'tiktok' | 'google_business'
+          provider_account_id: string
+          username: string | null
+          avatar_url: string | null
+          account_type: string | null
+          access_token_encrypted: string
+          token_expires_at: string | null
+          scopes: string[]
+          status: 'active' | 'token_expired' | 'revoked' | 'error'
+          last_sync_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          provider: 'instagram' | 'tiktok' | 'google_business'
+          provider_account_id: string
+          username?: string | null
+          avatar_url?: string | null
+          account_type?: string | null
+          access_token_encrypted: string
+          token_expires_at?: string | null
+          scopes?: string[]
+          status?: 'active' | 'token_expired' | 'revoked' | 'error'
+          last_sync_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          provider?: 'instagram' | 'tiktok' | 'google_business'
+          provider_account_id?: string
+          username?: string | null
+          avatar_url?: string | null
+          account_type?: string | null
+          access_token_encrypted?: string
+          token_expires_at?: string | null
+          scopes?: string[]
+          status?: 'active' | 'token_expired' | 'revoked' | 'error'
+          last_sync_at?: string | null
+          updated_at?: string
+        }
+      }
+      social_metrics_daily: {
+        Row: {
+          id: string
+          user_id: string
+          provider: string
+          date: string
+          followers: number | null
+          reach: number | null
+          views: number | null
+          total_interactions: number | null
+          accounts_engaged: number | null
+          follows: number | null
+          unfollows: number | null
+          profile_links_taps: number | null
+          raw: Record<string, unknown> | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          provider: string
+          date: string
+          followers?: number | null
+          reach?: number | null
+          views?: number | null
+          total_interactions?: number | null
+          accounts_engaged?: number | null
+          follows?: number | null
+          unfollows?: number | null
+          profile_links_taps?: number | null
+          raw?: Record<string, unknown> | null
+          created_at?: string
+        }
+        Update: {
+          provider?: string
+          date?: string
+          followers?: number | null
+          reach?: number | null
+          views?: number | null
+          total_interactions?: number | null
+          accounts_engaged?: number | null
+          follows?: number | null
+          unfollows?: number | null
+          profile_links_taps?: number | null
+          raw?: Record<string, unknown> | null
+        }
+      }
+      social_media: {
+        Row: {
+          id: string
+          user_id: string
+          provider: string
+          media_id: string
+          media_type: string | null
+          media_product_type: string | null
+          caption: string | null
+          posted_at: string | null
+          permalink: string | null
+          thumbnail_url: string | null
+          metrics: Record<string, unknown>
+          themes: Record<string, unknown> | null
+          fetched_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          provider: string
+          media_id: string
+          media_type?: string | null
+          media_product_type?: string | null
+          caption?: string | null
+          posted_at?: string | null
+          permalink?: string | null
+          thumbnail_url?: string | null
+          metrics?: Record<string, unknown>
+          themes?: Record<string, unknown> | null
+          fetched_at?: string
+        }
+        Update: {
+          provider?: string
+          media_id?: string
+          media_type?: string | null
+          media_product_type?: string | null
+          caption?: string | null
+          posted_at?: string | null
+          permalink?: string | null
+          thumbnail_url?: string | null
+          metrics?: Record<string, unknown>
+          themes?: Record<string, unknown> | null
+          fetched_at?: string
+        }
+      }
+      social_sync_log: {
+        Row: {
+          id: string
+          user_id: string
+          provider: string | null
+          kind: string | null
+          result: string | null
+          error: Record<string, unknown> | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          provider?: string | null
+          kind?: string | null
+          result?: string | null
+          error?: Record<string, unknown> | null
+          created_at?: string
+        }
+        Update: {
+          provider?: string | null
+          kind?: string | null
+          result?: string | null
+          error?: Record<string, unknown> | null
+        }
+      }
+      social_diagnoses: {
+        Row: {
+          id: string
+          user_id: string
+          provider: string | null
+          payload: Record<string, unknown> | null
+          generated_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          provider?: string | null
+          payload?: Record<string, unknown> | null
+          generated_at?: string | null
+        }
+        Update: {
+          provider?: string | null
+          payload?: Record<string, unknown> | null
+          generated_at?: string | null
+        }
+      }
     }
   }
 }
@@ -751,3 +937,8 @@ export type AcademiaLesson = Database['public']['Tables']['academia_lessons']['R
 export type AcademiaLessonProgress = Database['public']['Tables']['academia_lesson_progress']['Row']
 export type PremiumStrategySession = Database['public']['Tables']['premium_strategy_sessions']['Row']
 export type BrainObservation = Database['public']['Tables']['brain_observations']['Row']
+export type SocialConnectionRow = Database['public']['Tables']['social_connections']['Row']
+export type SocialMetricsDailyRow = Database['public']['Tables']['social_metrics_daily']['Row']
+export type SocialMediaRow = Database['public']['Tables']['social_media']['Row']
+export type SocialSyncLogRow = Database['public']['Tables']['social_sync_log']['Row']
+export type SocialDiagnosisRow = Database['public']['Tables']['social_diagnoses']['Row']

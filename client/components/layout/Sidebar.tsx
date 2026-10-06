@@ -7,6 +7,7 @@ import {
   Home, Sparkles, Star,
   Film, LayoutGrid, BookOpen, Calendar, LogOut, Menu, X, Zap, Camera,
   Clapperboard, Wand2, Settings, Shield, Crown, GraduationCap, Users, BarChart3,
+  ChartNoAxesColumn,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -34,6 +35,8 @@ const navItems: NavItem[] = [
   { href: '/foto-inspo', label: 'Foto inspo', icon: Camera },
   { href: '/biblioteca', label: 'Biblioteca', icon: BookOpen },
   { href: '/calendario', label: 'Calendario', icon: Calendar },
+  // Análisis — Instagram conectado (6-oct-2026): datos reales de la cuenta.
+  { href: '/analisis', label: 'Análisis', icon: ChartNoAxesColumn },
 ]
 
 const premiumNavItems: NavItem[] = [
@@ -41,6 +44,8 @@ const premiumNavItems: NavItem[] = [
   { href: '/mi-estrategia', label: 'Mi Estrategia', icon: Star },
   { href: '/plan-contenidos', label: 'Plan de Contenidos', icon: Sparkles },
   { href: '/metricas', label: 'Métricas', icon: BarChart3 },
+  // Análisis — Instagram conectado (6-oct-2026): datos propios de la cuenta.
+  { href: '/analisis', label: 'Análisis', icon: ChartNoAxesColumn },
   { href: '/crear-contenido', label: 'Guiones', icon: Film },
   { href: '/biblioteca', label: 'Biblioteca', icon: BookOpen },
   { href: '/stories', label: 'Stories BRÄVE', icon: LayoutGrid },

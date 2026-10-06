@@ -30,6 +30,8 @@ const ERROR_MESSAGES: Record<string, string> = {
   denied: 'No se completó la conexión con Instagram — puedes intentarlo cuando quieras.',
   state_mismatch: 'La sesión de conexión caducó — prueba otra vez desde aquí.',
   meta_error: 'Instagram rechazó la conexión — inténtalo de nuevo en unos minutos.',
+  no_page: 'Tu cuenta de Facebook no tiene ninguna Página — crea una Página y vuelve a conectarte.',
+  no_ig: 'Tu Página no tiene una cuenta de Instagram profesional vinculada — vincúlala desde los ajustes de tu Página.',
 }
 
 export default function AnalisisClient({

@@ -4,16 +4,17 @@ import { isSocialProviderReady } from '@/lib/social/repo'
 import { InstagramProviderClient } from '@/lib/social/instagram'
 
 /**
- * Paso 1 del OAuth de Instagram: crea el `state` anti-CSRF (cookie httpOnly,
- * 10 min de vida) y redirige a la pantalla de consentimiento de Instagram.
+ * Paso 1 del OAuth social (Facebook Login for Business): crea el `state`
+ * anti-CSRF (cookie httpOnly, 10 min de vida) y redirige al diálogo de
+ * consentimiento de Facebook.
  *
  * La ruta exige sesión de Supabase (user.id NUNCA del frontend) — el
  * middleware ya bloquea a usuarias sin sesión, y aquí se revalida por
  * si el gate cambiara en el futuro.
  *
  * redirect_uri = <origin>/api/social/oauth/callback — debe coincidir
- * EXACTAMENTE con una URI inscrita en la app de Meta (Instagram →
- * Business Login Settings). En producción: https://bravestudio.app/
+ * EXACTAMENTE con una URI inscrita en la app de Meta (Facebook Login
+ * for Business → Settings). En producción: https://bravestudio.app/
  * api/social/oauth/callback.
  */
 

@@ -105,7 +105,7 @@ export async function runSync(userId: string, provider: SocialProvider): Promise
 
     // ── Perfil (identidad al día; 190 aquí = token muerto) ─────────
     try {
-      const profile = await client.getProfile(token)
+      const profile = await client.getProfile(token, conn.provider_account_id)
       if (
         profile.username !== conn.username ||
         profile.accountType !== conn.account_type ||
@@ -133,7 +133,7 @@ export async function runSync(userId: string, provider: SocialProvider): Promise
     // ── Feed reciente + insights por pieza ─────────────────────────
     let mediaItems: SocialMediaSnapshot[] = []
     try {
-      mediaItems = await client.listRecentMedia(token, MEDIA_LIMIT)
+      mediaItems = await client.listRecentMedia(token, MEDIA_LIMIT, conn.provider_account_id)
     } catch (err) {
       if (err instanceof GraphApiError && err.code === 190) {
         await updateConnectionStatus(userId, provider, 'token_expired')
@@ -178,7 +178,7 @@ export async function runSync(userId: string, provider: SocialProvider): Promise
             Date.now() - DAILY_HISTORY_DAYS * 86_400_000,
           )
         : Date.now() - DAILY_HISTORY_DAYS * 86_400_000
-      dailyItems = await client.getAccountDaily(token, new Date(sinceMs).toISOString())
+      dailyItems = await client.getAccountDaily(token, new Date(sinceMs).toISOString(), conn.provider_account_id)
     } catch (err) {
       if (err instanceof GraphApiError && err.code === 190) {
         await updateConnectionStatus(userId, provider, 'token_expired')
@@ -195,7 +195,7 @@ export async function runSync(userId: string, provider: SocialProvider): Promise
     // ── Stories activas (24 h) con insights ────────────────────────
     let storyItems: SocialMediaSnapshot[] = []
     try {
-      storyItems = await client.getActiveStoriesInsights(token)
+      storyItems = await client.getActiveStoriesInsights(token, conn.provider_account_id)
     } catch (err) {
       summary.errors.push(`stories: ${errMsg(err)}`)
     }

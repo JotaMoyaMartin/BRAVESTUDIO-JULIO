@@ -73,13 +73,38 @@ export interface SocialProfile {
   followers: number | null
 }
 
-/** Resultado de exchangeCode: token long-lived + identidad de la cuenta. */
+/**
+ * Página de Facebook autorizada tras el login (Facebook Login for Business).
+ * Es el ancla de la API con Login de Instagram no existe: la cuenta de IG
+ * profesional se localiza como `instagram_business_account` de una Página.
+ */
+export interface SocialResolvedPage {
+  pageId: string
+  pageName: string | null
+  /** Page access token derivado del user token long-lived — no caduca. */
+  pageToken: string
+  instagram: {
+    id: string
+    username: string | null
+    accountType: string | null
+    avatarUrl: string | null
+    followers: number | null
+  } | null
+}
+
+/**
+ * Resultado de exchangeCode. Para el flujo de Facebook el token es el
+ * long-lived de USUARIO — el que se guarda realmente (el de Página, que
+ * no caduca) se elige del array `pages` en el callback.
+ */
 export interface SocialExchangeResult {
   accessToken: string
   providerAccountId: string
-  /** Vida útil del long-lived token en segundos (null si IG no la informa). */
+  /** Vida útil del long-lived token en segundos (null si no la informa). */
   expiresInSeconds: number | null
   scopes: string[]
+  /** Páginas autorizadas con su cuenta IG profesional, si la hay. */
+  pages?: SocialResolvedPage[]
 }
 
 export interface SocialRefreshResult {

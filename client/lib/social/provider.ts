@@ -16,17 +16,26 @@ import { InstagramProviderClient } from './instagram'
  * sin tocar sync ni rutas.
  */
 export interface SocialProviderClient {
-  /** Canjea `code` del OAuth por un token long-lived. */
+  /**
+   * Canjea `code` del OAuth. Para Facebook devuelve además las Páginas
+   * autorizadas con su cuenta IG profesional (resolución Página → IG).
+   */
   exchangeCode(code: string, redirectUri: string): Promise<SocialExchangeResult>
 
-  /** Perfil actual de la cuenta (id, username, tipo, avatar…). */
-  getProfile(token: string): Promise<SocialProfile>
+  /**
+   * Perfil actual de la cuenta. `igUserId` = la cuenta concreta a consultar
+   * (en el flujo de Facebook lo guarda sync desde provider_account_id).
+   */
+  getProfile(token: string, igUserId?: string): Promise<SocialProfile>
 
-  /** Renueva el token long-lived (IG: +60 días por llamada). */
+  /**
+   * Renueva el token. El token de Página de Facebook NO caduca (la
+   * implementación IG lanza error; el sync nunca lo llama si no hay vida).
+   */
   refreshToken(token: string): Promise<SocialRefreshResult>
 
   /** Piezas recientes del feed (sin insights por pieza). */
-  listRecentMedia(token: string, limit?: number): Promise<SocialMediaSnapshot[]>
+  listRecentMedia(token: string, limit?: number, igUserId?: string): Promise<SocialMediaSnapshot[]>
 
   /**
    * Insights de UNA pieza. Devuelve null si la red no expone métricas
@@ -40,10 +49,10 @@ export interface SocialProviderClient {
   ): Promise<Partial<SocialMediaMetrics> | null>
 
   /** Series diarias de la cuenta desde `sinceISO` (inclusive). */
-  getAccountDaily(token: string, sinceISO: string): Promise<SocialDayPoint[]>
+  getAccountDaily(token: string, sinceISO: string, igUserId?: string): Promise<SocialDayPoint[]>
 
   /** Stories activas (24 h) con sus insights. Vacío si no hay. */
-  getActiveStoriesInsights(token: string): Promise<SocialMediaSnapshot[]>
+  getActiveStoriesInsights(token: string, igUserId?: string): Promise<SocialMediaSnapshot[]>
 }
 
 /**

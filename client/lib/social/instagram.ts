@@ -357,7 +357,9 @@ export class InstagramProviderClient implements SocialProviderClient {
 
     // Páginas autorizadas + cuenta de IG profesional de cada una. Con el
     // long-lived de usuario, los page tokens derivados NO caducan.
-    const pages = await this.listAuthorizedPages(accessToken).catch(() => [])
+    // Si la consulta FALLA se propaga (→ meta_error en el callback): no
+    // confundir un fallo de red/permiso con "la usuaria no tiene Páginas".
+    const pages = await this.listAuthorizedPages(accessToken)
 
     return {
       accessToken,

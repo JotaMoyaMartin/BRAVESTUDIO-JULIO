@@ -3,6 +3,7 @@ import '@/components/landing-v2/landing-v2.css'
 import V2Header from '@/components/landing-v2/V2Header'
 import V2Hero from '@/components/landing-v2/V2Hero'
 import V2TrustStrip from '@/components/landing-v2/V2TrustStrip'
+import V2AppShowcase from '@/components/landing-v2/V2AppShowcase'
 import V2Problem from '@/components/landing-v2/V2Problem'
 import V2Vsl from '@/components/landing-v2/V2Vsl'
 import V2HowItWorks from '@/components/landing-v2/V2HowItWorks'
@@ -25,7 +26,8 @@ import V2StickyCTA from '@/components/landing-v2/V2StickyCTA'
  * LANDING V2 — variante de test A/B (ruta independiente; `/` queda intacta).
  *
  * Narrativa:
- *   Hero (oscuro) → Trust → Problema/Transformación (claro) → VSL vídeo (arena) →
+ *   Header sticky → VSL vídeo (oscuro, LO PRIMERO) → Hero (oscuro) → Trust →
+ *   App showcase (blush) → Problema/Transformación (claro) →
  *   Cómo funciona (oscuro) → Mi Marca (blush) → Plan para hoy (marfil) →
  *   Bento herramientas (blanco) → Crear contenido (oscuro) →
  *   Inspiración (marfil) → Teleprompter (oscuro) → Diagnóstico (arena) →
@@ -37,10 +39,11 @@ export default function LandingV2Client() {
     <div className="landing-v2 min-h-screen">
       <V2Header />
       <main id="top">
+        <V2Vsl />
         <V2Hero />
         <V2TrustStrip />
+        <V2AppShowcase />
         <V2Problem />
-        <V2Vsl />
         <V2HowItWorks />
         <V2BusinessBrain />
         <V2Today />

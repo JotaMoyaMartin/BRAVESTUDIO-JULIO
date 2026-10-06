@@ -61,6 +61,22 @@ export const PROBLEM = {
   ],
 }
 
+// ── APP SHOWCASE (mockup del móvil con callouts) ───────────────
+// [REAL] Mockup de la app enviado por Jota (callouts integrados en la imagen).
+export const SHOWCASE = {
+  eyebrow: 'La app',
+  title: 'Todo BRÄVE, en tu bolsillo.',
+  body: 'Una app clara y visual, diseñada para estilistas: entras y ya sabes qué hacer hoy.',
+  bullets: [
+    'Tu plan de hoy, abierto y en una pantalla',
+    'Guiones, Stories y Carruseles a un paso',
+    'Tu paleta de colores y tu estilo',
+    'Publica con intención, sin improvisar',
+  ],
+  image: '/landing-v2/mockup-app.jpg',
+  imageAlt: 'Mockup de la app de BRÄVE Studio en un móvil: tu plan para hoy, herramientas con tu contenido listo para publicar y tu paleta de colores',
+}
+
 // ── VSL (vídeo de la app) ──────────────────────────────────────
 // [REAL] Vídeo real del recorrido de la app en Loom.
 // En el embed se usa la URL /embed/ (la /share/ no es iframe-ready).

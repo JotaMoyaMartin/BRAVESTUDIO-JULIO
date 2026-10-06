@@ -229,23 +229,28 @@ function CameraView({ item, onBack }: { item: FotoInspoItem; onBack: () => void 
   // El pill de zoom vive solo mientras el zoom no sea exactamente 1.
   const zoomPillVisible = cam.zoom > 1.001
 
-  // ── guardar: foto siempre descarga; vídeo usa "Compartir → Fotos" en iOS
-  // (única vía fiable a la galería del iPhone) y descarga en el resto.
+  // ── guardar: en iPhone iOS no deja a la WEB escribir en Fotos (única vía de
+  // Apple: el sheet de compartir → "Guardar imagen", 1 toque). En Android y
+  // desktop: descarga directa sin pantallas.
   async function saveResult(result: InspoCaptureResult, baseName: string) {
     const name = `${baseName}.${result.ext}`
-    if (result.kind === 'video') {
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
-      if (isIOS && typeof navigator.share === 'function') {
-        try {
-          const file = new File([result.blob], name, { type: result.mime })
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    if (isIOS && typeof navigator.share === 'function' && typeof navigator.canShare === 'function') {
+      try {
+        const file = new File([result.blob], name, { type: result.mime })
+        if (navigator.canShare({ files: [file] })) {
           await navigator.share({ files: [file] })
-          toast.show('Vídeo guardado — búscalo en tus fotos', 'success')
+          toast.show(
+            result.kind === 'photo' ? 'Foto guardada — búscala en tus fotos' : 'Vídeo guardado — búscalo en tus fotos',
+            'success',
+          )
           return
-        } catch (err) {
-          // Cancelar la hoja no es un error: no duplicar el intento.
-          if (typeof err === 'object' && err !== null && 'name' in err && (err as { name?: string }).name === 'AbortError') return
-          // sin abort → caemos al download
         }
+        // canShare false (in-app browsers raros) → caemos al download
+      } catch (err) {
+        // Cancelar la hoja no es un error: no duplicar el intento.
+        if (typeof err === 'object' && err !== null && 'name' in err && (err as { name?: string }).name === 'AbortError') return
+        // sin abort → caemos al download
       }
     }
     try {

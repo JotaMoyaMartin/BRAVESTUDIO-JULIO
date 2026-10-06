@@ -37,7 +37,7 @@ const MIME_CANDIDATES = [
 // (activas por defecto) aplasta la voz y suena robótica/granulada. Aquí no
 // suena nada mientras se graba, así que el AEC no hace falta — desactivamos
 // TODO el procesado para dejar pasar el micro en limpio.
-const AUDIO_NATURAL: MediaTrackConstraints = {
+export const AUDIO_NATURAL: MediaTrackConstraints = {
   echoCancellation: false,
   noiseSuppression: false,
   autoGainControl: false,

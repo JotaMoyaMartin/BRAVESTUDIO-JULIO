@@ -1,4 +1,5 @@
 'use client'
+import Image from 'next/image'
 import { PlayCircle } from 'lucide-react'
 import Reveal from './Reveal'
 import { VSL } from './content'
@@ -46,6 +47,26 @@ export default function V2Vsl() {
                 style={{ border: 0 }}
               />
             </div>
+          </div>
+        </Reveal>
+
+        <Reveal delay={0.14}>
+          <div
+            className="relative rounded-[28px] overflow-hidden mt-8"
+            style={{
+              border: '1px solid var(--v2-border-dark)',
+              boxShadow: '0 30px 70px rgba(46,8,18,0.45)',
+            }}
+          >
+            <Image
+              src={VSL.mockupImage}
+              alt={VSL.mockupAlt}
+              width={1672}
+              height={941}
+              sizes="(max-width: 640px) 94vw, (max-width: 1024px) 92vw, 960px"
+              className="w-full h-auto"
+              priority={false}
+            />
           </div>
         </Reveal>
       </div>

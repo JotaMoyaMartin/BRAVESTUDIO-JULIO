@@ -85,6 +85,9 @@ export const VSL = {
   title: 'Así funciona BRÄVE por dentro.',
   body: 'Un recorrido real por la app: tu marca, tu plan para hoy, los guiones y el teleprompter.',
   videoUrl: 'https://www.loom.com/embed/728b089ab42b4f4883d4a1755d01d0f8',
+  // [REAL] Mockup de la app enviado por Jota (2 móviles + callouts, fondo burdeos).
+  mockupImage: '/landing-v2/mockup-burdeos.jpg',
+  mockupAlt: 'Dos móviles mostrando la app de BRÄVE Studio (Biblioteca y Planificación) rodeados de callouts: Ideas de reels, Plan del mes, Todo tu contenido, Guiones listos, Stories BRÄVE y Análisis.',
 }
 
 // ── CÓMO FUNCIONA ──────────────────────────────────────────────

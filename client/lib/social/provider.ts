@@ -16,22 +16,16 @@ import { InstagramProviderClient } from './instagram'
  * sin tocar sync ni rutas.
  */
 export interface SocialProviderClient {
-  /**
-   * Canjea `code` del OAuth. Para Facebook devuelve además las Páginas
-   * autorizadas con su cuenta IG profesional (resolución Página → IG).
-   */
+  /** Canjea `code` del OAuth por un token long-lived. */
   exchangeCode(code: string, redirectUri: string): Promise<SocialExchangeResult>
 
   /**
    * Perfil actual de la cuenta. `igUserId` = la cuenta concreta a consultar
-   * (en el flujo de Facebook lo guarda sync desde provider_account_id).
+   * (para proveedores con token multi-cuenta; el cliente IG puede ignorarlo).
    */
   getProfile(token: string, igUserId?: string): Promise<SocialProfile>
 
-  /**
-   * Renueva el token. El token de Página de Facebook NO caduca (la
-   * implementación IG lanza error; el sync nunca lo llama si no hay vida).
-   */
+  /** Renueva el token long-lived (IG: +60 días por llamada). */
   refreshToken(token: string): Promise<SocialRefreshResult>
 
   /** Piezas recientes del feed (sin insights por pieza). */

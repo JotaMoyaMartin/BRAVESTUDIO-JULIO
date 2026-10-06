@@ -6,29 +6,23 @@ import type {
   SocialMediaSnapshot,
   SocialProfile,
   SocialRefreshResult,
-  SocialResolvedPage,
 } from './types'
 
 /**
- * Cliente de la Instagram Graph API vía FACEBOOK LOGIN FOR BUSINESS —
- * la decisión de producto para BRÄVE (necesita instagram_manage_insights,
- * que el flujo "API with Instagram Login" no da).
- *
- * Flujo: diálogo de Facebook → callback BRÄVE → canje code→token de usuario
- * (graph.facebook.com) → fb_exchange_token a long-lived → /me/accounts
- * localiza Páginas y su instagram_business_account → el token de Página
- * (que NO caduca) se guarda y todas las llamadas de perfil/media/insights
- * van contra /v{ver}/{ig_user_id} con ese token de Página.
+ * Cliente de la Instagram Platform vía INSTAGRAM LOGIN — la decisión de
+ * producto para BRÄVE: la estilista conecta SOLO su cuenta de Instagram
+ * profesional, sin Facebook ni Página (más simple y con los mismos
+ * insights que la vía de Facebook para V1).
  *
  * Graph API pinnear v25.0 — si Meta saca versiones nuevas, aquí se cambia.
  *
  * Docs clave:
- *   - FB Login: https://developers.facebook.com/docs/facebook-login/for-business
- *   - IG Graph: https://developers.facebook.com/docs/instagram-platform/instagram-graph-api
+ *   - OAuth: https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/business-login
  *   - Insights: https://developers.facebook.com/docs/instagram-platform/instagram-graph-api/insights
  *
- * Env necesarias (server): INSTAGRAM_APP_ID (= Meta App ID general),
- * INSTAGRAM_APP_SECRET (App Secret de esa misma app).
+ * Env necesarias (server): INSTAGRAM_APP_ID, INSTAGRAM_APP_SECRET — el
+ * Instagram App ID y su App Secret del setup "API with Instagram login"
+ * de la app de Meta (NO el App ID general de la app).
  * Notas de la Graph API que este cliente tolera:
  *   - CAROUSEL_ALBUM no acepta insights (Meta responde 400) → no se piden.
  *   - Métricas con menos de 5 cuentas alcanzadas → error code 10 → null
@@ -37,17 +31,12 @@ import type {
  *     ("Follows" / "Unfollows"); el parser usa title si existe.
  */
 
-const GRAPH_HOST = 'https://graph.facebook.com'
-const AUTH_HOST = 'https://www.facebook.com'
+const GRAPH_HOST = 'https://graph.instagram.com'
 const GRAPH_VERSION = 'v25.0'
+const TOKEN_EXCHANGE_HOST = 'https://api.instagram.com'
 
-/** Scopes V1 del Facebook Login for Business — nada de mensajes/ads. */
-const SCOPES = [
-  'instagram_basic',
-  'instagram_manage_insights',
-  'pages_show_list',
-  'pages_read_engagement',
-]
+const AUTH_BASE = 'https://www.instagram.com/oauth/authorize'
+const SCOPES = ['instagram_business_basic', 'instagram_business_manage_insights']
 
 const TIMEOUT_MS = 20_000
 const RETRY_DELAY_MS = 800
@@ -278,28 +267,12 @@ export function isInsightlessError(err: unknown): boolean {
   )
 }
 
-/**
- * Selección DETERMINISTA de la Página con Instagram profesional: gana la de
- * más seguidores; empate → la primera en el orden de Meta (me/accounts).
- * `null` = ninguna Página tiene IG profesional conectado.
- */
-export function pickInstagramPage(pages: SocialResolvedPage[]): SocialResolvedPage | null {
-  const withIg = pages.filter(p => p.instagram)
-  if (withIg.length === 0) return null
-  return withIg.reduce((best, p) =>
-    (p.instagram!.followers ?? 0) > (best.instagram!.followers ?? 0) ? p : best,
-  )
-}
-
 // ─────────────────────────────────────────────────────────────────────
 // Cliente
 // ─────────────────────────────────────────────────────────────────────
 
 export class InstagramProviderClient implements SocialProviderClient {
-  /**
-   * URL del diálogo de consentimiento de FACEBOOK Login for Business
-   * (state va en query, se verifica timing-safe en el callback).
-   */
+  /** URL de pantalla de consentimiento (state va en query, se verifica en callback). */
   authorizeUrl(state: string, redirectUri: string): string {
     if (!isInstagramConfigured()) {
       throw new Error('INSTAGRAM_APP_ID / INSTAGRAM_APP_SECRET no configurados — no se puede iniciar la conexión con Instagram.')
@@ -312,14 +285,14 @@ export class InstagramProviderClient implements SocialProviderClient {
       scope: SCOPES.join(','),
       state,
     })
-    return `${AUTH_HOST}/${GRAPH_VERSION}/dialog/oauth?${params.toString()}`
+    return `${AUTH_BASE}?${params.toString()}`
   }
 
   /**
-   * code → token de usuario corto → long-lived (fb_exchange_token, ~60 días)
-   * → resolución de Páginas /me/accounts con su instagram_business_account.
-   * En result.accessToken va el long-lived de USUARIO; el callback elige la
-   * Página y guarda su pageToken (no caduca).
+   * code → token corto (POST en api.instagram.com, según exige la docs)
+   * → token long-lived (~60 días, ig_exchange_token) de LA cuenta IG que
+   * autorizó. El token va ligado a esa única cuenta: los métodos siguientes
+   * ignoran `igUserId` (reservado a otros proveedores multicanal).
    */
   async exchangeCode(code: string, redirectUri: string): Promise<SocialExchangeResult> {
     if (!isInstagramConfigured()) {
@@ -328,20 +301,22 @@ export class InstagramProviderClient implements SocialProviderClient {
     const appId = process.env.INSTAGRAM_APP_ID as string
     const appSecret = process.env.INSTAGRAM_APP_SECRET as string
 
-    // Canje del code → token corto (Graph API de FACEBOOK, no api.instagram.com).
-    const shortUrl =
-      `${GRAPH_HOST}/${GRAPH_VERSION}/oauth/access_token?client_id=${q(appId)}` +
-      `&client_secret=${q(appSecret)}&grant_type=authorization_code` +
-      `&redirect_uri=${q(redirectUri)}&code=${q(code)}`
-    const short = (await fetchJson(shortUrl)) as Row
+    const short = (await fetchJson(`${TOKEN_EXCHANGE_HOST}/oauth/access_token`, {
+      method: 'POST',
+      body: new URLSearchParams({
+        client_id: appId,
+        client_secret: appSecret,
+        grant_type: 'authorization_code',
+        redirect_uri: redirectUri,
+        code,
+      }),
+    })) as Row
     const shortToken = str(short.access_token)
-    if (!shortToken) throw new GraphApiError('Facebook no devolvió access_token.', 0, 502)
+    if (!shortToken) throw new GraphApiError('Instagram no devolvió access_token.', 0, 502)
 
-    // token corto → long-lived de usuario (~60 días).
     const longUrl =
-      `${GRAPH_HOST}/${GRAPH_VERSION}/oauth/access_token?grant_type=fb_exchange_token` +
-      `&client_id=${q(appId)}&client_secret=${q(appSecret)}` +
-      `&fb_exchange_token=${q(shortToken)}`
+      `${GRAPH_HOST}/access_token?grant_type=ig_exchange_token` +
+      `&client_secret=${q(appSecret)}&access_token=${q(shortToken)}`
     let accessToken = shortToken
     let expiresInSeconds: number | null = null
     try {
@@ -355,63 +330,18 @@ export class InstagramProviderClient implements SocialProviderClient {
       // pero la conexión funciona) — el token_expired lo detectará el sync.
     }
 
-    // Páginas autorizadas + cuenta de IG profesional de cada una. Con el
-    // long-lived de usuario, los page tokens derivados NO caducan.
-    // Si la consulta FALLA se propaga (→ meta_error en el callback): no
-    // confundir un fallo de red/permiso con "la usuaria no tiene Páginas".
-    const pages = await this.listAuthorizedPages(accessToken)
-
     return {
       accessToken,
-      providerAccountId: '',
+      providerAccountId: str(short.user_id) ?? '',
       expiresInSeconds,
       scopes: SCOPES,
-      pages,
     }
   }
 
-  /**
-   * /me/accounts → Páginas con pageToken + instagram_business_account
-   * vinculado (si la Página tiene IG profesional conectado).
-   */
-  private async listAuthorizedPages(userToken: string): Promise<SocialResolvedPage[]> {
-    const fields =
-      'id,name,access_token,instagram_business_account{id,username,account_type,profile_picture_url,followers_count}'
+  /** Perfil de la cuenta IG (el token va ligado a la cuenta → /me). */
+  async getProfile(token: string): Promise<SocialProfile> {
     const url =
-      `${GRAPH_HOST}/${GRAPH_VERSION}/me/accounts?fields=${q(fields)}` +
-      `&limit=100&access_token=${q(userToken)}`
-    const raw = (await fetchJson(url)) as Row
-    const rows: Row[] = (raw.data as Row[] | undefined) ?? []
-    const pages: SocialResolvedPage[] = []
-    for (const row of rows) {
-      const pageId = str(row.id)
-      const pageToken = str(row.access_token)
-      if (!pageId || !pageToken) continue
-      const ig = (row.instagram_business_account ?? null) as Row | null
-      const igRow = (ig ?? {}) as Row
-      pages.push({
-        pageId,
-        pageName: str(row.name),
-        pageToken,
-        instagram: ig
-          ? {
-              id: str(igRow.id) ?? '',
-              username: str(igRow.username),
-              accountType: str(igRow.account_type),
-              avatarUrl: str(igRow.profile_picture_url),
-              followers: num(igRow.followers_count),
-            }
-          : null,
-      })
-    }
-    return pages
-  }
-
-  /** Perfil de la cuenta IG (ig_user_id = provider_account_id de la conexión). */
-  async getProfile(token: string, igUserId?: string): Promise<SocialProfile> {
-    const path = q(igUserId || 'me')
-    const url =
-      `${GRAPH_HOST}/${GRAPH_VERSION}/${path}?fields=${q('id,username,account_type,followers_count,follows_count,media_count,profile_picture_url')}` +
+      `${GRAPH_HOST}/${GRAPH_VERSION}/me?fields=${q('id,username,account_type,followers_count,follows_count,media_count,profile_picture_url')}` +
       `&access_token=${q(token)}`
     const raw = (await fetchJson(url)) as Row
     return {
@@ -423,20 +353,20 @@ export class InstagramProviderClient implements SocialProviderClient {
     }
   }
 
-  /**
-   * El token guardado es de PÁGINA (no caduca, no se renueva): el sync solo
-   * llama aquí si se guardara un token con vida — reservado a la capa
-   * multicanal de futuras redes.
-   */
-  async refreshToken(_token: string): Promise<SocialRefreshResult> {
-    throw new GraphApiError('El token de Página de Facebook no caduca — no se renueva.', 0, 0)
+  async refreshToken(token: string): Promise<SocialRefreshResult> {
+    const url =
+      `${GRAPH_HOST}/${GRAPH_VERSION}/refresh_access_token?grant_type=ig_refresh_token` +
+      `&access_token=${q(token)}`
+    const raw = (await fetchJson(url)) as Row
+    const accessToken = str(raw.access_token)
+    if (!accessToken) throw new GraphApiError('Instagram no devolvió token renovado.', 0, 502)
+    return { accessToken, expiresInSeconds: num(raw.expires_in) }
   }
 
-  async listRecentMedia(token: string, limit = 50, igUserId?: string): Promise<SocialMediaSnapshot[]> {
+  async listRecentMedia(token: string, limit = 50): Promise<SocialMediaSnapshot[]> {
     const fields = 'id,caption,media_type,media_product_type,timestamp,permalink,thumbnail_url,like_count,comments_count'
-    const path = q(igUserId || 'me')
     const url =
-      `${GRAPH_HOST}/${GRAPH_VERSION}/${path}/media?fields=${q(fields)}&limit=${Math.min(limit, 100)}` +
+      `${GRAPH_HOST}/${GRAPH_VERSION}/me/media?fields=${q(fields)}&limit=${Math.min(limit, 100)}` +
       `&access_token=${q(token)}`
     const raw = (await fetchJson(url)) as Row
     const items: Row[] = (raw.data as Row[] | undefined) ?? []
@@ -483,20 +413,18 @@ export class InstagramProviderClient implements SocialProviderClient {
     }
   }
 
-  async getAccountDaily(token: string, sinceISO: string, igUserId?: string): Promise<SocialDayPoint[]> {
+  async getAccountDaily(token: string, sinceISO: string): Promise<SocialDayPoint[]> {
     const since = Math.floor(new Date(sinceISO).getTime() / 1000)
-    const path = q(igUserId || 'me')
     const url =
-      `${GRAPH_HOST}/${GRAPH_VERSION}/${path}/insights?metric=${q('follower_count,views,reach,total_interactions,accounts_engaged,profile_links_taps,follows_and_unfollows')}` +
+      `${GRAPH_HOST}/${GRAPH_VERSION}/me/insights?metric=${q('follower_count,views,reach,total_interactions,accounts_engaged,profile_links_taps,follows_and_unfollows')}` +
       `&period=day&since=${since}&access_token=${q(token)}`
     const raw = await fetchJson(url)
     return normalizeAccountInsights(raw)
   }
 
-  async getActiveStoriesInsights(token: string, igUserId?: string): Promise<SocialMediaSnapshot[]> {
-    const path = q(igUserId || 'me')
+  async getActiveStoriesInsights(token: string): Promise<SocialMediaSnapshot[]> {
     const url =
-      `${GRAPH_HOST}/${GRAPH_VERSION}/${path}/stories?fields=${q('id,timestamp,permalink,media_type')}` +
+      `${GRAPH_HOST}/${GRAPH_VERSION}/me/stories?fields=${q('id,timestamp,permalink,media_type')}` +
       `&limit=20&access_token=${q(token)}`
     const raw = (await fetchJson(url)) as Row
     const items: Row[] = (raw.data as Row[] | undefined) ?? []

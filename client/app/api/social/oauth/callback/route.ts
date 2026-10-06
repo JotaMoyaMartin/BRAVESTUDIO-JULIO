@@ -1,20 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { InstagramProviderClient, pickInstagramPage } from '@/lib/social/instagram'
+import { InstagramProviderClient } from '@/lib/social/instagram'
 import { logSync, saveConnection } from '@/lib/social/repo'
 
 /**
- * Paso 2 del OAuth (public en middleware — la sesión y el `state` se
- * validan AQUÍ, no en los gates). Flujo Facebook Login for Business:
+ * Paso 2 del OAuth de Instagram (public en middleware — la sesión y el
+ * `state` se validan AQUÍ, no en los gates):
  *   1. Sesión requerida → /login si no.
  *   2. `state` de la cookie verificado timing-safe → error=state_mismatch.
- *   3. code → token long-lived de USUARIO + Páginas autorizadas con su
- *      instagram_business_account (lib/social/instagram.ts).
- *      Sin Página → error=no_page · Páginas sin IG → error=no_ig.
- *   4. saveConnection con el token de PÁGINA (no caduca) CIFRADO y el
- *      ig_user_id como provider_account_id. El token jamás vuelve al
- *      navegador.
- *   5. Cookie borrada tras uso (single-use).
+ *   3. code → token long-lived (lib/social/instagram.ts) → saveConnection
+ *      con token CIFRADO. El token jamás vuelve al navegador.
+ *   4. Cookie borrada tras uso (single-use).
  */
 
 /** Comparación en tiempo constante (patrón lib/team/guard.ts). */
@@ -76,40 +72,30 @@ export async function GET(request: NextRequest) {
     const client = new InstagramProviderClient()
     const redirectUri = `${origin}/api/social/oauth/callback`
     const exchange = await client.exchangeCode(code, redirectUri)
-    const pages = exchange.pages ?? []
 
-    // Caso razonado en el brief: la usuaria no tiene Página de Facebook.
-    if (pages.length === 0) {
-      return withStateCookieCleared(
-        NextResponse.redirect(`${origin}/analisis?error=no_page`),
-      )
+    // Perfil best-effort para mostrar @username nada más volver.
+    let username: string | null = null
+    let accountType: string | null = null
+    let avatarUrl: string | null = null
+    try {
+      const profile = await client.getProfile(exchange.accessToken)
+      username = profile.username
+      accountType = profile.accountType
+      avatarUrl = profile.avatarUrl
+    } catch {
+      // El perfil se refrescará en la primera sincronización.
     }
-
-    // Selección determinista: la Página con IG de más seguidores (empate →
-    // la primera según Meta). Solo IG profesional conectado a la Página.
-    const chosen = pickInstagramPage(pages)
-    if (!chosen?.instagram) {
-      return withStateCookieCleared(
-        NextResponse.redirect(`${origin}/analisis?error=no_ig`),
-      )
-    }
-    const ig = chosen.instagram
 
     await saveConnection(user.id, 'instagram', {
-      providerAccountId: ig.id || chosen.pageId,
-      // El token de Página (derivado del long-lived) NO caduca — por eso
-      // expiresInSeconds nunca se informa aquí.
-      accessToken: chosen.pageToken,
-      expiresInSeconds: null,
+      providerAccountId: exchange.providerAccountId || username || user.id,
+      accessToken: exchange.accessToken,
+      expiresInSeconds: exchange.expiresInSeconds,
       scopes: exchange.scopes,
-      username: ig.username,
-      accountType: ig.accountType,
-      avatarUrl: ig.avatarUrl,
+      username,
+      accountType,
+      avatarUrl,
     })
-    await logSync(user.id, 'instagram', 'oauth', 'success', {
-      page: { id: chosen.pageId, name: chosen.pageName },
-      candidates: pages.length,
-    })
+    await logSync(user.id, 'instagram', 'oauth', 'success')
 
     return withStateCookieCleared(
       NextResponse.redirect(`${origin}/analisis?connected=1`),

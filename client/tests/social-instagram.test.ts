@@ -6,7 +6,6 @@ import {
   normalizeAccountInsights,
   normalizeMediaItem,
   parseMediaInsights,
-  pickInstagramPage,
 } from '@/lib/social/instagram'
 
 /** Tests de normalización del cliente Instagram (lógica pura, fixtures JSON). */
@@ -197,60 +196,25 @@ describe('normalizeMediaItem — fila de /me/media → snapshot (sin insights)',
   })
 })
 
-describe('authorizeUrl — diálogo de consentimiento (Facebook Login for Business)', () => {
+describe('authorizeUrl — URL de consentimiento de Instagram', () => {
   afterAll(() => {
     delete process.env.INSTAGRAM_APP_ID
     delete process.env.INSTAGRAM_APP_SECRET
   })
 
-  it('contiene client_id, redirect_uri, state y scopes V1 de Meta', async () => {
+  it('contiene client_id, redirect_uri, state y scopes de la app', async () => {
     process.env.INSTAGRAM_APP_ID = 'ig-app-test'
     process.env.INSTAGRAM_APP_SECRET = 'ig-secret-test'
     const mod = await import('@/lib/social/instagram')
     const client = new mod.InstagramProviderClient()
     const url = client.authorizeUrl('state-123', 'https://bravestudio.app/api/social/oauth/callback')
     const parsed = new URL(url)
-    expect(parsed.origin).toBe('https://www.facebook.com')
-    expect(parsed.pathname).toBe('/v25.0/dialog/oauth')
+    expect(parsed.origin).toBe('https://www.instagram.com')
+    expect(parsed.pathname).toBe('/oauth/authorize')
     expect(parsed.searchParams.get('client_id')).toBe('ig-app-test')
     expect(parsed.searchParams.get('redirect_uri')).toBe('https://bravestudio.app/api/social/oauth/callback')
     expect(parsed.searchParams.get('response_type')).toBe('code')
     expect(parsed.searchParams.get('state')).toBe('state-123')
-    expect(parsed.searchParams.get('scope')).toBe(
-      'instagram_basic,instagram_manage_insights,pages_show_list,pages_read_engagement',
-    )
-  })
-})
-
-describe('pickInstagramPage — selección determinista de Página con IG', () => {
-  it('vacío / sin IG profesional → null', () => {
-    expect(pickInstagramPage([])).toBeNull()
-    expect(
-      pickInstagramPage([
-        { pageId: 'p1', pageName: 'Salón', pageToken: 't1', instagram: null },
-      ]),
-    ).toBeNull()
-  })
-
-  it('una Página con IG → esa', () => {
-    const page = {
-      pageId: 'p2',
-      pageName: 'B',
-      pageToken: 't2',
-      instagram: { id: 'ig-2', username: 'b', accountType: null, avatarUrl: null, followers: 10 },
-    }
-    expect(pickInstagramPage([{ pageId: 'p1', pageName: 'A', pageToken: 't1', instagram: null }, page])?.pageId).toBe('p2')
-  })
-
-  it('varias con IG → la de MÁS seguidores (empate → primera)', () => {
-    const mk = (id: string, followers: number | null) => ({
-      pageId: id,
-      pageName: id,
-      pageToken: `t-${id}`,
-      instagram: { id: `ig-${id}`, username: id, accountType: null, avatarUrl: null, followers },
-    })
-    expect(pickInstagramPage([mk('a', 100), mk('b', 900), mk('c', 400)])?.pageId).toBe('b')
-    expect(pickInstagramPage([mk('a', 100), mk('b', 100)])?.pageId).toBe('a')
-    expect(pickInstagramPage([mk('a', null), mk('b', 5)])?.pageId).toBe('b')
+    expect(parsed.searchParams.get('scope')).toBe('instagram_business_basic,instagram_business_manage_insights')
   })
 })

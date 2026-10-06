@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Menu, X } from 'lucide-react'
-import { NAV, CTA_SIGNUP_HREF, CTA_PRIMARY } from './content'
+import { NAV, CTA_PRICING_ANCHOR, CTA_PRIMARY } from './content'
 
 function Logo({ light = true }: { light?: boolean }) {
   return (
@@ -71,7 +71,7 @@ export default function V2Header() {
           >
             Iniciar sesión
           </Link>
-          <Link href={CTA_SIGNUP_HREF} className="v2-btn v2-btn-light" style={{ padding: '0.6rem 1.2rem', fontSize: '0.72rem' }}>
+          <Link href={CTA_PRICING_ANCHOR} className="v2-btn v2-btn-light" style={{ padding: '0.6rem 1.2rem', fontSize: '0.72rem' }}>
             Empieza gratis
           </Link>
         </div>
@@ -111,7 +111,7 @@ export default function V2Header() {
             ))}
           </nav>
           <div className="px-6 pt-8 pb-10 flex flex-col gap-3">
-            <Link href={CTA_SIGNUP_HREF} onClick={() => setOpen(false)} className="v2-btn v2-btn-light w-full">
+            <Link href={CTA_PRICING_ANCHOR} onClick={() => setOpen(false)} className="v2-btn v2-btn-light w-full">
               {CTA_PRIMARY}
             </Link>
             <Link

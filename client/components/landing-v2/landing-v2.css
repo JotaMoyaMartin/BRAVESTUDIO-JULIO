@@ -330,6 +330,7 @@
 }
 
 /* ── Scroll suave con offset por header sticky ───────────────── */
+html:has(.landing-v2) { scroll-behavior: smooth; }
 .landing-v2 section[id] {
   scroll-margin-top: 84px;
 }

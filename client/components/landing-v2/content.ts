@@ -17,6 +17,11 @@ export const NAV = [
 ] as const
 
 export const CTA_PRIMARY = 'Empieza 7 días gratis'
+// Los CTAs grandes de la landing llevan primero a VER LOS PLANES (#precios),
+// y la elección de plan continúa a /signup → Stripe (los datos de la salón se
+// piden en el onboarding, DESPUÉS del pago).
+export const CTA_PRICING_ANCHOR = '#precios'
+// Href interno para continuar el alta con plan elegido (pricing → signup)
 export const CTA_SIGNUP_HREF = '/signup'
 export const MICROCOPY_TRIAL = '7 días gratis · Cancela cuando quieras'
 
@@ -325,14 +330,20 @@ export const SKOOL = {
 
 // ── PRICING ────────────────────────────────────────────────────
 // DEFINITIVO: UN precio mensual y UN anual. Nada de PRO/BUSINESS/ENTERPRISE.
-// IMPORTANTE (alinear con backend): el trial ya es 7 días en código (fallback y copy);
-// los importes cobrados siguen siendo los de los Price IDs en Stripe (hoy 29/199 €)
-// hasta crear los precios de 19/190. El checkout real cobra lo configurado en Stripe.
+// IMPORTANTE: el checkout real cobra lo configurado en los Price IDs de Stripe
+// (tabla `plans` ↔ Stripe, hoy 19 €/mes · 190 €/año, trial 7 días). Si algún día
+// cambian precios, actualizarlos en Stripe + fila de `plans`; este copy solo muestra.
 export const PRICING = {
   eyebrow: 'Precios',
   title: 'Todo BRÄVE Studio. Un precio simple.',
   sub: 'Empieza con 7 días gratis y después elige cómo quieres continuar.',
   badge: 'Mejor precio',
+  // Recorrido del alta (se muestra en la sección de precios):
+  steps: [
+    'Elige tu plan',
+    'Crea tu cuenta (email y contraseña)',
+    '7 días gratis — los datos de tu salón, después',
+  ],
   monthly: {
     name: 'Mensual',
     price: 19,

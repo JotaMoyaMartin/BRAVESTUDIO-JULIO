@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { Sparkle } from 'lucide-react'
 import Reveal from './Reveal'
-import { FINAL_CTA, CTA_SIGNUP_HREF } from './content'
+import { FINAL_CTA, CTA_PRICING_ANCHOR } from './content'
 
 /**
  * CTA final — fondo burgundy, cierre de la narrativa.
@@ -33,7 +33,7 @@ export default function V2FinalCTA() {
         </Reveal>
         <Reveal delay={0.18}>
           <Link
-            href={CTA_SIGNUP_HREF}
+            href={CTA_PRICING_ANCHOR}
             className="v2-cta v2-cta-light v2-btn v2-btn-light mt-9"
             style={{ padding: '1.2rem 2.5rem', fontSize: '1rem' }}
           >

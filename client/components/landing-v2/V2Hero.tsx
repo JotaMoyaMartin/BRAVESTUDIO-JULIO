@@ -2,14 +2,14 @@
 import Link from 'next/link'
 import { Sparkle } from 'lucide-react'
 import Reveal from './Reveal'
-import { HERO, CTA_PRIMARY, CTA_SIGNUP_HREF } from './content'
+import { HERO, CTA_PRIMARY, CTA_PRICING_ANCHOR } from './content'
 
 /**
  * Hero: fondo burgundy oscuro, mensaje centrado sobre el vídeo (mockup en VSL).
  */
 export default function V2Hero() {
   return (
-    <section className="v2-dark relative overflow-hidden" style={{ paddingTop: 112, paddingBottom: 72 }}>
+    <section className="v2-dark relative overflow-hidden" style={{ paddingTop: 96, paddingBottom: 56 }}>
       {/* Decoración de fondo */}
       <div aria-hidden="true" className="absolute inset-0 pointer-events-none">
         <div className="absolute -top-24 right-[8%] w-[420px] h-[420px] rounded-full blur-3xl opacity-35" style={{ background: 'rgba(160,64,96,0.6)' }} />
@@ -42,7 +42,7 @@ export default function V2Hero() {
             </Reveal>
             <Reveal delay={0.18}>
               <div className="mt-8 flex flex-col sm:flex-row sm:items-center sm:justify-center gap-3">
-                <Link href={CTA_SIGNUP_HREF} className="v2-cta v2-cta-light v2-btn v2-btn-light" style={{ padding: '1.15rem 2.3rem', fontSize: '1.02rem' }}>
+                <Link href={CTA_PRICING_ANCHOR} className="v2-cta v2-cta-light v2-btn v2-btn-light" style={{ padding: '1.15rem 2.3rem', fontSize: '1.02rem' }}>
                   {CTA_PRIMARY}
                 </Link>
                 <Link href="#como-funciona" className="v2-btn v2-btn-outline" style={{ padding: '1.05rem 1.6rem', fontSize: '0.85rem' }}>

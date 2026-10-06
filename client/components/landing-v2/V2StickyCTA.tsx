@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { X } from 'lucide-react'
-import { CTA_SIGNUP_HREF, MICROCOPY_TRIAL } from './content'
+import { CTA_PRICING_ANCHOR, MICROCOPY_TRIAL } from './content'
 
 const DISMISS_KEY = 'brave_v2_sticky_dismissed'
 
@@ -55,7 +55,7 @@ export default function V2StickyCTA() {
           <p className="text-[10px] truncate" style={{ color: 'var(--v2-on-dark-soft)' }}>{MICROCOPY_TRIAL}</p>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
-          <Link href={CTA_SIGNUP_HREF} className="v2-cta v2-cta-light v2-btn v2-btn-light" style={{ padding: '0.6rem 1rem', fontSize: '0.68rem' }}>
+          <Link href={CTA_PRICING_ANCHOR} className="v2-cta v2-cta-light v2-btn v2-btn-light" style={{ padding: '0.6rem 1rem', fontSize: '0.68rem' }}>
             Empieza gratis
           </Link>
           <button

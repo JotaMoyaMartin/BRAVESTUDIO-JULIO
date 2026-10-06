@@ -77,7 +77,7 @@ export default function V2Pricing() {
   }
 
   return (
-    <section id="precios" className="py-16 sm:py-24" style={{ background: 'var(--v2-ivory)' }}>
+    <section id="precios" className="py-14 sm:py-24" style={{ background: 'var(--v2-ivory)' }}>
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
         <Reveal className="text-center max-w-2xl mx-auto mb-8 sm:mb-10">
           <p className="v2-eyebrow" style={{ color: 'var(--color-cherry)' }}>{PRICING.eyebrow}</p>
@@ -87,6 +87,32 @@ export default function V2Pricing() {
           <p className="mt-3 text-[15px]" style={{ color: 'rgba(42,11,18,0.7)' }}>
             {PRICING.sub}
           </p>
+        </Reveal>
+
+        {/* Recorrido del alta: qué pasará y cuándo empieza a costar */}
+        <Reveal delay={0.03}>
+          <div
+            className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2 sm:gap-3 mb-6 rounded-2xl p-3"
+            style={{ background: 'var(--v2-sand)', border: '1px solid var(--v2-border-light)' }}
+          >
+            {PRICING.steps.map((step, i) => (
+              <div key={step} className="flex items-center gap-2.5">
+                <span
+                  className="inline-flex items-center justify-center w-6 h-6 rounded-full text-[11px] font-extrabold shrink-0"
+                  style={{ background: 'var(--color-cherry)', color: '#fff' }}
+                  aria-hidden="true"
+                >
+                  {i + 1}
+                </span>
+                <span className="text-[12px] sm:text-[13px] leading-snug font-medium" style={{ color: 'rgba(42,11,18,0.85)' }}>
+                  {step}
+                </span>
+                {i < PRICING.steps.length - 1 && (
+                  <span aria-hidden="true" className="hidden sm:block text-lg" style={{ color: 'rgba(122,24,50,0.35)' }}>→</span>
+                )}
+              </div>
+            ))}
+          </div>
         </Reveal>
 
         {/* Toggles: periodo + moneda, en una fila en desktop */}
@@ -104,7 +130,7 @@ export default function V2Pricing() {
                   type="button"
                   onClick={() => setSelected(plan)}
                   aria-pressed={selected === plan}
-                  className="px-5 sm:px-7 py-2.5 rounded-full text-[13px] font-bold transition-all"
+                  className="px-4 sm:px-7 py-2.5 rounded-full text-[13px] font-bold transition-all"
                   style={
                     selected === plan
                       ? { background: 'var(--color-cherry)', color: 'white', boxShadow: '0 6px 18px rgba(122,24,50,0.3)' }
@@ -155,11 +181,11 @@ export default function V2Pricing() {
         </Reveal>
 
         {/* Cards ANUAL primero en móvil (mejor opción), lado a lado en desktop */}
-        <div className="grid sm:grid-cols-2 gap-5 max-w-3xl mx-auto items-stretch">
+        <div className="grid sm:grid-cols-2 gap-4 sm:gap-5 max-w-3xl mx-auto items-stretch">
           {/* ── ANUAL (destacada) ── */}
           <Reveal className="order-1 sm:order-2">
             <article
-              className="h-full rounded-3xl p-7 sm:p-8 relative overflow-hidden flex flex-col gap-5 transition-transform"
+              className="h-full rounded-3xl p-5 sm:p-8 relative overflow-hidden flex flex-col gap-4 sm:gap-5 transition-transform"
               style={{
                 background: 'var(--color-cherry)',
                 border: highlight.yearly ? '2px solid var(--color-buttermilk)' : '1.5px solid var(--color-cherry-dark)',
@@ -177,7 +203,7 @@ export default function V2Pricing() {
 
               <p className="v2-eyebrow" style={{ color: 'rgba(255,241,181,0.9)' }}>{PRICING.yearly.name}</p>
               <div>
-                <p className="text-[42px] font-extrabold tracking-tight leading-none" style={{ color: '#fff' }}>
+                <p className="text-[34px] sm:text-[42px] font-extrabold tracking-tight leading-none" style={{ color: '#fff' }}>
                   {fmt(yearlyPrice, currency)}
                   <span className="text-base font-semibold" style={{ color: 'rgba(255,255,255,0.65)' }}>{PRICING.yearly.suffix}</span>
                 </p>
@@ -189,7 +215,7 @@ export default function V2Pricing() {
                 )}
               </div>
 
-              <ul className="space-y-2.5 mt-1">
+              <ul className="space-y-2 mt-1">
                 {PRICING.included.map((f) => (
                   <li key={f} className="flex items-start gap-2.5 text-[13px] leading-snug" style={{ color: 'rgba(255,255,255,0.92)' }}>
                     <span
@@ -222,7 +248,7 @@ export default function V2Pricing() {
           {/* ── MENSUAL ── */}
           <Reveal delay={0.08} className="order-2 sm:order-1">
             <article
-              className="h-full rounded-3xl p-7 sm:p-8 flex flex-col gap-5 transition-transform"
+              className="h-full rounded-3xl p-5 sm:p-8 flex flex-col gap-4 sm:gap-5 transition-transform"
               style={{
                 background: 'var(--v2-paper)',
                 border: highlight.monthly ? '2px solid var(--color-cherry)' : '1px solid var(--v2-border-light)',
@@ -231,13 +257,13 @@ export default function V2Pricing() {
             >
               <p className="v2-eyebrow" style={{ color: 'rgba(74,15,30,0.6)' }}>{PRICING.monthly.name}</p>
               <div>
-                <p className="text-[42px] font-extrabold tracking-tight leading-none" style={{ color: 'var(--v2-ink)' }}>
+                <p className="text-[34px] sm:text-[42px] font-extrabold tracking-tight leading-none" style={{ color: 'var(--v2-ink)' }}>
                   {fmt(monthlyPrice, currency)}
                   <span className="text-base font-semibold" style={{ color: 'rgba(42,11,18,0.5)' }}>{PRICING.monthly.suffix}</span>
                 </p>
               </div>
 
-              <ul className="space-y-2.5 mt-1">
+              <ul className="space-y-2 mt-1">
                 {PRICING.included.map((f) => (
                   <li key={f} className="flex items-start gap-2.5 text-[13px] leading-snug" style={{ color: 'var(--v2-ink)' }}>
                     <span

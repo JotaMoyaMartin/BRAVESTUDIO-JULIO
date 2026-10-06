@@ -7,7 +7,6 @@ import { Currency, Plan, getPriceId } from '@/lib/stripe-prices'
 import SupportButton from '@/components/SupportButton'
 
 function SignupForm() {
-  const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -23,20 +22,15 @@ function SignupForm() {
   const symbol = currency === 'eur' ? '€' : '$'
 
   const planLabel = plan === 'monthly'
-    ? `Mensual 29 ${symbol}/mes`
+    ? `Mensual · 7 días gratis, luego 19 ${symbol}/mes`
     : plan === 'yearly'
-      ? `Anual 199 ${symbol}/año`
+      ? `Anual · 7 días gratis, luego 190 ${symbol}/año`
       : null
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault()
     setError('')
     setInfo('')
-
-    if (fullName.trim().length < 2) {
-      setError('El nombre debe tener al menos 2 caracteres.')
-      return
-    }
 
     if (password.length < 6) {
       setError('La contraseña debe tener al menos 6 caracteres.')
@@ -64,7 +58,7 @@ function SignupForm() {
       password,
       options: {
         emailRedirectTo: `${window.location.origin}/auth/callback`,
-        data: { full_name: fullName.trim(), plan: plan || undefined, currency: currency || undefined },
+        data: { plan: plan || undefined, currency: currency || undefined },
       },
     })
     if (authError) {
@@ -80,14 +74,9 @@ function SignupForm() {
       return
     }
 
-    // Sin confirmación requerida → actualizar perfil y redirigir
+    // Sin confirmación requerida → seguir a Stripe checkout
+    // (los datos del salón/nombre se piden DESPUÉS, en el onboarding)
     if (data.user && data.session) {
-      // Update profile full_name
-      await supabase
-        .from('profiles')
-        .update({ full_name: fullName.trim() })
-        .eq('id', data.user.id)
-
       // If plan is set, redirect to Stripe checkout
       if (plan && currency) {
         const priceId = getPriceId(plan, currency)
@@ -146,7 +135,7 @@ function SignupForm() {
               <img src="/bravi2.png" alt="Bravi" className="bravi-float" style={{ width: 56, height: 56, objectFit: 'contain', filter: 'drop-shadow(0 2px 4px rgba(89,20,39,0.18))' }} draggable={false} />
             </div>
             <p className="text-sm leading-relaxed" style={{ color: '#591427', opacity: 0.8 }}>
-              Crea tu cuenta y empieza a generar contenido estratégico para tu salón
+              Crea tu cuenta (solo email y contraseña) y empieza tu prueba de 7 días — los datos de tu salón los pides después.
             </p>
           </div>
 
@@ -155,7 +144,10 @@ function SignupForm() {
               className="mb-4 p-3 rounded-xl text-sm text-center font-medium"
               style={{ background: '#FFF1B5', color: '#591427', border: '1.5px solid rgba(122,24,50,0.15)' }}
             >
-              Plan seleccionado: {planLabel}
+              {planLabel}
+              <span className="block text-xs font-normal mt-1" style={{ opacity: 0.75 }}>
+                Cancelas cuando quieras — si no sigues después de la prueba, no se cobra nada
+              </span>
             </div>
           )}
 
@@ -181,23 +173,6 @@ function SignupForm() {
           )}
 
           <form onSubmit={handleSignup} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: '#591427' }}>
-                Nombre
-              </label>
-              <input
-                type="text"
-                value={fullName}
-                onChange={e => setFullName(e.target.value)}
-                placeholder="Tu nombre completo"
-                required
-                className="w-full px-4 py-3 rounded-xl text-sm outline-none"
-                style={{ border: '1.5px solid rgba(122,24,50,0.2)', background: '#FFFDF5' }}
-                onFocus={e => (e.target.style.borderColor = '#7A1832')}
-                onBlur={e => (e.target.style.borderColor = 'rgba(122,24,50,0.2)')}
-              />
-            </div>
-
             <div>
               <label className="block text-sm font-medium mb-1.5" style={{ color: '#591427' }}>
                 Email
@@ -260,7 +235,7 @@ function SignupForm() {
                 cursor: loading ? 'not-allowed' : 'pointer',
               }}
             >
-              {loading ? 'Creando cuenta...' : 'Crear cuenta'}
+              {loading ? 'Creando cuenta...' : 'Empezar mi prueba gratis'}
             </button>
           </form>
 

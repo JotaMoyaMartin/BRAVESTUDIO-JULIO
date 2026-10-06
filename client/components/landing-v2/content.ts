@@ -61,6 +61,16 @@ export const PROBLEM = {
   ],
 }
 
+// ── VSL (vídeo de la app) ──────────────────────────────────────
+// [REAL] Vídeo real del recorrido de la app en Loom.
+// En el embed se usa la URL /embed/ (la /share/ no es iframe-ready).
+export const VSL = {
+  eyebrow: 'Mira por dentro',
+  title: 'Así funciona BRÄVE por dentro.',
+  body: 'Un recorrido real por la app: tu marca, tu plan para hoy, los guiones y el teleprompter.',
+  videoUrl: 'https://www.loom.com/embed/728b089ab42b4f4883d4a1755d01d0f8',
+}
+
 // ── CÓMO FUNCIONA ──────────────────────────────────────────────
 export const HOW = {
   title: 'BRÄVE no solo te da ideas. Te guía durante todo el proceso.',

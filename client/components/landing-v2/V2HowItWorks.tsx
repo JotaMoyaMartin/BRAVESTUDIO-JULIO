@@ -10,7 +10,7 @@ const ICONS = [Sparkles, Compass, ListChecks, PenLine, Mic, LineChart]
  */
 export default function V2HowItWorks() {
   return (
-    <section id="como-funciona" className="v2-dark py-16 sm:py-24">
+    <section id="como-funciona" className="v2-dark py-14 sm:py-24">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <Reveal className="text-center max-w-2xl mx-auto mb-12 sm:mb-16">
           <h2 className="v2-h2 text-[26px] sm:text-4xl" style={{ color: 'var(--v2-on-dark)' }}>

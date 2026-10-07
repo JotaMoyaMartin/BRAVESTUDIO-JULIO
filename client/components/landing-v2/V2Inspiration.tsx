@@ -45,7 +45,7 @@ function CoverFan({ covers, caption }: { covers: string[]; caption: string }) {
 
 export default function V2Inspiration() {
   return (
-    <section id="inspiracion" className="py-16 sm:py-24" style={{ background: 'var(--v2-ivory)' }}>
+    <section id="inspiracion" className="py-14 sm:py-24" style={{ background: 'var(--v2-ivory)' }}>
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <Reveal className="text-center max-w-2xl mx-auto mb-10 sm:mb-14">
           <p className="v2-eyebrow inline-flex items-center gap-2" style={{ color: 'var(--color-cherry)' }}>

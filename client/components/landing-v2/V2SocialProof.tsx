@@ -48,7 +48,7 @@ export default function V2SocialProof() {
   const { nerea, olga, libia, shirley, camili } = RESULTS
 
   return (
-    <section id="resultados" className="py-16 sm:py-24 bg-white">
+    <section id="resultados" className="py-14 sm:py-24 bg-white">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <Reveal className="text-center max-w-2xl mx-auto mb-10 sm:mb-14">
           <p className="v2-eyebrow" style={{ color: 'var(--color-cherry)' }}>{RESULTS.eyebrow}</p>

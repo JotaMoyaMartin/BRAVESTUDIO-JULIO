@@ -10,7 +10,7 @@ import { TODAY } from './content'
 export default function V2Today() {
   const m = TODAY.mock
   return (
-    <section id="plan" className="py-16 sm:py-24" style={{ background: 'var(--v2-ivory)' }}>
+    <section id="plan" className="py-14 sm:py-24" style={{ background: 'var(--v2-ivory)' }}>
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <div className="grid lg:grid-cols-2 gap-10 lg:gap-14 items-center">
           {/* Mockup */}

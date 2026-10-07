@@ -10,7 +10,7 @@ import { BRAIN } from './content'
  */
 export default function V2BusinessBrain() {
   return (
-    <section id="marca" className="py-16 sm:py-24" style={{ background: 'var(--v2-blush)' }}>
+    <section id="marca" className="py-14 sm:py-24" style={{ background: 'var(--v2-blush)' }}>
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <div className="grid lg:grid-cols-[1fr_1.15fr] gap-10 lg:gap-14 items-center">
           {/* Texto */}

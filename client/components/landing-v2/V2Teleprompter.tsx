@@ -18,7 +18,7 @@ const FEATURES = [
  */
 export default function V2Teleprompter() {
   return (
-    <section id="teleprompter" className="v2-dark py-16 sm:py-24 overflow-hidden">
+    <section id="teleprompter" className="v2-dark py-14 sm:py-24 overflow-hidden">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           <div>

@@ -13,7 +13,7 @@ const ICONS = [Bot, GraduationCap, Users, RefreshCcw]
  */
 export default function V2Community() {
   return (
-    <section id="acompanamiento" className="py-16 sm:py-24" style={{ background: 'var(--v2-blush)' }}>
+    <section id="acompanamiento" className="py-14 sm:py-24" style={{ background: 'var(--v2-blush)' }}>
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <Reveal className="text-center max-w-2xl mx-auto mb-10 sm:mb-14">
           <h2 className="v2-h2 text-[26px] sm:text-4xl" style={{ color: 'var(--v2-ink)' }}>

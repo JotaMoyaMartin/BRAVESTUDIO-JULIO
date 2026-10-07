@@ -12,7 +12,7 @@ const ICONS = [Lightbulb, Magnet, ScrollText, Zap, Mic]
  */
 export default function V2CreateFlow() {
   return (
-    <section id="crear" className="v2-dark py-16 sm:py-24">
+    <section id="crear" className="v2-dark py-14 sm:py-24">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <Reveal className="text-center max-w-2xl mx-auto mb-10 sm:mb-14">
           <p className="v2-eyebrow" style={{ color: 'var(--color-buttermilk)' }}>{CREATE.eyebrow}</p>

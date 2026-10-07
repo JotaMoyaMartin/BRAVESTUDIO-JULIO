@@ -11,7 +11,7 @@ export default function V2FAQ() {
   const [openByName, setOpenByName] = useState<Record<string, boolean>>({})
 
   return (
-    <section id="faq" className="py-16 sm:py-24 bg-white">
+    <section id="faq" className="py-14 sm:py-24 bg-white">
       <div className="max-w-3xl mx-auto px-4 sm:px-6">
         <Reveal className="text-center mb-10">
           <h2 className="v2-h2 text-[26px] sm:text-4xl" style={{ color: 'var(--v2-ink)' }}>

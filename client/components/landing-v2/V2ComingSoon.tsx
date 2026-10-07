@@ -10,7 +10,7 @@ const CHIP_ICONS = [TrendingUp, AlertCircle, Target, Check]
  */
 export default function V2ComingSoon() {
   return (
-    <section id="diagnostico" className="py-16 sm:py-24" style={{ background: 'var(--v2-sand)' }}>
+    <section id="diagnostico" className="py-14 sm:py-24" style={{ background: 'var(--v2-sand)' }}>
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
         <Reveal>
           <div

@@ -83,7 +83,8 @@ export interface StoryDesignTemplate {
   /** Categoría editorial de la plantilla (usar los mismos términos que TIPOS DE STORIES). */
   category: string
   description: string
-  coverImage: string
+  /** Portada opcional; si no hay, la app renderiza el slide 1 como miniatura. */
+  coverImage: string | null
   isLocked: boolean
   status: StoryTemplateStatus
   slides: StoryDesignSlide[]

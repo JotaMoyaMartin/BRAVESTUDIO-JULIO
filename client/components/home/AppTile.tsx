@@ -35,6 +35,8 @@ export interface AppTileProps {
   /** Copy para el estado vivo (lo rellena ToolsSection cuando hay datos). */
   liveCaption?: string
   liveNoun?: string
+  /** Píldora informativa sobre el tile (p.ej. sección bloqueada: "Próximamente"). */
+  badge?: string
 }
 
 const TONES = {
@@ -177,7 +179,7 @@ function LiveHeroTile({
   )
 }
 
-export default function AppTile({ href, icon: Icon, label, desc, tone, image, imageAspect, live }: AppTileProps) {
+export default function AppTile({ href, icon: Icon, label, desc, tone, image, imageAspect, live, badge }: AppTileProps) {
   // La portada curada (image) manda sobre el tile vivo: es la cara que Jota
   // eligió para la sección. El abanico de portadas reales solo si no hay banner.
   if (image) {
@@ -213,12 +215,22 @@ export default function AppTile({ href, icon: Icon, label, desc, tone, image, im
         className="tile-shine min-h-[168px] sm:min-h-[176px] p-5 rounded-[var(--radius-md)] flex flex-col items-start gap-3"
         style={{ background: bg, color, border, boxShadow: 'var(--shadow-soft)', ...tileShineDelay(href) }}
       >
-        <span
-          className="w-12 h-12 rounded-[var(--radius-sm)] flex items-center justify-center"
-          style={{ background: iconBg }}
-        >
-          <Icon size={26} />
-        </span>
+        <div className="w-full flex items-start justify-between gap-2">
+          <span
+            className="w-12 h-12 rounded-[var(--radius-sm)] flex items-center justify-center shrink-0"
+            style={{ background: iconBg }}
+          >
+            <Icon size={26} />
+          </span>
+          {badge && (
+            <span
+              className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold whitespace-nowrap"
+              style={{ background: 'rgba(122,24,50,0.08)', color: 'var(--color-cherry-dark)', border: '1px solid rgba(122,24,50,0.10)' }}
+            >
+              {badge}
+            </span>
+          )}
+        </div>
         <div>
           <p className="text-[15px] font-bold leading-tight">{label}</p>
           <p className="text-xs mt-1 opacity-75 leading-snug">{desc}</p>

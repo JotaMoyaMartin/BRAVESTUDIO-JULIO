@@ -7,7 +7,7 @@ import {
   Home, Sparkles, Star,
   Film, LayoutGrid, BookOpen, Calendar, LogOut, Menu, X, Zap, Camera,
   Clapperboard, Wand2, Settings, Shield, Crown, GraduationCap, Users, BarChart3,
-  ChartNoAxesColumn,
+  ChartNoAxesColumn, Palette,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -30,6 +30,8 @@ const navItems: NavItem[] = [
   { href: '/planificar', label: 'Planificación', icon: Sparkles },
   { href: '/crear-contenido', label: 'Guiones', icon: Film },
   { href: '/stories', label: 'Stories BRÄVE', icon: LayoutGrid },
+  // STORIES DISEÑO — Fase 1 teaser "en construcción" (7-oct-2026).
+  { href: '/stories-diseno', label: 'Stories Diseño', icon: Palette, badge: 'Próximamente' },
   { href: '/inspiracion-reels', label: 'Inspiración Reels', icon: Clapperboard },
   { href: '/banco-ganchos', label: 'Banco de Ganchos', icon: Zap },
   { href: '/foto-inspo', label: 'Foto inspo', icon: Camera },
@@ -49,6 +51,8 @@ const premiumNavItems: NavItem[] = [
   { href: '/crear-contenido', label: 'Guiones', icon: Film },
   { href: '/biblioteca', label: 'Biblioteca', icon: BookOpen },
   { href: '/stories', label: 'Stories BRÄVE', icon: LayoutGrid },
+  // STORIES DISEÑO — Fase 1 teaser "en construcción" (7-oct-2026).
+  { href: '/stories-diseno', label: 'Stories Diseño', icon: Palette, badge: 'Próximamente' },
   { href: '/inspiracion-reels', label: 'Inspiración Reels', icon: Clapperboard },
   { href: '/banco-ganchos', label: 'Banco de Ganchos', icon: Zap },
   { href: '/foto-inspo', label: 'Foto inspo', icon: Camera },

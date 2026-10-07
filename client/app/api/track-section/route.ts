@@ -9,6 +9,7 @@ const VALID_SECTIONS = [
   'biblioteca',
   'calendario',
   'stories',
+  'stories-diseno',
   'inspiracion-reels',
   'banco-ganchos',
   'foto-inspo',

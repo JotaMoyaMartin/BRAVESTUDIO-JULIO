@@ -86,7 +86,10 @@ export async function middleware(request: NextRequest) {
     // OAuth de Instagram: el redirect de vuelta viene de Meta con cookies
     // ajenas — publica el callback y deja que la propia ruta valide sesión
     // y `state` (timing-safe) antes de tocar datos.
-    pathname.startsWith('/api/social/oauth/callback')
+    pathname.startsWith('/api/social/oauth/callback') ||
+    // OAuth de Canva (plantillas): motivo idéntico — la vuelta la valida
+    // la propia ruta (sesión admin + state timing-safe + PKCE).
+    pathname.startsWith('/api/canva/oauth/callback')
 
   if (isPublicAuthRoute) {
     // Redirect authenticated users with active access away from public marketing/auth pages

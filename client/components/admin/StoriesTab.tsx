@@ -382,6 +382,22 @@ export default function StoriesTab() {
         <div className="rounded-[var(--radius-sm)] p-3 text-xs bg-[#fde8e8] text-danger">{error}</div>
       )}
 
+      {/* CUSTOM EDITOR — PAUSED (8-oct-2026): se congela esta línea para validar
+          arquitectura Canva + Data Autofill. El código queda intacto (commit adadad1). */}
+      <div className="rounded-[var(--radius-md)] p-4" style={{ background: 'var(--color-buttermilk)' }}>
+        <div className="flex items-start gap-3">
+          <AlertTriangle size={20} style={{ color: 'var(--color-cherry)', flexShrink: 0, marginTop: 2 }} />
+          <div className="space-y-1">
+            <p className="text-sm font-bold" style={{ color: 'var(--color-cherry-dark)' }}>
+              Editor visual propio — PAUSED
+            </p>
+            <p className="text-xs" style={{ color: 'var(--color-cherry-dark)' }}>
+              Congelado para validar la nueva arquitectura de plantillas con Canva (Data Autofill + REST APIs). El código queda intacto y las plantillas publicadas siguen visibles en /stories-diseno. Probar: <strong>/admin/canva-test</strong>
+            </p>
+          </div>
+        </div>
+      </div>
+
       <SectionTitle
         title="Stories Diseño"
         subtitle="Packs y plantillas para /stories-diseno. Se publica un pack entero; las plantillas sueltas van por status."

@@ -26,6 +26,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   if (typeof body.cover_image === 'string') patch.cover_image = body.cover_image || null
   if (typeof body.status === 'string' && ['draft', 'published', 'archived'].includes(body.status)) patch.status = body.status
   if (typeof body.sort === 'number') patch.sort = body.sort
+  let publishingVersion = false
   if (Array.isArray(body.slides)) {
     // Validación mínima: cada slide con su orden, fondo, layout y elementos
     for (const sl of body.slides) {
@@ -35,10 +36,36 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     }
     patch.slides = body.slides
   }
+  // Publicar: congela la composición (published_slides) y sube la versión.
+  // Si la DB aún no tiene las columnas (migración pendiente), publica solo el status.
+  if ((body.status === 'published' || body.publish === true) && Array.isArray(patch.slides)) {
+    publishingVersion = true
+    patch.published_slides = patch.slides
+    patch.status = 'published'
+    const { data: cur } = await auth.admin
+      .from('story_design_templates').select('published_version').eq('id', params.id).maybeSingle()
+    patch.published_version = (((cur as { published_version?: number } | null)?.published_version) ?? 0) + 1
+  }
   const { data: updated, error } = await auth.admin
-    .from('story_design_templates').update(patch).eq('id', params.id).select('id').single()
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ ok: true, id: (updated as { id: string }).id })
+    .from('story_design_templates').update(patch)
+    .eq('id', params.id)
+    .select('id')
+    .single()
+  if (error) {
+    if (publishingVersion) {
+      const { published_slides: _ps, published_version: _pv, ...patchSinVersion } = patch
+      const { data: retry, error: e2 } = await auth.admin
+        .from('story_design_templates').update(patchSinVersion).eq('id', params.id).select('id').single()
+      if (e2) return NextResponse.json({ error: e2.message }, { status: 500 })
+      return NextResponse.json({ ok: true, id: (retry as { id: string }).id, version: null })
+    }
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+  return NextResponse.json({
+    ok: true,
+    id: (updated as { id: string }).id,
+    version: publishingVersion ? (patch.published_version as number) : undefined,
+  })
 }
 
 /** POST — duplicar la plantilla (copia en draft con nuevo slug). */

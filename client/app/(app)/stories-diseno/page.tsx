@@ -63,6 +63,7 @@ interface TemplateRow {
   is_locked: boolean
   status?: string
   tags?: string[] | null
+  published_slides?: { order: number; background: string; layoutType: string; elements: StoryDesignElement[] }[] | null
   slides: { order: number; background: string; layoutType: string; elements: StoryDesignElement[] }[]
 }
 
@@ -91,7 +92,8 @@ export default async function StoriesDisenoPage() {
     storyCount: p.story_count,
     sort: 0,
     templates: (p.story_design_templates ?? [])
-      .filter(t => t.status !== 'archived')
+      // Solo PUBLISHED en la galería (spec 8-oct): draft/archived no se ven.
+      .filter(t => t.status === 'published')
       .map(t => ({
         id: t.id,
         slug: t.slug,
@@ -101,7 +103,9 @@ export default async function StoriesDisenoPage() {
         recommendedUse: t.recommended_use || t.description,
         isLocked: t.is_locked,
         tags: t.tags ?? [],
-        slides: (t.slides ?? []).map<StoryDesignSlide>(sl => ({
+        // La usuaria ve la versión CONGELADA al publicar (published_slides);
+        // si aún no hay migración/columna, degrade a slides.
+        slides: (t.published_slides ?? t.slides ?? []).map<StoryDesignSlide>(sl => ({
           id: `${t.slug}-${sl.order}`,
           templateId: t.slug,
           order: sl.order,

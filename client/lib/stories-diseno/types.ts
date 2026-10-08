@@ -34,6 +34,7 @@ export type StoryElementType =
   | 'icon'      // icono del whitelist BRÄVE (lib/stories-diseno/icons.ts)
   | 'background'// fondo del slide (normalmente implícito: slide.background)
   | 'sticker'   // decoración fija (emoji/glyph grande)
+  | 'group'     // agrupación lógica: mueve/rota a sus hijos (parentId)
 
 /**
  * Rol de la capa — define qué puede hacer la usuaria y qué hace la IA:
@@ -77,12 +78,67 @@ export interface StoryPhotoFrame {
   dy: number
 }
 
+/**
+ * Permisos de la USUARIA FINAL sobre el elemento — SEPARADO del lock del
+ * editor admin (`adminLocked`). El diseñador los marca elemento a elemento
+ * ("Permisos en plantilla"); los defaults se derivan del rol.
+ */
+export interface StoryUserPermissions {
+  /** Puede cambiar el contenido (texto/emoji). */
+  edit?: boolean
+  /** Puede mover el elemento. */
+  move?: boolean
+  /** Puede redimensionar. */
+  resize?: boolean
+  /** Puede eliminar la capa. */
+  del?: boolean
+  /** Puede cambiar el color. */
+  colorEdit?: boolean
+  /** Solo imágenes: puede sustituir la foto. */
+  replace?: boolean
+  /** Solo imágenes: puede reencuadrar (pan dentro de la máscara). */
+  recrop?: boolean
+  /** Solo imágenes: puede aplicar zoom al encuadre. */
+  zoom?: boolean
+  /** Puede regenerar el contenido con IA. */
+  aiEdit?: boolean
+}
+
+/** defaults de StoryUserPermissions por rol (función pura, usada por admin/usuaria/IA). */
+export function defaultUserPermissions(role: StoryElementRole, type: StoryElementType): StoryUserPermissions {
+  if (role === 'fixed' || role === 'decorative') return {}
+  if (role === 'brand' || role === 'ai' || role === 'editable') {
+    return { edit: type !== 'image', colorEdit: type === 'text' || type === 'badge' || type === 'shape' || type === 'line', aiEdit: role === 'ai' || role === 'brand' }
+  }
+  // replaceable
+  return { replace: type === 'image', recrop: true, zoom: true }
+}
+
+/**
+ * ¿Puede la usuaria hacer X con este elemento? Defaults del rol + overrides de
+ * "Permisos en plantilla" (userPermissions pisa el default clave a clave).
+ * Único gate del editor de usuaria — el admin SIEMPRE puede todo.
+ */
+export function hasUserPerm(el: StoryDesignElement, key: keyof StoryUserPermissions): boolean {
+  const merged: StoryUserPermissions = { ...defaultUserPermissions(el.role, el.type), ...(el.userPermissions ?? {}) }
+  return Boolean(merged[key])
+}
+
+/**
+ * Máscara del slot de foto (el clipeo del renderer): rect = cuadro,
+ * rounded = cuadro con radius del estilo, circle = círculo. Formas
+ * especiales (polaroid, arco…) se componen a mano con grupos + marcos.
+ */
+export type StoryImageMask = 'rect' | 'rounded' | 'circle'
+
 export interface StoryDesignElement {
   id: string
   type: StoryElementType
   role: StoryElementRole
   /** Nombre humano de la capa (panel de capas del builder). */
   name?: string
+  /** Id del grupo padre (type 'group' compone; los hijos viven en la lista plana). */
+  parentId?: string
   /** Posición y tamaño en px sobre el lienzo 9:16 (1080×1920). */
   position: { x: number; y: number }
   size: { w: number; h: number }
@@ -110,10 +166,21 @@ export interface StoryDesignElement {
   allowedAssetTypes?: StoryAssetType[]
   /** Encuadre por defecto de la foto (el editor usuaria lo sobreescribe en sesión). */
   frame?: StoryPhotoFrame
-  /** Admin: bloquea la capa para la usuaria (aunque su role sea editable). */
+  /** Máscara del slot de foto (imágenes). Por defecto 'rect' (compat). */
+  mask?: StoryImageMask
+  /** Lock del EDITOR ADMIN (evita mover accidentalmente; desbloqueable). Alias legacy: locked. */
+  adminLocked?: boolean
+  /** Alias legacy de adminLocked (plantillas seed) — solo lectura para compat. */
   locked?: boolean
+  /** Qué puede hacer la usuaria final (defaults según rol; nunca usar 'locked' para esto). */
+  userPermissions?: StoryUserPermissions
   /** Visible (admin puede apagar capas sin borrarlas). */
   visible?: boolean
+}
+
+/** adminLocked del elemento (alias legacy `locked` → adminLocked). */
+export function elementAdminLocked(e: StoryDesignElement): boolean {
+  return e.adminLocked ?? e.locked ?? false
 }
 
 export type StorySlideLayoutType =

@@ -362,3 +362,23 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .marquee-track { animation: none !important; }
 }
+
+/* ── Controles de react-moveable (editor Stories Diseño) ──
+   Con los tokens BRÄVE en vez del default azul de la librería. */
+.moveable-line { background: var(--color-cherry) !important; }
+.moveable-control {
+  width: 12px !important;
+  height: 12px !important;
+  margin-top: -6px !important;
+  margin-left: -6px !important;
+  background: var(--color-cherry) !important;
+  border: 2px solid var(--color-cream) !important;
+  border-radius: 3px !important;
+  box-shadow: 0 1px 3px rgba(42, 11, 18, 0.35) !important;
+}
+.moveable-rotation-control { border-radius: 50% !important; }
+.moveable-rotation .moveable-control {
+  background: var(--color-cream) !important;
+  border: 2px solid var(--color-cherry) !important;
+  border-radius: 50% !important;
+}

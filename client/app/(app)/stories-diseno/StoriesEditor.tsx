@@ -14,7 +14,7 @@ import SlideCanvas, { CANVAS_W, CANVAS_H } from './SlideCanvas'
 import { CatalogTemplate, TextKind } from './StoriesDisenoCatalog'
 import {
   StoryDesignElement, StoryDesignSlide, StoryBrandTokens, StoryPhotoFrame,
-  elementMaxLength,
+  elementAdminLocked, elementMaxLength, hasUserPerm,
 } from '@/lib/stories-diseno/types'
 import { STORY_FONTS } from '@/lib/stories-diseno/fonts'
 import { clampFrame, boxFor, frameFromPan } from '@/lib/stories-diseno/transform'
@@ -110,11 +110,28 @@ export default function StoriesEditor({ template, packTitle, brand, hasBrand, on
 
   /* ── mover elementos (drag + flechas) ── */
 
-  /** ¿La usuaria puede mover este elemento? (sus textos y badges, no el diseño fijado) */
+  /** ¿La usuaria puede mover este elemento? (permiso 'move' o fallback por rol) */
   const canMove = (el: StoryDesignElement): boolean =>
-    !el.locked &&
+    !elementAdminLocked(el) &&
     (el.type === 'text' || el.type === 'badge') &&
-    (el.role === 'editable' || el.role === 'ai' || el.role === 'brand')
+    hasUserPerm(el, 'move')
+
+  /** Foto: ¿reemplazable / reencuadrable / zoom? (permiso explícito o rol replaceable) */
+  const canReplacePhoto = (el: StoryDesignElement): boolean =>
+    !elementAdminLocked(el) && el.type === 'image' &&
+    (el.userPermissions ? hasUserPerm(el, 'replace') : el.role === 'replaceable')
+  const canRecropPhoto = (el: StoryDesignElement): boolean =>
+    !elementAdminLocked(el) && el.type === 'image' &&
+    (el.userPermissions ? hasUserPerm(el, 'recrop') : el.role === 'replaceable')
+  const canZoomPhoto = (el: StoryDesignElement): boolean =>
+    !elementAdminLocked(el) && el.type === 'image' &&
+    (el.userPermissions ? hasUserPerm(el, 'zoom') : el.role === 'replaceable')
+
+  /** Texto/badge que la usuaria puede escribir (permiso 'edit' o fallback por rol). */
+  const canEditText = (el: StoryDesignElement): boolean =>
+    !elementAdminLocked(el) &&
+    (el.type === 'text' || el.type === 'badge') &&
+    (el.userPermissions ? hasUserPerm(el, 'edit') : el.role === 'editable' || el.role === 'ai' || el.role === 'brand')
 
   const posOf = (el: StoryDesignElement) => posEdits[el.id] ?? el.position
 
@@ -192,7 +209,7 @@ export default function StoriesEditor({ template, packTitle, brand, hasBrand, on
       name: s.name ?? '',
       purpose: s.purpose ?? 'explain',
       slots: s.elements
-        .filter(e => e.visible !== false && (e.role === 'ai' || e.role === 'editable') && e.type === 'text')
+        .filter(e => e.visible !== false && e.type === 'text' && canEditText(e))
         .map(e => ({
           id: e.id,
           text: edits[String(s.order)]?.[e.id] ?? e.content ?? '',
@@ -307,8 +324,7 @@ export default function StoriesEditor({ template, packTitle, brand, hasBrand, on
 
   /* ── panel de propiedades ── */
   const isPhoto = selected?.type === 'image'
-  const isText = !!(selected && (selected.type === 'text' || selected.type === 'badge') &&
-    (selected.role === 'editable' || selected.role === 'ai' || selected.role === 'brand'))
+  const isText = !!(selected && canEditText(selected))
   const movable = !!(selected && canMove(selected))
 
   const hasMaxLinesWarning = selected && selected.constraints?.maxLines
@@ -329,7 +345,7 @@ export default function StoriesEditor({ template, packTitle, brand, hasBrand, on
 
       {isPhoto ? (
         <div className="space-y-3">
-          {frameOf(selected).zoom > 1.01 && (
+          {canZoomPhoto(selected) && frameOf(selected).zoom > 1.01 && (
             <div className="flex items-center gap-2">
               <span className="text-[11px] font-semibold text-cherry-dark opacity-60 w-12">Zoom {frameOf(selected).zoom.toFixed(1)}×</span>
               <input
@@ -345,22 +361,24 @@ export default function StoriesEditor({ template, packTitle, brand, hasBrand, on
           <p className="text-[11px] text-cherry-dark opacity-55 leading-snug">
             Arrastra la foto para reencuadrarla {frameOf(selected).zoom <= 1.01 && '(amplía con el zoom)'}.
           </p>
-          <div className="flex items-center gap-2">
-            {selected.content && (
-              <Button size="sm" variant="secondary" icon={<Maximize2 size={13} />} onClick={() => { setElement(selected, ''); setFrames(p => ({ ...p, [selected.id]: { zoom: 1, dx: 0, dy: 0 } })) }}>
-                Quitar foto
-              </Button>
-            )}
-            <label className="inline-flex">
-              <input
-                type="file" accept="image/*" className="hidden"
-                onChange={(e) => onPhotoPick(selected, e.target.files?.[0] ?? null)}
-              />
-              <span className="inline-flex items-center gap-2 text-[13px] font-bold cursor-pointer" style={{ color: 'var(--color-cherry)' }}>
-                <ImageIcon size={16} aria-hidden="true" /> {selected.content ? 'Cambiar foto' : 'Elegir foto'}
-              </span>
-            </label>
-          </div>
+          {canReplacePhoto(selected) && (
+            <div className="flex items-center gap-2">
+              {selected.content && (
+                <Button size="sm" variant="secondary" icon={<Maximize2 size={13} />} onClick={() => { setElement(selected, ''); setFrames(p => ({ ...p, [selected.id]: { zoom: 1, dx: 0, dy: 0 } })) }}>
+                  Quitar foto
+                </Button>
+              )}
+              <label className="inline-flex">
+                <input
+                  type="file" accept="image/*" className="hidden"
+                  onChange={(e) => onPhotoPick(selected, e.target.files?.[0] ?? null)}
+                />
+                <span className="inline-flex items-center gap-2 text-[13px] font-bold cursor-pointer" style={{ color: 'var(--color-cherry)' }}>
+                  <ImageIcon size={16} aria-hidden="true" /> {selected.content ? 'Cambiar foto' : 'Elegir foto'}
+                </span>
+              </label>
+            </div>
+          )}
         </div>
       ) : isText ? (
         <>
@@ -532,7 +550,7 @@ export default function StoriesEditor({ template, packTitle, brand, hasBrand, on
               />
             </div>
             {/* Overlay de paneo para la foto seleccionada (encima del canvas, caja exacta) */}
-            {selected?.type === 'image' && (() => {
+            {selected?.type === 'image' && canRecropPhoto(selected) && (() => {
               const box = boxFor(selected, scale)
               return (
                 <div

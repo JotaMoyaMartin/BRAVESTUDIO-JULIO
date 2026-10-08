@@ -681,6 +681,7 @@ export default function StoriesTab() {
           initialSlides={builder.slides}
           onClose={() => setBuilder(null)}
           onSaved={savedSlides => patchLocalTemplate(builder.templateId, { slides: savedSlides })}
+          onStatusChange={next => patchLocalTemplate(builder.templateId, { status: next as StoriesTemplate['status'] })}
         />
       )}
     </div>

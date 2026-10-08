@@ -1,9 +1,10 @@
 'use client'
-import { CSSProperties, useMemo } from 'react'
+import type { CSSProperties, MouseEvent as ReactMouseEvent } from 'react'
+import { useMemo } from 'react'
 import { Image as ImageIcon } from 'lucide-react'
 import {
   StoryBrandTokens, StoryDesignElement, StoryDesignSlide, StoryPhotoFrame,
-  applyBrandTokens, elementMaxLength,
+  applyBrandTokens, elementMaxLength, hasUserPerm,
 } from '@/lib/stories-diseno/types'
 import { frameToCss } from '@/lib/stories-diseno/transform'
 import { storyIcon } from '@/lib/stories-diseno/icons'
@@ -18,10 +19,17 @@ import { storyIcon } from '@/lib/stories-diseno/icons'
 export const CANVAS_W = 1080
 export const CANVAS_H = 1920
 
-/** ¿La usuaria puede tocar este elemento (con su role y su lock)? */
+/** ¿La usuaria puede tocar este elemento (con su role, su lock y sus permisos)? */
 export function isEditableElement(e: StoryDesignElement): boolean {
-  if (e.locked) return false
-  return e.role === 'editable' || e.role === 'ai' || e.role === 'replaceable'
+  if (e.adminLocked ?? e.locked) return false
+  if (e.type === 'group') return false // el grupo compone; la usuaria toca a sus hijos
+  // Sin permisos guardados: fallback por rol (plantillas seed antiguas).
+  if (!e.userPermissions) {
+    return e.role === 'editable' || e.role === 'ai' || e.role === 'replaceable'
+  }
+  // Con "Permisos en plantilla": gate específico por forma de tocar.
+  if (e.type === 'image') return hasUserPerm(e, 'replace') || hasUserPerm(e, 'recrop') || hasUserPerm(e, 'zoom')
+  return hasUserPerm(e, 'edit') || hasUserPerm(e, 'aiEdit') || hasUserPerm(e, 'colorEdit') || hasUserPerm(e, 'move')
 }
 
 interface SlideCanvasProps {
@@ -40,8 +48,12 @@ interface SlideCanvasProps {
   fontOverrides?: Record<string, string>
   /** Modo editor: resalta los elementos que se pueden tocar. */
   interactive?: boolean
+  /** Builder admin: TODOS los elementos son seleccionables (no solo los editables por usuaria). */
+  allSelectable?: boolean
+  /** Registro de nodos DOM por elemento (el builder lo lea para react-moveable). */
+  elementRefs?: React.MutableRefObject<Map<string, HTMLElement | null>>
   selectedId?: string | null
-  onElementClick?: (el: StoryDesignElement) => void
+  onElementClick?: (el: StoryDesignElement, ev?: ReactMouseEvent<HTMLElement>) => void
   /** Ref al frame exportable (para html-to-image). */
   frameRef?: (node: HTMLDivElement | null) => void
 }
@@ -53,10 +65,13 @@ function styleOf(e: StoryDesignElement): CSSProperties {
 export default function SlideCanvas({
   slide, scale, contents = {}, photoFrames = {}, brandTokens = null,
   positions = {}, fontOverrides = {},
-  interactive = false, selectedId = null, onElementClick, frameRef,
+  interactive = false, allSelectable = false, elementRefs,
+  selectedId = null, onElementClick, frameRef,
 }: SlideCanvasProps) {
   const w = CANVAS_W * scale
   const h = CANVAS_H * scale
+  const bindRef = (id: string) =>
+    elementRefs ? (n: HTMLElement | null) => { elementRefs.current.set(id, n) } : undefined
 
   const sorted = useMemo(() => {
     // Orden: si alguna capa declara zIndex explícito, manda (builder). Si no,
@@ -98,23 +113,51 @@ export default function SlideCanvas({
           const editable = interactive && isEditableElement(e)
           const rawContent = contents[e.id] ?? e.content ?? ''
           const content = e.role === 'brand' ? applyBrandTokens(rawContent, brandTokens) : rawContent
-          const selected = interactive && selectedId === e.id
-          const clickable = editable && !!onElementClick
+          const selected = interactive && (selectedId === e.id)
+          const clickable = (allSelectable || editable) && !!onElementClick
           const st = styleOf(e)
           const pos = positions[e.id] ?? e.position
           const rot = `rotate(${e.rotation ?? 0}deg)`
           const opacity = (st.opacity as number | undefined) ?? 1
+
+          // Grupo: caja transparente que compone a sus hijos (hit-target del
+          // builder y target de Moveable para mover el grupo entero).
+          if (e.type === 'group') {
+            return (
+              <div
+                key={e.id}
+                ref={bindRef(e.id)}
+                onClick={clickable ? (ev: ReactMouseEvent<HTMLElement>) => onElementClick?.(e, ev) : undefined}
+                style={{
+                  position: 'absolute',
+                  left: pos.x, top: pos.y,
+                  width: e.size.w, height: e.size.h,
+                  transform: rot,
+                  // El borde dashed es SOLO editor: en export/preview queda transparente.
+                  border: selected ? '2px dashed var(--color-cherry)' : clickable ? '1px dashed rgba(42,11,18,0.18)' : 'none',
+                  opacity,
+                  pointerEvents: clickable ? 'auto' : 'none',
+                  borderRadius: 6,
+                }}
+                aria-label="Grupo"
+              />
+            )
+          }
 
           if (e.type === 'image') {
             const filled = Boolean(content)
             const frame = photoFrames[e.id] ?? e.frame ?? { zoom: 1, dx: 0, dy: 0 }
             // div cuando no es tocable (covers/preview/export): evita button dentro de button
             const Tag = clickable ? 'button' : 'div'
+            const imgRadius = e.mask === 'circle'
+              ? '50%'
+              : e.style.borderRadius as string | number | undefined ?? (e.mask === 'rounded' ? 28 : 0)
             return (
               <Tag
                 type={clickable ? 'button' : undefined}
                 key={e.id}
-                onClick={clickable ? () => onElementClick?.(e) : undefined}
+                ref={bindRef(e.id)}
+                onClick={clickable ? (ev: ReactMouseEvent<HTMLElement>) => onElementClick?.(e, ev) : undefined}
                 className={clickable ? 'cursor-pointer text-left' : 'cursor-default text-left'}
                 style={{
                   position: 'absolute',
@@ -123,7 +166,7 @@ export default function SlideCanvas({
                   width: e.size.w,
                   height: e.size.h,
                   transform: rot,
-                  borderRadius: e.style.borderRadius as string | number | undefined ?? 0,
+                  borderRadius: imgRadius,
                   overflow: 'hidden',
                   border: selected ? `4px solid ${st.color ?? '#7A1832'}` : 'none',
                   boxShadow: selected ? '0 0 0 6px rgba(255,241,181,0.55)' : 'none',
@@ -171,6 +214,7 @@ export default function SlideCanvas({
             return (
               <div
                 key={e.id}
+                ref={bindRef(e.id)}
                 style={{
                   position: 'absolute',
                   left: pos.x, top: pos.y,
@@ -179,7 +223,7 @@ export default function SlideCanvas({
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   color: (st.color as string) ?? '#7A1832',
                   opacity,
-                  pointerEvents: 'none',
+                  pointerEvents: clickable ? 'auto' : 'none',
                   ...(st.background ? { background: st.background as string } : {}),
                   borderRadius: (st.borderRadius as string | number) ?? 0,
                 }}
@@ -193,13 +237,14 @@ export default function SlideCanvas({
             return (
               <div
                 key={e.id}
+                ref={bindRef(e.id)}
                 style={{
                   position: 'absolute',
                   left: pos.x, top: pos.y,
                   width: e.size.w, height: e.size.h,
                   transform: rot,
                   opacity,
-                  pointerEvents: 'none',
+                  pointerEvents: clickable ? 'auto' : 'none',
                   ...st,
                 }}
               />
@@ -210,6 +255,7 @@ export default function SlideCanvas({
             return (
               <div
                 key={e.id}
+                ref={bindRef(e.id)}
                 style={{
                   position: 'absolute',
                   left: pos.x, top: pos.y,
@@ -219,7 +265,7 @@ export default function SlideCanvas({
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: (st.fontSize as number) ?? 120,
                   lineHeight: 1,
-                  pointerEvents: 'none',
+                  pointerEvents: clickable ? 'auto' : 'none',
                   ...st,
                 }}
               >
@@ -239,6 +285,7 @@ export default function SlideCanvas({
             <Tag
               type={clickable ? 'button' : undefined}
               key={e.id}
+              ref={bindRef(e.id)}
               onClick={clickable ? () => onElementClick?.(e) : undefined}
               className={clickable ? 'cursor-pointer text-left' : 'cursor-default text-left'}
               style={{

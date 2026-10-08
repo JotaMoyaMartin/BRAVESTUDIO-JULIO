@@ -1,7 +1,7 @@
 /**
  * STORIES DISEÑO — semillas editoriales (v2.1, añade sobre `samples.ts`).
  *
- * Tres secuencias pensadas como portada de la galería: la primera página de
+ * Cuatro secuencias pensadas como portada de la galería: la primera página de
  * cada plantilla funciona como miniatura (portada editorial). Reutilizan la
  * paleta exportada de `samples.ts` (ST_*) y replican sus fábricas con dos
  * extras que estas plantillas exigen: `name` (capa humana) y `zIndex`
@@ -862,6 +862,152 @@ function tConsejoExperto(): StoryDesignTemplate {
   }
 }
 
+/* ─────────────────────────────────────────────────────────────────────────
+   PLANTILLA 4 — Diagnóstico capilar (convertida de una referencia IG)
+   ───────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Conversión de una referencia real (captura IG pasada por Jota): foto a sangre
+ * + servicio en el centro + flecha que invita a seguir. La foto es un PLACEHOLDER
+ * con los textos de la referencia ya limpiados del pixel — al sustituirla por la
+ * del salón los elementos de texto (role 'ai'/'editable') toman el mando.
+ */
+function tDiagnosticoCapilar(): StoryDesignTemplate {
+  const WHITE = 'rgba(255,255,255,0.94)'
+  return {
+    id: '',
+    title: 'Diagnóstico capilar',
+    slug: 'diagnostico-editorial',
+    category: 'Diagnóstico',
+    description:
+      'Foto del trabajo a sangre con el servicio en el centro y una flecha que invita a seguir. El formato referencia para anunciar tu diagnóstico.',
+    coverImage: null,
+    isLocked: false,
+    status: 'published',
+    version: 2,
+    defaultStyle: {},
+    tags: ['nuevo', 'ia'],
+    recommendedUse: 'Para pasar del "me gustaría" a la cita: enseña el diagnóstico y deja que la flecha empuje.',
+    slides: [
+      slide(1, ST_INK, 'full-photo', [
+        el({
+          id: 'dg1-foto',
+          type: 'image',
+          role: 'replaceable',
+          name: 'Foto del resultado (todo el alto)',
+          zIndex: 20,
+          content: '/stories-diseno/ref-diagnostico.jpg', // placeholder de muestra
+          placeholder: 'Toca para poner tu foto (toda la story)',
+          allowedAssetTypes: ['user_photo'],
+          position: { x: 0, y: 0 },
+          size: { w: CANVAS_W, h: CANVAS_H },
+          style: { background: 'rgba(42,11,18,0.08)', objectFit: 'cover' },
+        }),
+        // Ornamento colgante de la portada (estrella + hilo + aro)
+        el({
+          id: 'dg1-star',
+          type: 'sticker',
+          role: 'fixed',
+          name: 'Estrella del colgante',
+          zIndex: 30,
+          position: { x: 494, y: 10 },
+          size: { w: 92, h: 92 },
+          content: '✦',
+          style: { fontSize: 30, fontWeight: 400, color: WHITE, lineHeight: 1 },
+        }),
+        el({
+          id: 'dg1-linea',
+          type: 'line',
+          role: 'fixed',
+          name: 'Hilo del colgante',
+          zIndex: 30,
+          position: { x: 537, y: 72 },
+          size: { w: 3, h: 230 },
+          style: { background: WHITE },
+        }),
+        el({
+          id: 'dg1-aro',
+          type: 'shape',
+          role: 'fixed',
+          name: 'Aro del colgante',
+          zIndex: 30,
+          position: { x: 514, y: 306 },
+          size: { w: 48, h: 48 },
+          style: { background: 'transparent', border: '2.5px solid rgba(255,255,255,0.9)', borderRadius: '999px' },
+        }),
+        // Titular central (la IA lo adapta al servicio del salón)
+        el({
+          id: 'dg1-hero',
+          type: 'text',
+          role: 'ai',
+          name: 'Titular del servicio',
+          zIndex: 40,
+          content: 'Diagnóstico de pelo\ny cuero cabelludo',
+          placeholder: 'Diagnóstico de pelo\ny cuero cabelludo',
+          constraints: { maxLength: 64, maxLines: 2 },
+          aiConfig: {
+            purpose: 'hook',
+            hints: ['Di el servicio y para qué sirve, como en el sillón', 'Dos líneas máximo, sin tecnicismos'],
+          },
+          position: { x: 80, y: 1064 },
+          size: { w: 920, h: 250 },
+          style: {
+            fontSize: 84,
+            fontWeight: 600,
+            lineHeight: '1.18',
+            letterSpacing: '0px',
+            color: WHITE,
+            textAlign: 'center',
+          },
+        }),
+        // Botón flecha (anillo + glifo)
+        el({
+          id: 'dg1-flecha-anillo',
+          type: 'shape',
+          role: 'fixed',
+          name: 'Anillo del botón flecha',
+          zIndex: 40,
+          position: { x: 476, y: 1400 },
+          size: { w: 148, h: 118 },
+          style: { background: 'transparent', border: '3px solid rgba(255,255,255,0.9)', borderRadius: '999px' },
+        }),
+        el({
+          id: 'dg1-flecha',
+          type: 'text',
+          role: 'fixed',
+          name: 'Flecha del botón',
+          zIndex: 40,
+          content: '→',
+          position: { x: 476, y: 1400 },
+          size: { w: 148, h: 118 },
+          style: { fontSize: 52, fontWeight: 400, color: WHITE, textAlign: 'center' },
+        }),
+        // Crédito de la especialista (la usuaria lo escribe a su mano)
+        el({
+          id: 'dg1-firma',
+          type: 'text',
+          role: 'editable',
+          name: 'Firma de la especialista',
+          zIndex: 40,
+          content: 'Tu nombre\nTu especialidad',
+          placeholder: 'Tu nombre\nTu especialidad',
+          constraints: { maxLength: 56, maxLines: 2 },
+          position: { x: 190, y: 1680 },
+          size: { w: 700, h: 120 },
+          style: {
+            fontSize: 32,
+            fontWeight: 500,
+            lineHeight: '1.4',
+            letterSpacing: '1px',
+            color: 'rgba(255,255,255,0.85)',
+            textAlign: 'center',
+          },
+        }),
+      ], { name: 'Portada — el servicio a sangre', purpose: 'hook' }),
+    ],
+  }
+}
+
 /* ── Seeds ─────────────────────────────────────────────────────────────── */
 
 export interface EditorialSeed {
@@ -870,7 +1016,7 @@ export interface EditorialSeed {
 }
 
 /**
- * Las tres secuencias editoriales nuevas (se siembran igual que `seedPacks`).
+ * Las secuencias editoriales nuevas (se siembran igual que `seedPacks`).
  * FUNCIÓN, no constante: rompe el ciclo de imports samples ↔ samples-editorial —
  * los templates se construyen al llamar (cuando ST_* de samples ya existen),
  * nunca en la evaluación del módulo.
@@ -880,5 +1026,6 @@ export function editorialSeeds(): EditorialSeed[] {
     { packSlug: 'vender-con-historia', template: tTratamientoEditorial() },
     { packSlug: 'vender-con-historia', template: tAntesDespuesEditorial() },
     { packSlug: 'autoridad-al-aire', template: tConsejoExperto() },
+    { packSlug: 'vender-con-historia', template: tDiagnosticoCapilar() },
   ]
 }

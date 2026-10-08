@@ -30,8 +30,8 @@ const navItems: NavItem[] = [
   { href: '/planificar', label: 'Planificación', icon: Sparkles },
   { href: '/crear-contenido', label: 'Guiones', icon: Film },
   { href: '/stories', label: 'Stories BRÄVE', icon: LayoutGrid },
-  // STORIES DISEÑO — Fase 1 teaser "en construcción" (7-oct-2026).
-  { href: '/stories-diseno', label: 'Stories Diseño', icon: Palette, badge: 'Próximamente' },
+  // STORIES DISEÑO — rework mini-Canva (galería de plantillas, 7-oct-2026).
+  { href: '/stories-diseno', label: 'Stories Diseño', icon: Palette },
   { href: '/inspiracion-reels', label: 'Inspiración Reels', icon: Clapperboard },
   { href: '/banco-ganchos', label: 'Banco de Ganchos', icon: Zap },
   { href: '/foto-inspo', label: 'Foto inspo', icon: Camera },
@@ -51,8 +51,8 @@ const premiumNavItems: NavItem[] = [
   { href: '/crear-contenido', label: 'Guiones', icon: Film },
   { href: '/biblioteca', label: 'Biblioteca', icon: BookOpen },
   { href: '/stories', label: 'Stories BRÄVE', icon: LayoutGrid },
-  // STORIES DISEÑO — Fase 1 teaser "en construcción" (7-oct-2026).
-  { href: '/stories-diseno', label: 'Stories Diseño', icon: Palette, badge: 'Próximamente' },
+  // STORIES DISEÑO — rework mini-Canva (galería de plantillas, 7-oct-2026).
+  { href: '/stories-diseno', label: 'Stories Diseño', icon: Palette },
   { href: '/inspiracion-reels', label: 'Inspiración Reels', icon: Clapperboard },
   { href: '/banco-ganchos', label: 'Banco de Ganchos', icon: Zap },
   { href: '/foto-inspo', label: 'Foto inspo', icon: Camera },

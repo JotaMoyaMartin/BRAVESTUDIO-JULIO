@@ -19,6 +19,7 @@ import {
   StoryElementRole,
   StorySlideLayoutType,
 } from './types'
+import { editorialSeeds } from './samples-editorial'
 
 /** Paleta BRAVE (valores planos: los slides se exportan a PNG fuera de la app). */
 export const ST_INK = '#2A0B12'
@@ -503,7 +504,7 @@ export function seedPacks(): StoryPackSeedRow[] {
     templates,
     sort,
   })
-  return [
+  const rows = [
     pack(
       'vender-con-historia',
       'Vender con historia',
@@ -532,4 +533,11 @@ export function seedPacks(): StoryPackSeedRow[] {
       3
     ),
   ]
+  // Semillas editoriales v2 (portadas de galería: version 2, zIndex explícito, tags nuevo/recomendado/ia)
+  for (const s of editorialSeeds()) {
+    const row = rows.find(r => r.slug === s.packSlug)
+    if (row) row.templates.push(s.template)
+  }
+  for (const r of rows) r.storyCount = r.templates.length
+  return rows
 }

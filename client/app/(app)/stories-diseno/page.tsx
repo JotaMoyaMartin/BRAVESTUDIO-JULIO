@@ -30,6 +30,7 @@ function demoPacks(): CatalogPack[] {
         description: t.description,
         recommendedUse: t.recommendedUse,
         isLocked: t.isLocked,
+        tags: t.tags,
         slides: t.slides.map(sl => ({
           id: `${t.slug}-${sl.order}`,
           templateId: t.slug,
@@ -60,6 +61,8 @@ interface TemplateRow {
   description: string
   recommended_use: string
   is_locked: boolean
+  status?: string
+  tags?: string[] | null
   slides: { order: number; background: string; layoutType: string; elements: StoryDesignElement[] }[]
 }
 
@@ -87,23 +90,26 @@ export default async function StoriesDisenoPage() {
     flowType: p.flow_type as CatalogPack['flowType'],
     storyCount: p.story_count,
     sort: 0,
-    templates: (p.story_design_templates ?? []).map(t => ({
-      id: t.id,
-      slug: t.slug,
-      title: t.title,
-      category: t.category,
-      description: t.description,
-      recommendedUse: t.recommended_use || t.description,
-      isLocked: t.is_locked,
-      slides: (t.slides ?? []).map<StoryDesignSlide>(sl => ({
-        id: `${t.slug}-${sl.order}`,
-        templateId: t.slug,
-        order: sl.order,
-        background: sl.background,
-        layoutType: (sl.layoutType || 'text-only') as StoryDesignSlide['layoutType'],
-        elements: sl.elements ?? [],
+    templates: (p.story_design_templates ?? [])
+      .filter(t => t.status !== 'archived')
+      .map(t => ({
+        id: t.id,
+        slug: t.slug,
+        title: t.title,
+        category: t.category,
+        description: t.description,
+        recommendedUse: t.recommended_use || t.description,
+        isLocked: t.is_locked,
+        tags: t.tags ?? [],
+        slides: (t.slides ?? []).map<StoryDesignSlide>(sl => ({
+          id: `${t.slug}-${sl.order}`,
+          templateId: t.slug,
+          order: sl.order,
+          background: sl.background,
+          layoutType: (sl.layoutType || 'text-only') as StoryDesignSlide['layoutType'],
+          elements: sl.elements ?? [],
+        })),
       })),
-    })),
   }))
 
   if (packs.length === 0 || !user) {
@@ -116,9 +122,22 @@ export default async function StoriesDisenoPage() {
     .eq('user_id', user.id)
     .maybeSingle()
 
+  // Favoritos de la usuaria (migración story_design_favorites; si la tabla
+  // no existe aún, error → array vacío y la UI degrada a localStorage).
+  const { data: favsRaw } = await supabase
+    .from('story_design_favorites')
+    .select('template_id')
+    .eq('user_id', user.id)
+  const initialFavorites = ((favsRaw ?? []) as { template_id: string }[]).map(r => r.template_id)
+
   return (
     <PageTransition>
-      <StoriesDisenoCatalog packs={packs} brand={(brand as BrandFullContextInput) || null} hasBrand={Boolean((brand as BrandFullContextInput | null)?.optimized_summary || (brand as BrandFullContextInput | null)?.salon_name)} />
+      <StoriesDisenoCatalog
+        packs={packs}
+        brand={(brand as BrandFullContextInput) || null}
+        hasBrand={Boolean((brand as BrandFullContextInput | null)?.optimized_summary || (brand as BrandFullContextInput | null)?.salon_name)}
+        initialFavorites={initialFavorites}
+      />
     </PageTransition>
   )
 }

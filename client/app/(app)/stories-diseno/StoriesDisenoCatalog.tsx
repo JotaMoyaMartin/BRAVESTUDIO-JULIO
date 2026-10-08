@@ -1,28 +1,29 @@
 'use client'
-import { useMemo, useRef, useState } from 'react'
-import { toPng } from 'html-to-image'
-import {
-  ArrowLeft, ChevronLeft, ChevronRight, Download, Lock, Package,
-  Pencil, RefreshCw, Image as ImageIcon, X, Check, Sparkles, Wand2,
-} from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Lock, Search, Sparkles, Star, X } from 'lucide-react'
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
-import Card from '@/components/ui/Card'
 import { useToast } from '@/components/ui/Toast'
 
 import SlideCanvas, { CANVAS_W, CANVAS_H } from './SlideCanvas'
+import StoriesEditor from './StoriesEditor'
 import { StoryPackSeedRow } from '@/lib/stories-diseno/samples'
-import { StoryDesignElement, StoryDesignSlide } from '@/lib/stories-diseno/types'
-import { rewriteWithAI } from '@/lib/ai/prompts/stories-design'
+import { StoryDesignSlide } from '@/lib/stories-diseno/types'
 import { BrandFullContextInput } from '@/lib/ai/brand-context'
 
 /**
- * Catálogo + editor de Stories Diseño (Fase 2). Estado en memoria: no se
- * guarda nada server-side todavía (Fase 3: guardar en biblioteca). Si la
- * usuaria recarga, pierde los cambios — se avisa en la parte inferior.
+ * GALERÍA DE STORIES DISEÑO (rework v2 — estilo Canva, no marketplace de packs).
+ * Grid de previews visuales 9:16, buscador, chips de temática, badges
+ * (nuevo/recomendado/IA), favoritos y modal de preview de la secuencia.
+ * "Usar plantilla" monta el editor full-screen (StoriesEditor) — la usuaria
+ * adapta textos/fotos allí y exporta. Favoritos: localStorage + DB
+ * (GET/POST /api/stories-diseno/favorites, best-effort — degrada a local
+ * hasta landear la migración de story_design_favorites).
  */
 
-interface CatalogTemplate {
+export type TextKind = 'gancho' | 'cuerpo' | 'cierre' | 'opcion'
+
+export interface CatalogTemplate {
   id: string
   slug: string
   title: string
@@ -30,6 +31,8 @@ interface CatalogTemplate {
   description: string
   recommendedUse: string
   isLocked: boolean
+  /** Etiquetas editoriales: nuevo, recomendado, ia, venta, agenda… */
+  tags?: string[]
   slides: StoryDesignSlide[]
 }
 export type CatalogPack = Omit<StoryPackSeedRow, 'templates'> & { id: string; templates: CatalogTemplate[] }
@@ -38,428 +41,380 @@ interface Props {
   packs: CatalogPack[]
   brand: BrandFullContextInput | null
   hasBrand: boolean
+  /** Favoritos ya en DB (ids de plantilla); se mezclan con los de localStorage. */
+  initialFavorites?: string[]
 }
 
-type TextKind = 'gancho' | 'cuerpo' | 'cierre' | 'opcion'
+/* ── chips de temática → palabras clave (match sin acentos) ── */
 
-function kindOf(el: StoryDesignElement, slideIndex: number, total: number): TextKind {
-  if (slideIndex === 0 && el.position.y < 800 && el.size.h >= 90) return 'gancho'
-  if (slideIndex === total - 1 && el.position.y > 1000) return 'cierre'
-  if (el.type === 'badge') return 'opcion'
-  return 'cuerpo'
+const CHIPS: { key: string; label: string; words: string[] }[] = [
+  { key: 'todos', label: 'Todos', words: [] },
+  { key: 'vender', label: 'Para vender', words: ['vender', 'venta', 'servicio', 'promo', 'oferta'] },
+  { key: 'agenda', label: 'Agenda', words: ['agenda', 'hueco', 'cita', 'reserva'] },
+  { key: 'autoridad', label: 'Autoridad', words: ['autoridad', 'experto', 'criterio', 'posicionar'] },
+  { key: 'resultados', label: 'Resultados', words: ['resultado', 'antes', 'despues', 'cambio', 'testigo', 'prueba'] },
+  { key: 'tratamientos', label: 'Tratamientos', words: ['tratamiento', 'servicio', 'balayage', 'color', 'mechas'] },
+  { key: 'antes', label: 'Antes y después', words: ['antes', 'despues', 'cambio', 'transformacion'] },
+  { key: 'consejos', label: 'Consejos', words: ['consejo', 'tip', 'educacion', 'criterio'] },
+  { key: 'promos', label: 'Promociones', words: ['promo', 'oferta', 'descuento'] },
+  { key: 'interaccion', label: 'Interacción', words: ['interaccion', 'pregunta', 'encuesta', 'datos', 'conversacion'] },
+]
+
+function norm(s: string): string {
+  return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 }
 
-/** Escala de export: el frame tiene 320px de ancho → pixelRatio 1088/320. */
-const EXPORT_RATIO = CANVAS_W / 320
+interface Item { template: CatalogTemplate; packTitle: string; goal: string }
 
-const GOAL_LABEL: Record<string, string> = {
-  vender: 'Para vender',
-  captar: 'Para captar',
-  educar: 'Para educar',
-  fidelizar: 'Para fidelizar',
-  autoridad: 'Para posicionar',
+/** Metadatos (chips de temática): título, categoría, descripción, tags, pack. */
+function metaHay(it: Item): string {
+  return norm([
+    it.template.title, it.template.category, it.template.description,
+    it.template.recommendedUse, (it.template.tags ?? []).join(' '),
+    it.goal, it.packTitle,
+  ].join(' '))
 }
 
-export default function StoriesDisenoCatalog({ packs, brand, hasBrand }: Props) {
-  const toast = useToast()
-  const [view, setView] = useState<'catalog' | 'pack'>('catalog')
-  const [packId, setPackId] = useState<string | null>(null)
-  const pack = packs.find(p => p.id === packId) ?? null
+/** Metadatos + contenido de los textos de la plantilla (buscador libre). */
+function haystack(it: Item): string {
+  const parts = [metaHay(it)]
+  for (const s of it.template.slides) {
+    for (const e of s.elements) {
+      if (typeof e.content === 'string' && e.content) parts.push(e.content)
+    }
+  }
+  return norm(parts.join(' '))
+}
+
+/** Badge score para orden (recomendado primero, luego nuevo/IA). */
+function rankOf(it: Item): number {
+  const tags = it.template.tags ?? []
+  let r = 0
+  if (tags.includes('recomendado')) r += 4
+  if (tags.includes('nuevo')) r += 2
+  if (tags.includes('ia')) r += 1
+  return r
+}
+
+const FAV_KEY = 'brave_sd_favs'
+
+function loadFavs(): Record<string, boolean> {
+  if (typeof window === 'undefined') return {}
+  try { return JSON.parse(window.localStorage.getItem(FAV_KEY) || '{}') as Record<string, boolean> } catch { return {} }
+}
+
+export default function StoriesDisenoCatalog({ packs, brand, hasBrand, initialFavorites }: Props) {
+  const [editing, setEditing] = useState<{ template: CatalogTemplate; packTitle: string } | null>(null)
+
+  const items = useMemo<Item[]>(
+    () => packs.flatMap(p => p.templates.map(t => ({ template: t, packTitle: p.title, goal: p.goal as string }))),
+    [packs],
+  )
 
   return (
     <div className="pb-10">
-      {view === 'catalog' && (
-        <PackCatalogue
-          packs={packs}
-          onOpen={(id) => { setPackId(id); setView('pack') }}
-        />
-      )}
-      {view === 'pack' && pack && (
-        <PackView
-          pack={pack}
+      <Gallery
+        items={items}
+        initialFavorites={initialFavorites}
+        onUse={(template, packTitle) => setEditing({ template, packTitle })}
+      />
+      {editing && (
+        <StoriesEditor
+          template={editing.template}
+          packTitle={editing.packTitle}
           brand={brand}
           hasBrand={hasBrand}
-          toast={toast}
-          onBack={() => { setView('catalog'); setPackId(null) }}
+          onClose={() => setEditing(null)}
         />
       )}
     </div>
   )
 }
 
-/* ────────────────────────── CATÁLOGO DE PACKS ────────────────────────── */
+/* ────────────────────────── GALERÍA ────────────────────────── */
 
-function PackCatalogue({ packs, onOpen }: { packs: CatalogPack[]; onOpen: (id: string) => void }) {
+function Gallery({ items, initialFavorites, onUse }: { items: Item[]; initialFavorites?: string[]; onUse: (t: CatalogTemplate, packTitle: string) => void }) {
+  const [query, setQuery] = useState('')
+  const [chip, setChip] = useState('todos')
+  const [preview, setPreview] = useState<Item | null>(null)
+  const [favs, setFavs] = useState<Record<string, boolean>>(() => ({
+    ...loadFavs(),
+    ...Object.fromEntries((initialFavorites ?? []).map(id => [id, true])),
+  }))
+
+  function toggleFav(id: string) {
+    setFavs(prev => {
+      const next = { ...prev, [id]: !prev[id] }
+      try { window.localStorage.setItem(FAV_KEY, JSON.stringify(next)) } catch { /* demo ok */ }
+      return next
+    })
+    // Persistencia en DB best-effort: error/401 (demo, migración sin landear) = silencio.
+    fetch('/api/stories-diseno/favorites', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ templateId: id }),
+    }).catch(() => {})
+  }
+
+  const list = useMemo(() => {
+    const q = norm(query.trim())
+    return items
+      .filter(it => {
+        if (chip !== 'todos') {
+          const words = CHIPS.find(c => c.key === chip)?.words ?? []
+          const h = metaHay(it)
+          if (!words.some(w => h.includes(w))) return false
+        }
+        if (q && !haystack(it).includes(q)) return false
+        return true
+      })
+      .sort((a, b) => rankOf(b) - rankOf(a) || a.template.title.localeCompare(b.template.title))
+  }, [items, query, chip])
+
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
-      <div className="text-center">
+    <div className="py-7">
+      {/* Header */}
+      <div className="text-center mb-5">
         <p className="text-[11px] font-extrabold tracking-[4px]" style={{ color: 'var(--color-cherry)', textTransform: 'uppercase' }}>
-          Packs listos
+          Biblioteca de stories
         </p>
         <h1 className="text-[28px] sm:text-[34px] font-extrabold text-cherry-dark leading-tight mt-2" style={{ letterSpacing: '-0.8px' }}>
-          Elige tu pack de stories
+          Diseños listos para tu salón
         </h1>
         <p className="mt-2 text-sm text-cherry-dark opacity-70 max-w-lg mx-auto leading-relaxed">
-          Cada pack trae las plantillas con el diseño hecho: tú elijas la que cuadre con tu semana y BRÄVE adapta los textos a tu salón.
+          Elige un diseño, BRÄVE adapta los textos a tu salón y tú pones las fotos. Descarga la secuencia en PNG y súbelas a Instagram por orden.
         </p>
       </div>
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {packs.map(p => (
-          <Card key={p.id} className="p-5 flex flex-col gap-3">
-            <div className="flex items-start justify-between gap-2">
-              <span className="w-10 h-10 rounded-[var(--radius-sm)] flex items-center justify-center" style={{ background: 'rgba(122,24,50,0.10)' }}>
-                <Package size={20} className="text-cherry" aria-hidden="true" />
-              </span>
-              <Badge tone="cherry">{GOAL_LABEL[p.goal] ?? p.goal}</Badge>
-            </div>
-            <p className="text-[17px] font-bold text-cherry-dark leading-snug">{p.title}</p>
-            <p className="text-[13px] text-cherry-dark opacity-65 leading-relaxed flex-1">{p.description}</p>
-            <div className="flex items-center justify-between gap-2 mt-1">
-              <span className="text-xs font-semibold text-cherry-dark opacity-60">{p.templates.length} plantillas · {p.templates.reduce((n, t) => n + t.slides.length, 0)} stories</span>
-              <Button size="sm" onClick={() => onOpen(p.id)} icon={<Pencil size={13} />}>Usar pack</Button>
-            </div>
-          </Card>
-        ))}
-      </div>
-    </div>
-  )
-}
 
-/* ────────────────────────── PACK → PLANTILLAS ────────────────────────── */
-
-function PackView({
-  pack, brand, hasBrand, toast, onBack,
-}: {
-  pack: CatalogPack
-  brand: BrandFullContextInput | null
-  hasBrand: boolean
-  toast: ReturnType<typeof useToast>
-  onBack: () => void
-}) {
-  const [templateSlug, setTemplateSlug] = useState<string | null>(null)
-  const template = pack.templates.find(t => t.slug === templateSlug) ?? null
-
-  return (
-    <div className="max-w-4xl mx-auto px-4 py-8 space-y-5">
-      <button type="button" onClick={onBack} className="text-[13px] font-bold text-cherry inline-flex items-center gap-1.5" style={{ background: 'none', border: 'none', padding: 0 }}>
-        <ArrowLeft size={15} aria-hidden="true" /> Todos los packs
-      </button>
-      <div>
-        <h1 className="text-[26px] sm:text-[32px] font-extrabold text-cherry-dark leading-tight" style={{ letterSpacing: '-0.8px' }}>{pack.title}</h1>
-        <p className="text-sm text-cherry-dark opacity-70 mt-1.5 leading-relaxed max-w-2xl">{pack.description}</p>
+      {/* Buscador */}
+      <div className="relative mb-3">
+        <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-cherry-dark opacity-40" aria-hidden="true" />
+        <input
+          type="search"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          placeholder="Buscar diseños o temáticas…"
+          className="w-full text-[14px] py-3 pl-10 pr-9 rounded-full focus:outline-none"
+          style={{ background: 'white', border: '1.5px solid rgba(122,24,50,0.14)', color: 'var(--color-ink)' }}
+        />
+        {query && (
+          <button type="button" onClick={() => setQuery('')} aria-label="Limpiar búsqueda" className="absolute right-3 top-1/2 -translate-y-1/2">
+            <X size={15} className="text-cherry-dark opacity-45" />
+          </button>
+        )}
       </div>
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {pack.templates.map(t => (
-          <Card key={t.id} className="overflow-hidden">
-            <div className="relative flex justify-center overflow-hidden" style={{ background: 'var(--color-warm-gray)', padding: '16px 0' }}>
-              <div className="rounded-[22px] overflow-hidden" style={{ boxShadow: '0 12px 28px rgba(42,11,18,0.16)' }}>
-                <MiniCover slide={t.slides[0]} />
-              </div>
-              {t.isLocked && (
-                <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'rgba(42,11,18,0.45)' }}>
-                  <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold" style={{ background: 'white', color: 'var(--color-cherry-dark)' }}>
-                    <Lock size={12} aria-hidden="true" /> Próximamente
-                  </span>
-                </div>
-              )}
-            </div>
-            <div className="p-4 space-y-2">
-              <div className="flex items-center gap-2">
-                <Badge tone="buttermilk">{t.category}</Badge>
-                <span className="text-[11px] font-semibold text-cherry-dark opacity-50">{t.slides.length} stories</span>
-              </div>
-              <p className="text-[15px] font-bold text-cherry-dark leading-snug">{t.title}</p>
-              <p className="text-xs text-cherry-dark opacity-65 leading-relaxed">{t.recommendedUse || t.description}</p>
-              <Button size="sm" fullWidth disabled={t.isLocked} onClick={() => setTemplateSlug(t.slug)}>
-                {t.isLocked ? 'Disponible próximamente' : 'Diseñar secuencias'}
-              </Button>
-            </div>
-          </Card>
-        ))}
+      {/* Chips de temática */}
+      <div className="flex gap-2 overflow-x-auto pb-2.5 mb-4" style={{ scrollbarWidth: 'none' }}>
+        {CHIPS.map(c => {
+          const active = chip === c.key
+          return (
+            <button
+              key={c.key}
+              type="button"
+              onClick={() => setChip(c.key)}
+              className="flex-shrink-0 px-3.5 py-2 rounded-full text-[12px] font-bold cursor-pointer"
+              style={active
+                ? { background: 'var(--color-cherry)', color: 'white', border: '1px solid var(--color-cherry)' }
+                : { background: 'white', color: 'var(--color-cherry-dark)', border: '1px solid rgba(122,24,50,0.18)' }}
+            >
+              {c.label}
+            </button>
+          )
+        })}
       </div>
 
-      {template && !template.isLocked && (
-        <TemplateEditorModal
-          template={template}
-          packTitle={pack.title}
-          brand={brand}
-          hasBrand={hasBrand}
-          toast={toast}
-          onClose={() => setTemplateSlug(null)}
+      {/* Grid de diseños */}
+      {list.length === 0 ? (
+        <p className="text-center text-sm text-cherry-dark opacity-60 py-14">
+          Nada con esa búsqueda — prueba otra palabra o el chip «Todos».
+        </p>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+          {list.map(it => (
+            <TemplateCard
+              key={it.template.id}
+              item={it}
+              fav={!!favs[it.template.id]}
+              onFav={() => toggleFav(it.template.id)}
+              onPreview={() => setPreview(it)}
+              onUse={() => onUse(it.template, it.packTitle)}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Modal de preview de la secuencia */}
+      {preview && (
+        <PreviewModal
+          item={preview}
+          fav={!!favs[preview.template.id]}
+          onFav={() => toggleFav(preview.template.id)}
+          onClose={() => setPreview(null)}
+          onUse={() => { setPreview(null); onUse(preview.template, preview.packTitle) }}
         />
       )}
     </div>
   )
 }
 
-/* ────────────────────────── MINI PORTADA (slide 1) ────────────────────────── */
+/* ────────────────────────── CARD ────────────────────────── */
 
-function MiniCover({ slide }: { slide?: CatalogTemplate['slides'][number] }) {
-  if (!slide) return null
-  const scale = 190 / CANVAS_W
+function TemplateCard({
+  item, fav, onFav, onPreview, onUse,
+}: { item: Item; fav: boolean; onFav: () => void; onPreview: () => void; onUse: () => void }) {
+  const t = item.template
+  const tags = t.tags ?? []
+  // UN badge por card por prioridad (el resto en el modal de preview)
+  const isRec = tags.includes('recomendado')
+  const isNew = tags.includes('nuevo')
+  const isAI = tags.includes('ia')
+  const badge = isRec ? { tone: 'cherry' as const, label: 'Recomendado' }
+    : isNew ? { tone: 'buttermilk' as const, label: 'Nuevo' }
+    : isAI ? null
+    : null
+
   return (
-    <div style={{ width: 190, height: CANVAS_H * scale, flexShrink: 0 }}>
-      <SlideCanvas slide={slide} scale={scale} />
+    <div
+      className="group flex flex-col rounded-[18px] overflow-hidden"
+      style={{ background: 'white', boxShadow: '0 6px 18px rgba(42,11,18,0.08)' }}
+    >
+      {/* Cover 9:16 */}
+      <button
+        type="button"
+        onClick={onPreview}
+        className="relative block p-0 border-none cursor-pointer"
+        aria-label={`Previsualizar ${t.title}`}
+      >
+        <LiveCover slide={t.slides[0]} />
+        {badge && null}
+        <span
+          role="button"
+          tabIndex={0}
+          onClick={(e) => { e.stopPropagation(); onFav() }}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); onFav() } }}
+          className="absolute top-1.5 right-1.5 w-7 h-7 rounded-full flex items-center justify-center"
+          style={{ background: 'rgba(255,255,255,0.9)' }}
+          aria-label={fav ? 'Quitar de favoritos' : 'Añadir a favoritos'}
+          aria-pressed={fav}
+        >
+          <Star size={13} style={fav ? { color: 'var(--color-cherry)', fill: 'var(--color-cherry)' } : { color: 'var(--color-cherry-dark)', opacity: 0.55 }} />
+        </span>
+        {t.isLocked && (
+          <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'rgba(42,11,18,0.45)' }}>
+            <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold" style={{ background: 'white', color: 'var(--color-cherry-dark)' }}>
+              <Lock size={12} aria-hidden="true" /> Próximamente
+            </span>
+          </div>
+        )}
+      </button>
+
+      {/* Info + acciones */}
+      <div className="px-2.5 py-2.5 space-y-2 min-w-0">
+        <p className="text-[13px] sm:text-[14px] font-bold text-cherry-dark leading-snug line-clamp-2">{t.title}</p>
+        <div className="flex items-center justify-between gap-2 min-w-0">
+          <span className="text-[10px] font-semibold text-cherry-dark opacity-55 truncate min-w-0">
+            {t.slides.length} {t.slides.length === 1 ? 'story' : 'stories'} · {t.category}
+          </span>
+          {badge && <span className="hidden sm:block"><Badge tone={badge.tone}>{badge.label}</Badge></span>}
+          <Button size="sm" disabled={t.isLocked} onClick={onUse}>Usar</Button>
+        </div>
+      </div>
     </div>
   )
 }
 
-/* ────────────────────────── EDITOR ────────────────────────── */
+/* ────────────────────────── COVER LIVE 9:16 ────────────────────────── */
 
-interface EditState {
-  /** Contenido por elemento id: texto o dataURL de foto. */
-  contents: Record<string, string>
-}
+/** Preview del slide 1 renderizado por SlideCanvas, ajustado a la celda. */
+function LiveCover({ slide }: { slide?: StoryDesignSlide }) {
+  const ref = useRef<HTMLDivElement | null>(null)
+  const [w, setW] = useState(0)
 
-function TemplateEditorModal({
-  template, packTitle, brand, hasBrand, toast, onClose,
-}: {
-  template: CatalogTemplate
-  packTitle: string
-  brand: BrandFullContextInput | null
-  hasBrand: boolean
-  toast: ReturnType<typeof useToast>
-  onClose: () => void
-}) {
-  const [idx, setIdx] = useState(0)
-  const [edits, setEdits] = useState<Record<string, EditState['contents']>>(() =>
-    Object.fromEntries(template.slides.map(s => [String(s.order), {}]))
-  )
-  const [selected, setSelected] = useState<StoryDesignElement | null>(null)
-  const [draft, setDraft] = useState('')
-  const [aiBusy, setAiBusy] = useState(false)
-  const [exportBusy, setExportBusy] = useState(false)
-  const exportRefs = useRef<Record<string, HTMLDivElement | null>>({})
-
-  const slide = template.slides[idx]
-  const contents = edits[String(slide.order)] ?? {}
-  const scale = 320 / CANVAS_W
-
-  function setElement(el: StoryDesignElement, content: string) {
-    setEdits(prev => ({ ...prev, [String(slide.order)]: { ...prev[String(slide.order)], [el.id]: content } }))
-  }
-
-  function openElement(el: StoryDesignElement) {
-    setSelected(el)
-    setDraft((edits[String(slide.order)]?.[el.id]) ?? el.content ?? '')
-  }
-
-  async function runAI(el: StoryDesignElement) {
-    const kind = kindOf(el, idx, template.slides.length)
-    setAiBusy(true)
-    const out = await rewriteWithAI({
-      text: draft || el.content || '',
-      maxLength: el.maxLength ?? 200,
-      kind,
-      brand,
-    })
-    setAiBusy(false)
-    if (out) {
-      setDraft(out)
-      toast.show('He reescrito el texto para tu salón — revísalo y ajusta lo que quieras.', 'success')
-    } else {
-      toast.show('La IA no está disponible ahora. Ajusta el texto a mano — el esbozo ya sirve tal cual.', 'info')
-    }
-  }
-
-  function saveEdit() {
-    if (selected) {
-      setElement(selected, draft.trim().slice(0, selected.maxLength ?? 400))
-      setSelected(null)
-    }
-  }
-
-  async function exportSlide(order: number) {
-    const node = exportRefs.current[String(order)]
+  useEffect(() => {
+    const node = ref.current
     if (!node) return
-    return toPng(node, { pixelRatio: EXPORT_RATIO, skipFonts: false })
-  }
-
-  function download(png: string, name: string) {
-    const a = document.createElement('a')
-    a.href = png
-    a.download = name
-    document.body.appendChild(a)
-    a.click()
-    a.remove()
-  }
-
-  async function exportOne() {
-    setExportBusy(true)
-    try {
-      const png = await exportSlide(slide.order)
-      if (png) download(png, `brave-${template.slug}-${slide.order}.png`)
-      toast.show('Historia exportada a PNG (1080×1920). Súbelas por orden a Instagram.', 'success')
-    } catch {
-      toast.show('No se pudo exportar la historia. Prueba de nuevo.', 'info')
-    }
-    setExportBusy(false)
-  }
-
-  async function exportAll() {
-    setExportBusy(true)
-    try {
-      for (const s of template.slides) {
-        const png = await exportSlide(s.order)
-        if (png) download(png, `brave-${template.slug}-${s.order}.png`)
-        await new Promise(r => setTimeout(r, 350))
-      }
-      toast.show(`Secuencia completa (${template.slides.length} historias) descargada. Súbelas por orden.`, 'success')
-    } catch {
-      toast.show('No se pudo terminar la exportación. Prueba de nuevo.', 'info')
-    }
-    setExportBusy(false)
-  }
-
-  const isPhoto = selected?.type === 'image'
-  const isText = selected && (selected.role === 'editable' || selected.role === 'ai') && selected.type === 'text'
-
-  async function onPhotoPick(el: StoryDesignElement, file: File | null) {
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => {
-      setElement(el, String(reader.result))
-      setSelected(null)
-      toast.show('Foto puesta. Puedes cambiarla cuando quieras tocándola de nuevo.', 'success')
-    }
-    reader.readAsDataURL(file)
-  }
+    const ro = new ResizeObserver(() => {
+      const r = node.getBoundingClientRect()
+      if (r.width > 0) setW(r.width)
+    })
+    ro.observe(node)
+    return () => ro.disconnect()
+  }, [])
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col" style={{ background: 'rgba(42,11,18,0.55)' }}>
-      <div className="flex-1 overflow-y-auto">
-        <div className="bg-cream min-h-full">
-          <div className="max-w-3xl mx-auto px-4 py-5 space-y-4">
-            {/* Barra superior */}
-            <div className="flex items-center gap-3">
-              <button type="button" onClick={onClose} className="text-[13px] font-bold text-cherry inline-flex items-center gap-1.5" style={{ background: 'none', border: 'none', padding: 0 }}>
-                <ArrowLeft size={15} aria-hidden="true" /> {packTitle}
-              </button>
-              <span className="ml-auto text-xs font-semibold text-cherry-dark opacity-50">
-                Story {idx + 1} de {template.slides.length} · 1080×1920
-              </span>
+    <div ref={ref} style={{ aspectRatio: `${CANVAS_W} / ${CANVAS_H}`, position: 'relative', overflow: 'hidden', background: 'var(--color-warm-gray)' }}>
+      {w > 0 && slide && <SlideCanvas slide={slide} scale={w / CANVAS_W} />}
+      {!slide && (
+        <span className="absolute inset-0 flex items-center justify-center text-[11px] font-bold text-cherry-dark opacity-40">
+          Sin vista previa
+        </span>
+      )}
+    </div>
+  )
+}
+
+/* ────────────────────────── MODAL DE PREVIEW ────────────────────────── */
+
+function PreviewModal({
+  item, fav, onFav, onClose, onUse,
+}: { item: Item; fav: boolean; onFav: () => void; onClose: () => void; onUse: () => void }) {
+  const t = item.template
+  const tags = t.tags ?? []
+  return (
+    <div
+      className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-6"
+      style={{ background: 'rgba(42,11,18,0.55)' }}
+      onClick={onClose}
+    >
+      <div
+        className="w-full sm:max-w-2xl max-h-[92vh] sm:max-h-[88vh] overflow-y-auto rounded-t-[26px] sm:rounded-[26px] p-4 sm:p-6 space-y-4"
+        style={{ background: 'white', boxShadow: '0 30px 70px rgba(46,8,18,0.4)' }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <Badge tone="buttermilk">{t.category}</Badge>
+              {tags.includes('recomendado') && <Badge tone="cherry">Recomendado</Badge>}
+              {tags.includes('nuevo') && <Badge tone="buttermilk">Nuevo</Badge>}
+              {tags.includes('ia') && <Badge tone="blue">Adaptable con IA</Badge>}
             </div>
-
-            {/* Slide actual */}
-            <div className="flex flex-col items-center gap-3">
-              <div className="rounded-[28px] overflow-hidden" style={{ boxShadow: '0 30px 70px rgba(46,8,18,0.35)' }}>
-                <SlideCanvas
-                  key={`${template.slug}-${slide.order}`}
-                  slide={slide}
-                  scale={scale}
-                  contents={contents}
-                  interactive
-                  selectedId={selected?.id}
-                  onElementClick={openElement}
-                />
-              </div>
-
-              {/* Navegación de slides */}
-              <div className="flex items-center gap-2">
-                <button type="button" onClick={() => setIdx(i => Math.max(0, i - 1))} disabled={idx === 0} className="px-3 py-2 rounded-full disabled:opacity-30" style={{ background: 'var(--color-buttermilk)' }} aria-label="Anterior">
-                  <ChevronLeft size={16} className="text-cherry-dark" />
-                </button>
-                <span className="text-xs font-bold text-cherry-dark">Historia {idx + 1}</span>
-                <button type="button" onClick={() => setIdx(i => Math.min(template.slides.length - 1, i + 1))} disabled={idx === template.slides.length - 1} className="px-3 py-2 rounded-full disabled:opacity-30" style={{ background: 'var(--color-buttermilk)' }} aria-label="Siguiente">
-                  <ChevronRight size={16} className="text-cherry-dark" />
-                </button>
-              </div>
-
-              {/* Acciones */}
-              <div className="flex items-center justify-center gap-2.5 flex-wrap">
-                <Button variant="primary" onClick={() => exportOne()} loading={exportBusy} icon={<Download size={14} />}>
-                  Descargar esta historia
-                </Button>
-                {template.slides.length > 1 && (
-                  <Button variant="secondary" onClick={() => exportAll()} loading={exportBusy} icon={<Download size={14} />}>
-                    Descargar las {template.slides.length}
-                  </Button>
-                )}
-                <Button variant="ghost" onClick={onClose}>Terminar</Button>
-              </div>
-              <p className="text-[11px] text-cherry-dark opacity-55 text-center max-w-sm leading-relaxed">
-                Toca los textos marcados para cambiarlos — los de IA se reescriben con tu salón. Los cambios viven en esta sesión: descarga antes de salir.
-              </p>
-            </div>
-
-            {/* Panel de edición (elemento seleccionado) */}
-            {selected && (
-              <div className="fixed inset-x-0 bottom-0 z-[60] p-3 sm:p-4 pointer-events-none">
-                <div className="max-w-xl mx-auto rounded-[var(--radius-md)] p-4 pointer-events-auto" style={{ background: 'white', boxShadow: '0 -10px 40px rgba(42,11,18,0.25)' }}>
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <p className="text-[13px] font-bold text-cherry-dark flex items-center gap-2">
-                      {isPhoto ? <ImageIcon size={14} aria-hidden="true" /> : <Pencil size={14} aria-hidden="true" />}
-                      {isPhoto ? 'Foto del hueco' : selected.role === 'ai' ? 'Texto que BRÄVE adapta con IA' : 'Texto editable'}
-                    </p>
-                    <button type="button" onClick={() => setSelected(null)} aria-label="Cerrar" style={{ background: 'transparent', border: 'none' }}>
-                      <X size={16} className="text-cherry-dark opacity-60" />
-                    </button>
-                  </div>
-
-                  {isPhoto ? (
-                    <label className="block">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => onPhotoPick(selected as StoryDesignElement, e.target.files?.[0] ?? null)}
-                      />
-                      <span className="inline-flex items-center gap-2 text-[13px] font-bold cursor-pointer" style={{ color: 'var(--color-cherry)' }}>
-                        <ImageIcon size={16} aria-hidden="true" /> Elegir foto de mi teléfono o carpetas
-                      </span>
-                    </label>
-                  ) : (
-                    <>
-                      <textarea
-                        value={draft}
-                        onChange={e => setDraft(e.target.value.slice(0, selected.maxLength ?? 400))}
-                        rows={3}
-                        maxLength={selected.maxLength ?? 400}
-                        className="w-full text-[14px] p-3 rounded-[var(--radius-sm)] resize-none focus:outline-none"
-                        style={{ background: 'var(--color-cream)', border: '1.5px solid rgba(122,24,50,0.15)', color: 'var(--color-ink)', fontFamily: 'inherit' }}
-                        autoFocus
-                      />
-                      <div className="flex items-center justify-between gap-2 mt-2.5">
-                        <span className="text-[11px] font-semibold text-cherry-dark opacity-50">
-                          {draft.length}/{selected.maxLength ?? 400}
-                        </span>
-                        <div className="flex items-center gap-2">
-                          {selected.role === 'ai' && (
-                            <Button size="sm" variant="secondary" onClick={() => runAI(selected)} loading={aiBusy} icon={<Wand2 size={13} />}>
-                              Reescribir con mi marca
-                            </Button>
-                          )}
-                          <Button size="sm" onClick={saveEdit} icon={<Check size={13} />}>Guardar</Button>
-                        </div>
-                      </div>
-                      {!hasBrand && selected.role === 'ai' && (
-                        <p className="mt-2 text-[11px] text-cherry-dark opacity-55 leading-snug">
-                          Complete tu marca en <strong>Mi Marca</strong> para que la IA escriba con tu tono y servicios. El esbozo actual ya es utilizable.
-                        </p>
-                      )}
-                    </>
-                  )}
-                </div>
-              </div>
-            )}
+            <h2 className="text-[20px] sm:text-[24px] font-extrabold text-cherry-dark leading-tight mt-1.5">{t.title}</h2>
+            <p className="text-[12px] font-semibold text-cherry-dark opacity-55 mt-0.5">
+              {t.slides.length} {t.slides.length === 1 ? 'historia' : 'historias'} · del pack {item.packTitle}
+            </p>
           </div>
+          <button type="button" onClick={onClose} aria-label="Cerrar" className="flex-shrink-0" style={{ background: 'transparent', border: 'none' }}>
+            <X size={18} className="text-cherry-dark opacity-60" />
+          </button>
         </div>
-      </div>
 
-      {/* Slides ocultos para exportall — mismo tamaño de frame (320) que el visible */}
-      <div style={{ position: 'fixed', left: -99999, top: 0 }} aria-hidden="true">
-        {template.slides.map(s => (
-          <SlideCanvas
-            key={`export-${s.order}`}
-            slide={s}
-            scale={scale}
-            contents={edits[String(s.order)] ?? {}}
-            frameRef={node => { exportRefs.current[String(s.order)] = node }}
-          />
-        ))}
-      </div>
+        <p className="text-[13px] text-cherry-dark opacity-75 leading-relaxed">{t.recommendedUse || t.description}</p>
 
+        {/* Secuencia entera en scroll horizontal */}
+        <div className="flex gap-2.5 overflow-x-auto py-1" style={{ scrollbarWidth: 'none' }}>
+          {t.slides.map(s => (
+            <div key={s.id} className="flex-shrink-0 rounded-[14px] overflow-hidden" style={{ boxShadow: '0 8px 20px rgba(42,11,18,0.14)', width: 118 }}>
+              <SlideCanvas slide={s} scale={118 / CANVAS_W} />
+            </div>
+          ))}
+        </div>
+
+        {!t.isLocked && (
+          <div className="flex items-center gap-2 pt-1">
+            <Button variant="primary" fullWidth onClick={onUse}>Usar plantilla</Button>
+            <Button
+              variant="secondary"
+              onClick={onFav}
+              icon={<Star size={14} style={fav ? { color: 'var(--color-cherry)', fill: 'var(--color-cherry)' } : undefined} />}
+              aria-label={fav ? 'Quitar de favoritos' : 'Añadir a favoritos'}
+            >
+              {fav ? 'Favorito' : 'Guardar'}
+            </Button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

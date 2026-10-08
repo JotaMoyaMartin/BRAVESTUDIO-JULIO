@@ -2,11 +2,16 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { LayoutTemplate, Plus, Trash2, Code, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react'
+import {
+  LayoutTemplate, Plus, Trash2, Code, ChevronDown, ChevronUp, AlertTriangle,
+  Archive, ArchiveRestore, Copy, Palette,
+} from 'lucide-react'
 import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
 import SectionTitle from '@/components/ui/SectionTitle'
+import StoriesBuilder, { firstSlideOf } from '@/components/admin/StoriesBuilder'
+import SlideCanvas, { CANVAS_H, CANVAS_W } from '@/app/(app)/stories-diseno/SlideCanvas'
 
 /* STORIES DISEÑO — tab de admin (Fase 2).
  * Packs de plantillas que se crean/publican aquí y se usan en /stories-diseno.
@@ -17,7 +22,7 @@ import SectionTitle from '@/components/ui/SectionTitle'
 // Tipos locales con el contrato exacto de /api/stories-diseno/admin (snake_case de la DB)
 type StoriesGoal = 'vender' | 'captar' | 'educar' | 'fidelizar' | 'autoridad'
 type PackFlowType = 'single-goal' | 'sequence-launch' | 'nurture' | 'capture'
-type TemplateStatus = 'draft' | 'published'
+type TemplateStatus = 'draft' | 'published' | 'archived'
 
 type StoriesTemplate = {
   id: string
@@ -84,6 +89,32 @@ async function api(path: string, init?: RequestInit) {
   return data
 }
 
+/* Miniatura real del slide 1 (render del mismo SlideCanvas que la galería) */
+const THUMB_H = 72
+const THUMB_SCALE = THUMB_H / CANVAS_H
+
+function TemplateThumb({ slides, templateId }: { slides: unknown[]; templateId: string }) {
+  const slide = firstSlideOf(slides, templateId)
+  if (!slide) {
+    return (
+      <div
+        className="flex-shrink-0 rounded-[3px] border border-soft bg-warm-gray flex items-center justify-center"
+        style={{ width: Math.round(CANVAS_W * THUMB_SCALE), height: THUMB_H }}
+      >
+        <LayoutTemplate size={14} className="opacity-40" />
+      </div>
+    )
+  }
+  return (
+    <div
+      className="flex-shrink-0 overflow-hidden rounded-[3px] border border-soft"
+      style={{ width: CANVAS_W * THUMB_SCALE, height: THUMB_H }}
+    >
+      <SlideCanvas slide={slide} scale={THUMB_SCALE} />
+    </div>
+  )
+}
+
 export default function StoriesTab() {
   const [packs, setPacks] = useState<StoriesPack[]>([])
   const [loading, setLoading] = useState(true)
@@ -97,6 +128,7 @@ export default function StoriesTab() {
   const [editingSlides, setEditingSlides] = useState<{ templateId: string; text: string } | null>(null)
   const [slidesError, setSlidesError] = useState('')
   const [confirming, setConfirming] = useState<string | null>(null) // "pack:{id}" | "template:{id}" — segunda pulsación confirma
+  const [builder, setBuilder] = useState<{ templateId: string; title: string; slides: unknown[] } | null>(null)
 
   useEffect(() => {
     load()
@@ -210,7 +242,7 @@ export default function StoriesTab() {
   }
 
   async function toggleTemplate(t: StoriesTemplate) {
-    // Las plantillas sueltas van por status: draft <-> published
+    // Las plantillas sueltas van por status: draft <-> published; archived vuelve a published
     const next: TemplateStatus = t.status === 'published' ? 'draft' : 'published'
     try {
       await api(`/api/stories-diseno/admin/templates/${t.id}`, {
@@ -222,6 +254,43 @@ export default function StoriesTab() {
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error')
     }
+  }
+
+  /** Archiva (draft/published → archived) o restaura (archived → draft). */
+  async function toggleArchive(t: StoriesTemplate) {
+    const next: TemplateStatus = t.status === 'archived' ? 'draft' : 'archived'
+    try {
+      await api(`/api/stories-diseno/admin/templates/${t.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: next }),
+      })
+      patchLocalTemplate(t.id, { status: next })
+      if (editingSlides?.templateId === t.id) setEditingSlides(null)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error')
+    }
+  }
+
+  /** POST duplicar plantilla (copia en draft) → refresca la lista. */
+  async function duplicateTemplate(t: StoriesTemplate) {
+    setSaving(true)
+    setError('')
+    try {
+      await api(`/api/stories-diseno/admin/templates/${t.id}`, { method: 'POST' })
+      setConfirming(null)
+      await load()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error duplicando plantilla')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function openBuilder(t: StoriesTemplate) {
+    setConfirming(null)
+    setEditingSlides(null)
+    setBuilder({ templateId: t.id, title: t.title, slides: Array.isArray(t.slides) ? t.slides : [] })
   }
 
   function openSlides(t: StoriesTemplate) {
@@ -441,16 +510,41 @@ export default function StoriesTab() {
                             const isConfirmingT = confirming === `template:${t.id}`
                             return (
                               <div key={t.id} className="py-2.5 first:pt-1 last:pb-0">
-                                <div className="flex items-start justify-between gap-2">
-                                  <div className="min-w-0">
+                                <div className="flex items-start gap-2.5">
+                                  <TemplateThumb slides={t.slides ?? []} templateId={t.id} />
+                                  <div className="min-w-0 flex-1">
                                     <p className="text-sm font-semibold text-cherry-dark truncate">{t.title}</p>
                                     <p className="text-xs text-cherry-dark opacity-50 mt-0.5 truncate">{t.category}</p>
                                   </div>
                                   <div className="flex items-center justify-end gap-1.5 flex-shrink-0 flex-wrap">
-                                    <button onClick={() => toggleTemplate(t)} title="Cambiar estado">
-                                      <Badge tone={t.status === 'published' ? 'green' : 'neutral'}>
-                                        {t.status === 'published' ? 'Publicada' : 'Borrador'}
+                                    <Button
+                                      size="sm"
+                                      variant="secondary"
+                                      icon={<Palette size={13} />}
+                                      onClick={() => openBuilder(t)}
+                                      title="Diseñar en el builder visual"
+                                    >
+                                      Diseñar
+                                    </Button>
+                                    <button onClick={() => toggleTemplate(t)} title="Cambiar estado (archivada → publicada)">
+                                      <Badge tone={t.status === 'published' ? 'green' : t.status === 'archived' ? 'buttermilk' : 'neutral'}>
+                                        {t.status === 'published' ? 'Publicada' : t.status === 'archived' ? 'Archivado' : 'Borrador'}
                                       </Badge>
+                                    </button>
+                                    <button
+                                      onClick={() => duplicateTemplate(t)}
+                                      disabled={saving}
+                                      className="p-1.5 rounded-[var(--radius-sm)] bg-warm-gray text-cherry-dark hover:opacity-80 disabled:opacity-40"
+                                      title="Duplicar plantilla"
+                                    >
+                                      <Copy size={13} />
+                                    </button>
+                                    <button
+                                      onClick={() => toggleArchive(t)}
+                                      className="p-1.5 rounded-[var(--radius-sm)] bg-warm-gray text-cherry-dark hover:opacity-80"
+                                      title={t.status === 'archived' ? 'Desarchivar (a borrador)' : 'Archivar'}
+                                    >
+                                      {t.status === 'archived' ? <ArchiveRestore size={13} /> : <Archive size={13} />}
                                     </button>
                                     <button
                                       onClick={() => openSlides(t)}
@@ -515,6 +609,18 @@ export default function StoriesTab() {
             )
           })}
         </div>
+      )}
+
+      {/* Builder visual de la plantilla (full-screen) */}
+      {builder && (
+        <StoriesBuilder
+          key={builder.templateId}
+          templateId={builder.templateId}
+          title={builder.title}
+          initialSlides={builder.slides}
+          onClose={() => setBuilder(null)}
+          onSaved={savedSlides => patchLocalTemplate(builder.templateId, { slides: savedSlides })}
+        />
       )}
     </div>
   )

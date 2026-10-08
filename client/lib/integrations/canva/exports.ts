@@ -1,5 +1,6 @@
 import { canvaRequest } from './client'
 import { pollCanvaJob } from './poll'
+import { CanvaError } from './types'
 
 /**
  * Export — POST /exports (scope design:content:read, 20 req/min para crear,
@@ -49,4 +50,13 @@ export async function awaitExportUrls(args: {
   const urls = body.urls ?? []
   if (urls.length === 0) throw new Error('Export success sin urls')
   return urls
+}
+
+/** Descarga una url temporal de export → buffer PNG (para subir a Storage YA). */
+export async function fetchExportPng(url: string): Promise<Buffer> {
+  const res = await fetch(url)
+  if (!res.ok) {
+    throw new CanvaError(502, 'export_download_failed', `No se pudo descargar el export Canva (${res.status}).`)
+  }
+  return Buffer.from(await res.arrayBuffer())
 }

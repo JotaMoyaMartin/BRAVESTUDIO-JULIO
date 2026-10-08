@@ -72,6 +72,7 @@ export default function CanvaTestPage() {
   const [result, setResult] = useState<{ generatedDesignId: string; pages: { page: number; url: string; path: string }[]; usesRemaining: number | null; durationMs: number } | null>(null)
   const [tplName, setTplName] = useState('')
   const [tplSaved, setTplSaved] = useState<string | null>(null)
+  const [tplPreview, setTplPreview] = useState<{ url: string | null; note: string | null } | null>(null)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -102,6 +103,7 @@ export default function CanvaTestPage() {
     setPhotos({})
     setResult(null)
     setTplSaved(null)
+    setTplPreview(null)
     try {
       const res = await fetch(`/api/canva/design?ref=${encodeURIComponent(ref)}`)
       const json = await res.json()
@@ -160,6 +162,7 @@ export default function CanvaTestPage() {
     })
     const json = await res.json()
     setTplSaved(res.ok ? (json.updated ? 'Plantilla actualizada ✓' : 'Plantilla guardada ✓') : `Error: ${json.error}`)
+    setTplPreview(res.ok ? { url: json.previewUrl ?? null, note: json.previewNote ?? null } : null)
   }
 
   async function generate() {
@@ -313,6 +316,21 @@ export default function CanvaTestPage() {
                   <Button size="sm" variant="secondary" onClick={saveTemplate}>Guardar plantilla</Button>
                   {tplSaved && <Badge tone={tplSaved.startsWith('Error') ? 'danger' : 'green'}>{tplSaved}</Badge>}
                 </div>
+                {tplPreview && (tplPreview.url || tplPreview.note) && (
+                  <div className="flex items-center gap-3">
+                    {tplPreview.url ? (
+                      <>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={tplPreview.url} alt="Preview original de la plantilla" className="h-28 rounded-[var(--radius-sm)] border" style={{ borderColor: 'rgba(59,16,26,0.15)' }} />
+                        <p className="text-xs" style={{ color: 'var(--color-cherry-dark)', opacity: 0.7 }}>
+                          Preview original (página 1) guardado en Storage BRÄVE.
+                        </p>
+                      </>
+                    ) : (
+                      <p className="text-xs" style={{ color: 'var(--color-cherry-dark)', opacity: 0.7 }}>{tplPreview.note}</p>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>

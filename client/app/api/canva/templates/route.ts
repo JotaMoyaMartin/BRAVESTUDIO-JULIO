@@ -5,7 +5,12 @@ import {
   CanvaBindingMap,
   CanvaDataset,
   CanvaError,
+  DESIGN_EXPORTS_BUCKET,
+  awaitExportUrls,
+  createPngExport,
+  ensureDesignExportsBucket,
   ensureFreshToken,
+  fetchExportPng,
   getDesign,
   getDesignDataset,
   parseDesignRef,
@@ -59,6 +64,7 @@ interface TemplateRow {
   status: 'draft' | 'published' | 'archived'
   dataset: CanvaDataset
   bindings: CanvaBindingMap
+  preview_storage_path: string | null
   created_at: string
   updated_at: string
 }
@@ -71,8 +77,25 @@ export async function GET() {
     .from('design_templates')
     .select('*')
     .order('created_at', { ascending: false })
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ templates: (data ?? []) as unknown as TemplateRow[] })
+  if (error) return NextResponse.json({ error: dbUserError(error) }, { status: 500 })
+  const rows = (data ?? []) as unknown as TemplateRow[]
+  // Preview original (PNG en Storage privado) → signed URL de 24h para la UI.
+  await Promise.all(rows.map(async row => {
+    if (!row.preview_storage_path) return
+    const { data: signed } = await admin.storage
+      .from(DESIGN_EXPORTS_BUCKET)
+      .createSignedUrl(row.preview_storage_path, 86_400)
+    ;(row as unknown as { preview_url?: string | null }).preview_url = signed?.signedUrl ?? null
+  }))
+  return NextResponse.json({ templates: rows })
+}
+
+/** PGRST205/202 = falta el SQL de las tablas Canva. */
+function dbUserError(err: { message: string }): string {
+  if (err.message?.includes('PGRST205') || err.message?.includes('PGRST202')) {
+    return 'Falta el SQL de las tablas Canva — pega SQL-CANVA-SPIKE.sql en el SQL Editor de Supabase.'
+  }
+  return err.message
 }
 
 export async function POST(request: NextRequest) {
@@ -113,27 +136,76 @@ export async function POST(request: NextRequest) {
       .eq('provider_design_id', designId)
       .maybeSingle()
 
+    let templateId: string
+    let updated: boolean
     if (existing) {
-      const { data: updated, error } = await admin
+      const { data: up, error } = await admin
         .from('design_templates')
         .update({ ...row, updated_at: new Date().toISOString() })
         .eq('id', (existing as { id: string }).id)
         .select('id')
         .single()
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-      return NextResponse.json({ ok: true, id: (updated as { id: string }).id, updated: true })
+      if (error) return NextResponse.json({ error: dbUserError(error) }, { status: 500 })
+      templateId = (up as { id: string }).id
+      updated = true
+    } else {
+      const { data: inserted, error } = await admin
+        .from('design_templates')
+        .insert(row)
+        .select('id')
+        .single()
+      if (error) return NextResponse.json({ error: dbUserError(error) }, { status: 500 })
+      templateId = (inserted as { id: string }).id
+      updated = false
     }
-    const { data: inserted, error } = await admin
-      .from('design_templates')
-      .insert(row)
-      .select('id')
-      .single()
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    return NextResponse.json({ ok: true, id: (inserted as { id: string }).id, updated: false })
+
+    // Preview original persistente (page 1 → PNG → Storage BRÄVE). Best-effort:
+    // el import NO debe fallar si Canva no puede exportar en este momento.
+    let previewPath: string | null = null
+    let previewUrl: string | null = null
+    let previewNote: string | null = null
+    try {
+      previewPath = await createTemplatePreview({ accessToken, designId })
+      const { error: pErr } = await admin
+        .from('design_templates')
+        .update({ preview_storage_path: previewPath })
+        .eq('id', templateId)
+      if (pErr) {
+        previewNote = `Preview exportado pero no se guardó la referencia: ${pErr.message}`
+      } else {
+        const { data: signed } = await admin.storage
+          .from(DESIGN_EXPORTS_BUCKET)
+          .createSignedUrl(previewPath, 86_400)
+        previewUrl = signed?.signedUrl ?? null
+      }
+    } catch (perr) {
+      previewNote = perr instanceof CanvaError
+        ? `Preview no disponible (${perr.code}) — la plantilla queda guardada.`
+        : `Preview no disponible — la plantilla queda guardada.`
+    }
+
+    return NextResponse.json({ ok: true, id: templateId, updated, previewPath, previewUrl, previewNote })
   } catch (err) {
     if (err instanceof CanvaError) return NextResponse.json({ error: err.message, code: err.code }, { status: 502 })
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+    return NextResponse.json({ error: dbUserError(err as Error) }, { status: 500 })
   }
+}
+
+/** Export PNG (page 1) del diseño ORIGINAL → Storage BRÄVE → path. */
+async function createTemplatePreview(args: { accessToken: string; designId: string }): Promise<string> {
+  const { accessToken, designId } = args
+  await ensureDesignExportsBucket(createAdminClient())
+  const exportJob = await createPngExport({ accessToken, designId, pages: [1] })
+  const urls = await awaitExportUrls({ accessToken, jobId: exportJob.jobId })
+  const buffer = await fetchExportPng(urls[0])
+  const path = `templates/${designId}/preview-${Date.now().toString(36)}.png`
+  const admin = createAdminClient()
+  const { error } = await admin.storage.from(DESIGN_EXPORTS_BUCKET).upload(path, buffer, {
+    contentType: 'image/png',
+    cacheControl: '31536000',
+  })
+  if (error) throw new Error(`Storage: ${error.message}`)
+  return path
 }
 
 export async function PATCH(request: NextRequest) {

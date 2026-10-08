@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import {
   CanvaError,
+  DESIGN_EXPORTS_BUCKET,
+  ensureDesignExportsBucket,
   ensureFreshToken,
   parseDesignRef,
   runDesignGeneration,
@@ -19,8 +21,6 @@ import {
  * nueva). Los PNG devueltos son de BRÄVE Storage, no de las urls 24h de Canva.
  */
 
-const EXPORT_BUCKET = 'design-exports'
-
 async function requireAdmin() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -30,14 +30,6 @@ async function requireAdmin() {
     return { ok: false as const, status: 403, msg: 'Sin permisos' }
   }
   return { ok: true as const, userId: user.id }
-}
-
-async function ensureExportBucket(admin: ReturnType<typeof createAdminClient>): Promise<void> {
-  const { data: buckets } = await admin.storage.listBuckets()
-  if (!(buckets ?? []).some(b => b.name === EXPORT_BUCKET)) {
-    await admin.storage.createBucket(EXPORT_BUCKET, { public: false })
-    // Bucket ya creado en SQL-CANVA-SPIKE.sql; esto cubre instalaciones parciales.
-  }
 }
 
 export async function POST(request: NextRequest) {
@@ -67,11 +59,11 @@ export async function POST(request: NextRequest) {
 
     // Guardar los PNG en Storage BRÄVE (las urls de Canva expiran en 24h).
     const admin = createAdminClient()
-    await ensureExportBucket(admin)
+    await ensureDesignExportsBucket(admin)
     const pages = []
     for (const page of generation.pages) {
       const path = `spike/${designId}/generado-${String(page.page).padStart(2, '0')}-${Date.now().toString(36)}.png`
-      const { error } = await admin.storage.from(EXPORT_BUCKET).upload(path, page.buffer, {
+      const { error } = await admin.storage.from(DESIGN_EXPORTS_BUCKET).upload(path, page.buffer, {
         contentType: 'image/png',
         cacheControl: '31536000',
       })
@@ -81,7 +73,7 @@ export async function POST(request: NextRequest) {
           generatedDesignId: generation.designId,
         }, { status: 500 })
       }
-      const { data: signed } = await admin.storage.from(EXPORT_BUCKET).createSignedUrl(path, 86_400)
+      const { data: signed } = await admin.storage.from(DESIGN_EXPORTS_BUCKET).createSignedUrl(path, 86_400)
       pages.push({ page: page.page, path, url: signed?.signedUrl ?? null })
     }
 

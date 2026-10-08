@@ -40,7 +40,7 @@ export async function GET() {
   })
 }
 
-/** POST — actions: 'seed' (crea packs iniciales idempotentes) | 'create-pack'. */
+/** POST — actions: 'seed' (crea packs iniciales idempotentes) | 'create-pack' | 'create-template'. */
 export async function POST(request: NextRequest) {
   const auth = await requireAdmin()
   if (!auth.ok) return NextResponse.json({ error: auth.msg }, { status: auth.status })
@@ -112,6 +112,63 @@ export async function POST(request: NextRequest) {
       .from('story_design_packs')
       .insert({ slug: `${slug}-${Date.now().toString(36).slice(-4)}`, title, goal, description, flow_type: flowType || 'single-goal', story_count: 0 })
       .select('id').single()
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ ok: true, id: (data as { id: string }).id })
+  }
+
+  if (body.action === 'create-template') {
+    // Plantilla NUEVA EN BLANCO (1 slide vacío) dentro de un pack existente.
+    const { packId, title, category, description } = body as {
+      packId?: unknown
+      title?: unknown
+      category?: unknown
+      description?: unknown
+    }
+    if (typeof packId !== 'string' || packId === '' || typeof title !== 'string' || title.trim() === '') {
+      return NextResponse.json({ error: 'Faltan campos' }, { status: 400 })
+    }
+    const tplTitle = title.trim()
+    const tplCategory = typeof category === 'string' && category.trim() !== '' ? category.trim() : 'Plantilla'
+    // Slug: mismo pipeline que create-pack + sufijo temporal (5 chars).
+    const baseSlug = tplTitle
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '')
+    const slug = `${baseSlug || 'plantilla'}-${Date.now().toString(36).slice(-5)}`
+    // sort = máximo sort de plantillas del pack + 1 (o 1 si el pack aún no tiene).
+    const { data: sorts, error: eSort } = await admin
+      .from('story_design_templates')
+      .select('sort')
+      .eq('pack_id', packId)
+    if (eSort) return NextResponse.json({ error: eSort.message }, { status: 500 })
+    const maxSort = ((sorts as { sort: number | null }[]) || []).reduce((max, row) => Math.max(max, row.sort ?? 0), 0)
+    const { data, error } = await admin
+      .from('story_design_templates')
+      .insert({
+        pack_id: packId,
+        slug,
+        title: tplTitle,
+        category: tplCategory,
+        description: typeof description === 'string' && description.trim() !== '' ? description.trim() : 'Para la secuencia del pack',
+        recommended_use: 'Edítalo en el builder',
+        cover_image: null,
+        is_locked: false,
+        status: 'draft',
+        sort: maxSort + 1,
+        tags: ['nuevo'],
+        default_style: {},
+        slides: [{
+          order: 1,
+          background: '#FFFDF5',
+          layoutType: 'text-only',
+          name: 'Portada',
+          elements: [],
+        }],
+      })
+      .select('id')
+      .single()
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ ok: true, id: (data as { id: string }).id })
   }

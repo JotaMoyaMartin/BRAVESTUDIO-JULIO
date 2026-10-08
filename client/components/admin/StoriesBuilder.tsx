@@ -41,7 +41,9 @@ import {
   Type,
   Tag,
   ImagePlus,
+  PictureInPicture2,
   Square,
+  SquareStack,
   Minus,
   Sparkles,
   Sticker as StickerIcon,
@@ -51,6 +53,7 @@ import Badge from '@/components/ui/Badge'
 import { ToastProvider, useToast } from '@/components/ui/Toast'
 import SlideCanvas, { CANVAS_W, CANVAS_H } from '@/app/(app)/stories-diseno/SlideCanvas'
 import { STORY_ICONS } from '@/lib/stories-diseno/icons'
+import { STORY_FONTS } from '@/lib/stories-diseno/fonts'
 import {
   screenToCanvas,
   boxFor,
@@ -141,15 +144,25 @@ const TYPE_LABEL: Record<StoryElementType, string> = {
 }
 
 type ElementKind = Exclude<StoryElementType, 'background'>
-const ADD_PRESETS: { kind: ElementKind; label: string; icon: ReactNode }[] = [
+/** Kinds que puede añadir el panel: kinds reales + compuestos (presets de foto/fondo). */
+type AddKind = ElementKind | 'photo-full' | 'photo-hero' | 'bg-solid'
+/** Grupo "Foto": huecos de imagen listos (a sangre 1080×1920, hero banner, cuadro). */
+const PHOTO_PRESETS: { kind: AddKind; label: string; icon: ReactNode }[] = [
+  { kind: 'photo-full', label: 'Foto a sangre', icon: <ImagePlus size={13} /> },
+  { kind: 'photo-hero', label: 'Hero', icon: <PictureInPicture2 size={13} /> },
+  { kind: 'image', label: 'Cuadro', icon: <Square size={13} /> },
+]
+const ADD_PRESETS: { kind: AddKind; label: string; icon: ReactNode }[] = [
   { kind: 'text', label: 'Texto', icon: <Type size={13} /> },
   { kind: 'badge', label: 'Badge', icon: <Tag size={13} /> },
-  { kind: 'image', label: 'Foto', icon: <ImagePlus size={13} /> },
+  { kind: 'bg-solid', label: 'Fondo', icon: <SquareStack size={13} /> },
   { kind: 'shape', label: 'Forma', icon: <Square size={13} /> },
   { kind: 'line', label: 'Línea', icon: <Minus size={13} /> },
   { kind: 'icon', label: 'Icono', icon: <Sparkles size={13} /> },
   { kind: 'sticker', label: 'Sticker', icon: <StickerIcon size={13} /> },
 ]
+/** Stickers rápidos a 1 clic para el contenido de un elemento sticker. */
+const STICKER_CHIPS = ['✨', '✦', '⭐', '💅', '✂️', '🪮', '💗', '🔥', '💧', '🧴'] as const
 
 const PAGE_THUMB_SCALE = 46 / CANVAS_W
 const MIN_SIZE = 24
@@ -222,6 +235,12 @@ function numFromStyle(v: unknown): number | undefined {
     return Number.isFinite(n) ? n : undefined
   }
   return undefined
+}
+
+/** fontFamily del estilo SOLO si coincide con una tipografía del catálogo ('' = por defecto de la app). */
+function fontCssOf(el: StoryDesignElement): string {
+  const ff = el.style.fontFamily
+  return typeof ff === 'string' && STORY_FONTS.some(f => f.css === ff) ? ff : ''
 }
 
 /* ── Parseo robusto de los slides de la DB ───────────────────────────────── */
@@ -357,9 +376,9 @@ function serializeSlides(list: StoryDesignSlide[]): Record<string, unknown>[] {
   })
 }
 
-/* ── Presets de "Añadir" ─────────────────────────────────────────────────── */
+/* ── Presets de "Añadir" (kinds reales y compuestos) ─────────────────────── */
 
-function preset(kind: ElementKind, id: string): StoryDesignElement {
+function preset(kind: AddKind, id: string): StoryDesignElement {
   switch (kind) {
     case 'text':
       return {
@@ -410,6 +429,28 @@ function preset(kind: ElementKind, id: string): StoryDesignElement {
         id, type: 'icon', role: 'fixed',
         position: { x: 460, y: 770 }, size: { w: 160, h: 160 },
         style: { fontSize: 96, color: '#7A1832' }, content: 'destello',
+      }
+    case 'photo-full':
+      return {
+        id, type: 'image', role: 'replaceable',
+        position: { x: 0, y: 0 }, size: { w: 1080, h: 1920 },
+        style: { background: 'rgba(42,11,18,0.08)' },
+        placeholder: 'Toca para subir foto',
+        allowedAssetTypes: ['user_photo'],
+      }
+    case 'photo-hero':
+      return {
+        id, type: 'image', role: 'replaceable',
+        position: { x: 0, y: 420 }, size: { w: 1080, h: 620 },
+        style: { borderRadius: 36, background: 'rgba(42,11,18,0.08)' },
+        placeholder: 'Hueco de foto (hero)',
+        allowedAssetTypes: ['user_photo'],
+      }
+    case 'bg-solid':
+      return {
+        id, type: 'shape', role: 'decorative',
+        position: { x: 0, y: 0 }, size: { w: 1080, h: 1920 },
+        style: { background: '#FFF3CF' },
       }
   }
 }
@@ -607,6 +648,7 @@ function BuilderWorkspace({ templateId, title, initialSlides, onClose, onSaved }
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false) // subida de foto de muestra (elemento image)
   const [error, setError] = useState('')
   const [scale, setScale] = useState(0.2)
 
@@ -654,6 +696,37 @@ function BuilderWorkspace({ templateId, title, initialSlides, onClose, onSaved }
   function patchSelected(fn: (el: StoryDesignElement) => StoryDesignElement) {
     if (!activeSlide || !selectedId) return
     mutateElement(activeSlide.id, selectedId, fn)
+  }
+
+  /** Sube una foto a /admin/upload (Storage) y devuelve su URL pública. */
+  async function uploadFileToUrl(file: File): Promise<string> {
+    const fd = new FormData()
+    fd.append('file', file)
+    const res = await fetch('/api/stories-diseno/admin/upload', { method: 'POST', body: fd })
+    const data: unknown = await res.json().catch(() => null)
+    if (!res.ok) {
+      const dataErr = typeof data === 'object' && data !== null && 'error' in data
+        ? String((data as { error?: unknown }).error)
+        : ''
+      throw new Error(dataErr !== '' ? dataErr : `HTTP ${res.status}`)
+    }
+    const url = typeof data === 'object' && data !== null && 'url' in data ? String((data as { url?: unknown }).url) : ''
+    if (!url) throw new Error('Respuesta sin URL')
+    return url
+  }
+
+  /** Sube una foto de muestra y la deja como content del elemento seleccionado. */
+  async function uploadMuestra(file: File) {
+    setUploading(true)
+    try {
+      const url = await uploadFileToUrl(file)
+      patchSelected(el => ({ ...el, content: url }))
+      toast.show('Foto subida', 'success')
+    } catch (e) {
+      toast.show(e instanceof Error ? e.message : 'No se pudo subir', 'info')
+    } finally {
+      setUploading(false)
+    }
   }
 
   /* Drag move/resize/rotate — listeners de window, deltas vía screenToCanvas */
@@ -809,14 +882,75 @@ function BuilderWorkspace({ templateId, title, initialSlides, onClose, onSaved }
     })
   }
 
-  function addElement(kind: ElementKind) {
+  function addElement(kind: AddKind, opts?: { position?: { x: number; y: number }; overrides?: Partial<StoryDesignElement> }) {
     if (!activeSlide) return
-    // Garantiza zIndex en TODA la página (mismo orden visual) y pone el nuevo encima.
+    // Garantiza zIndex en TODA la página (mismo orden visual). El fondo sólido va
+    // AL FONDO (por debajo de todas las capas); el resto se coloca encima de todas.
     const els = ensureZIndexes(activeSlide.elements)
-    const maxZ = els.length > 0 ? Math.max(...els.map(e => e.zIndex ?? 0)) : -1
-    const el: StoryDesignElement = { ...preset(kind, uid('el')), zIndex: maxZ + 1 }
+    const zs = els.map(e => e.zIndex ?? 0)
+    const el: StoryDesignElement = {
+      ...preset(kind, uid('el')),
+      ...(opts?.overrides ?? {}),
+      ...(opts?.position ? { position: opts.position } : {}),
+      zIndex: els.length === 0
+        ? 0
+        : kind === 'bg-solid'
+          ? Math.min(...zs) - 1
+          : Math.max(...zs) + 1,
+    }
     patchSlide(activeSlide.id, { elements: [...els, el] })
     setSelectedId(el.id)
+  }
+
+  /* ── Soltar foto/texto EN el lienzo (petición Jota 8-oct): arrastrar desde
+     el escritorio/Finder → se SUBE la foto a Storage automáticamente y queda
+     como elemento de la plantilla (Guardar la persiste en la DB). ── */
+  const [dropOver, setDropOver] = useState(false)
+
+  function dropAt(ev: React.DragEvent): { x: number; y: number } {
+    const rect = canvasWrapRef.current?.getBoundingClientRect()
+    if (!rect) return { x: 200, y: 400 }
+    const { dx, dy } = screenToCanvas(ev.clientX - rect.left, ev.clientY - rect.top, scaleRef.current)
+    return { x: Math.round(dx), y: Math.round(dy) }
+  }
+
+  function clampDropAt(at: { x: number; y: number }, w: number, h: number) {
+    return {
+      x: Math.max(8, Math.min(CANVAS_W - w - 8, at.x - Math.round(w / 2))),
+      y: Math.max(8, Math.min(CANVAS_H - h - 8, at.y - Math.round(h / 2))),
+    }
+  }
+
+  async function stageDrop(ev: React.DragEvent) {
+    ev.preventDefault()
+    setDropOver(false)
+    if (!activeSlide) return
+    const dt = ev.dataTransfer
+    const at = dropAt(ev)
+    const file = dt.files && dt.files.length > 0 ? dt.files[0] : null
+    if (file && file.type.startsWith('image/')) {
+      // Foto soltada → subir YA (auto-storage) y crear el hueco con esa URL
+      setUploading(true)
+      try {
+        const url = await uploadFileToUrl(file)
+        addElement('image', { position: clampDropAt(at, 640, 640), overrides: { content: url, name: 'Foto (soltada)' } })
+        toast.show('Foto subida y colocada — pulsa Guardar para dejarla en la plantilla.', 'success')
+      } catch (e) {
+        toast.show(e instanceof Error ? e.message : 'No se pudo subir la foto', 'info')
+      } finally {
+        setUploading(false)
+      }
+      return
+    }
+    const text = dt.getData('text/plain').trim()
+    if (text) {
+      addElement('text', { position: clampDropAt(at, 900, 220), overrides: { content: text.slice(0, 400), name: 'Texto (soltado)' } })
+      toast.show('Texto añadido — pulsa Guardar para dejarlo en la plantilla.', 'success')
+      return
+    }
+    if (file || dt.types.length > 0) {
+      toast.show('Solo fotos y texto: suelta una imagen o un texto.', 'info')
+    }
   }
 
   function removeElement(elId: string) {
@@ -866,6 +1000,7 @@ function BuilderWorkspace({ templateId, title, initialSlides, onClose, onSaved }
   const layerItems = activeSlide ? layerList(activeSlide) : []
   const box = selectedEl ? boxFor(selectedEl, scale) : null
   const isTextContent = selectedEl?.type === 'text' || selectedEl?.type === 'badge'
+  const activeFont = selectedEl ? fontCssOf(selectedEl) : ''
 
   return (
     <div className="fixed inset-0 z-[80] flex flex-col overflow-hidden" style={{ background: 'var(--color-cream)' }}>
@@ -1022,9 +1157,24 @@ function BuilderWorkspace({ templateId, title, initialSlides, onClose, onSaved }
             )}
           </div>
 
-          {/* Añadir elementos */}
+          {/* Añadir elementos (dos grupos: Foto y el resto) */}
           <div className="px-3 py-2.5 border-t border-soft flex-shrink-0">
             <p className={PANEL_TITLE + ' mb-1.5'}>Añadir</p>
+            <p className="text-[9px] font-semibold uppercase tracking-widest text-cherry-dark opacity-40 mb-1">Foto</p>
+            <div className="grid grid-cols-3 gap-1.5 mb-2">
+              {PHOTO_PRESETS.map(p => (
+                <button
+                  key={p.kind}
+                  onClick={() => addElement(p.kind)}
+                  disabled={!activeSlide}
+                  className="flex flex-col items-center gap-0.5 py-1.5 rounded-[var(--radius-sm)] border border-soft bg-warm-gray text-cherry-dark hover:bg-buttermilk transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  title={'Añadir ' + p.label.toLowerCase()}
+                >
+                  {p.icon}
+                  <span className="text-[10px] font-semibold leading-tight">{p.label}</span>
+                </button>
+              ))}
+            </div>
             <div className="grid grid-cols-3 gap-1.5">
               {ADD_PRESETS.map(p => (
                 <button
@@ -1043,15 +1193,35 @@ function BuilderWorkspace({ templateId, title, initialSlides, onClose, onSaved }
         </aside>
 
         {/* ── Centro: lienzo ── */}
-        <main className="relative flex-1 min-w-0 bg-warm-gray">
+        <main
+          className="relative flex-1 min-w-0 bg-warm-gray"
+          // Evita que el navegador abra una foto soltada fuera del lienzo
+          onDragOver={ev => ev.preventDefault()}
+          onDrop={ev => ev.preventDefault()}
+        >
           <div ref={stageRef} className="absolute inset-0 flex items-center justify-center overflow-hidden">
             {activeSlide ? (
               <div
                 ref={canvasWrapRef}
                 className="relative shadow-strong"
-                style={{ width: CANVAS_W * scale, height: CANVAS_H * scale }}
+                onDragOver={ev => { ev.preventDefault(); ev.dataTransfer.dropEffect = 'copy'; setDropOver(true) }}
+                onDragLeave={ev => { if (!ev.currentTarget.contains(ev.relatedTarget as Node)) setDropOver(false) }}
+                onDrop={stageDrop}
+                style={{ width: CANVAS_W * scale, height: CANVAS_H * scale, outline: dropOver ? '3px dashed var(--color-cherry)' : 'none', outlineOffset: 4 }}
               >
                 <SlideCanvas key={activeSlide.id} slide={activeSlide} scale={scale} />
+                {/* Aviso de drop activo (arrastrar foto/texto desde fuera) */}
+                {dropOver && (
+                  <div
+                    className="absolute inset-x-0 top-3 z-20 flex justify-center"
+                    style={{ pointerEvents: 'none' }}
+                    aria-hidden="true"
+                  >
+                    <span className="px-3 py-1.5 rounded-full text-[11px] font-bold text-white" style={{ background: 'var(--color-cherry)' }}>
+                      Suelta: la foto se sube y queda aquí
+                    </span>
+                  </div>
+                )}
                 {/* Plano de transformación (solo el elemento seleccionado) */}
                 <div className="absolute inset-0" style={{ pointerEvents: 'none' }}>
                   {selectedEl && box && (
@@ -1197,6 +1367,33 @@ function BuilderWorkspace({ templateId, title, initialSlides, onClose, onSaved }
                         placeholder="Texto…"
                       />
                     </Field>
+                    <Field label="Tipografía">
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <button
+                          onClick={() => patchSelected(el => {
+                            const style = { ...el.style }
+                            delete style.fontFamily
+                            return { ...el, style }
+                          })}
+                          className="w-full px-2 py-1.5 text-xs text-cherry-dark rounded-[var(--radius-sm)] border border-soft bg-warm-gray hover:bg-buttermilk transition-colors truncate"
+                          style={{ outline: activeFont === '' ? '2px solid var(--color-cherry)' : 'none' }}
+                          title="Fuente por defecto de la app"
+                        >
+                          Por defecto
+                        </button>
+                        {STORY_FONTS.map(f => (
+                          <button
+                            key={f.key}
+                            onClick={() => patchSelected(el => ({ ...el, style: { ...el.style, fontFamily: f.css } }))}
+                            className="w-full px-2 py-1.5 text-xs text-cherry-dark rounded-[var(--radius-sm)] border border-soft bg-warm-gray hover:bg-buttermilk transition-colors truncate"
+                            style={{ fontFamily: f.css, outline: activeFont === f.css ? '2px solid var(--color-cherry)' : 'none' }}
+                            title={'Tipografía ' + f.label}
+                          >
+                            {f.label}
+                          </button>
+                        ))}
+                      </div>
+                    </Field>
                     <Field label="Placeholder">
                       <TextInput
                         value={selectedEl.placeholder ?? ''}
@@ -1208,6 +1405,23 @@ function BuilderWorkspace({ templateId, title, initialSlides, onClose, onSaved }
                 )}
                 {selectedEl.type === 'image' && (
                   <>
+                    <Field label="Subir foto de muestra">
+                      <label className="flex items-center justify-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold bg-warm-gray border-[1.5px] border-soft rounded-[var(--radius-sm)] text-cherry-dark hover:bg-buttermilk transition-colors cursor-pointer select-none">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          disabled={uploading}
+                          onChange={e => {
+                            const f = e.target.files?.[0]
+                            e.target.value = ''
+                            if (f) uploadMuestra(f)
+                          }}
+                        />
+                        <ImagePlus size={13} />
+                        <span>{uploading ? 'Subiendo…' : 'Subir foto…'}</span>
+                      </label>
+                    </Field>
                     <Field label="URL foto muestra">
                       <TextInput
                         value={selectedEl.content ?? ''}
@@ -1234,13 +1448,29 @@ function BuilderWorkspace({ templateId, title, initialSlides, onClose, onSaved }
                   </Field>
                 )}
                 {selectedEl.type === 'sticker' && (
-                  <Field label="Símbolo / emoji">
-                    <TextInput
-                      value={selectedEl.content ?? ''}
-                      onChange={v => patchSelected(el => ({ ...el, content: v }))}
-                      placeholder="✨"
-                    />
-                  </Field>
+                  <>
+                    <Field label="Símbolo / emoji">
+                      <TextInput
+                        value={selectedEl.content ?? ''}
+                        onChange={v => patchSelected(el => ({ ...el, content: v }))}
+                        placeholder="✨"
+                      />
+                    </Field>
+                    <Field label="Rápidos">
+                      <div className="flex flex-wrap gap-1">
+                        {STICKER_CHIPS.map(chip => (
+                          <button
+                            key={chip}
+                            onClick={() => patchSelected(el => ({ ...el, content: chip }))}
+                            className="w-7 h-7 text-base leading-none rounded-[var(--radius-sm)] border border-soft bg-warm-gray hover:bg-buttermilk transition-colors"
+                            title={'Usar ' + chip}
+                          >
+                            {chip}
+                          </button>
+                        ))}
+                      </div>
+                    </Field>
+                  </>
                 )}
 
                 {/* Geometría */}

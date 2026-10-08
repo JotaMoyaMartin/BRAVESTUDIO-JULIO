@@ -2,7 +2,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
-  ArrowLeft, Download, Image as ImageIcon, Layers, Maximize2,
+  ArrowLeft, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Download,
+  Image as ImageIcon, Layers, Maximize2, Move,
   Palette, Pencil, RotateCcw, Sparkles, Wand2, X,
 } from 'lucide-react'
 import Badge from '@/components/ui/Badge'
@@ -15,6 +16,7 @@ import {
   StoryDesignElement, StoryDesignSlide, StoryBrandTokens, StoryPhotoFrame,
   elementMaxLength,
 } from '@/lib/stories-diseno/types'
+import { STORY_FONTS } from '@/lib/stories-diseno/fonts'
 import { clampFrame, boxFor, frameFromPan } from '@/lib/stories-diseno/transform'
 import {
   adaptSequenceWithAI, RewriteMode, rewriteWithAI, clampLines,
@@ -53,6 +55,10 @@ export default function StoriesEditor({ template, packTitle, brand, hasBrand, on
   const [edits, setEdits] = useState<Record<string, Record<string, string>>>(() =>
     Object.fromEntries(template.slides.map(s => [String(s.order), {}])))
   const [frames, setFrames] = useState<Record<string, StoryPhotoFrame>>({})
+  // Posición de los elementos movidos por la usuaria (solo textos/badges)
+  const [posEdits, setPosEdits] = useState<Record<string, { x: number; y: number }>>({})
+  // Tipografía elegida por la usuaria por elemento (default = la del diseño)
+  const [fontEdits, setFontEdits] = useState<Record<string, string>>({})
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
   const [aiBusy, setAiBusy] = useState<RewriteMode | 'seq' | null>(null)
@@ -100,6 +106,48 @@ export default function StoriesEditor({ template, packTitle, brand, hasBrand, on
   function openElement(el: StoryDesignElement) {
     setSelectedId(el.id)
     setDraft(edits[orderKey]?.[el.id] ?? el.content ?? '')
+  }
+
+  /* ── mover elementos (drag + flechas) ── */
+
+  /** ¿La usuaria puede mover este elemento? (sus textos y badges, no el diseño fijado) */
+  const canMove = (el: StoryDesignElement): boolean =>
+    !el.locked &&
+    (el.type === 'text' || el.type === 'badge') &&
+    (el.role === 'editable' || el.role === 'ai' || el.role === 'brand')
+
+  const posOf = (el: StoryDesignElement) => posEdits[el.id] ?? el.position
+
+  function clampPos(el: StoryDesignElement, x: number, y: number) {
+    return {
+      x: Math.round(Math.max(8, Math.min(CANVAS_W - el.size.w - 8, x))),
+      y: Math.round(Math.max(8, Math.min(CANVAS_H - el.size.h - 8, y))),
+    }
+  }
+
+  function nudge(el: StoryDesignElement, dx: number, dy: number) {
+    const cur = posOf(el)
+    setPosEdits(prev => ({ ...prev, [el.id]: clampPos(el, cur.x + dx, cur.y + dy) }))
+  }
+
+  /** Drag de la posición del elemento seleccionado (pointer capture en overlay). */
+  function moveStart(el: StoryDesignElement, ev: React.PointerEvent) {
+    ev.preventDefault()
+    const startX = ev.clientX, startY = ev.clientY
+    const start = posOf(el)
+    let moved = false
+    function onMove(e: PointerEvent) {
+      moved = true
+      const next = clampPos(el, start.x + (e.clientX - startX) / scale, start.y + (e.clientY - startY) / scale)
+      setPosEdits(prev => ({ ...prev, [el.id]: next }))
+    }
+    function onUp() {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      if (!moved) setSelectedId(null) // tap sin arrastre = deselecciona
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
   }
 
   function saveEdit() {
@@ -259,7 +307,9 @@ export default function StoriesEditor({ template, packTitle, brand, hasBrand, on
 
   /* ── panel de propiedades ── */
   const isPhoto = selected?.type === 'image'
-  const isText = !!(selected && selected.type === 'text' && (selected.role === 'editable' || selected.role === 'ai'))
+  const isText = !!(selected && (selected.type === 'text' || selected.type === 'badge') &&
+    (selected.role === 'editable' || selected.role === 'ai' || selected.role === 'brand'))
+  const movable = !!(selected && canMove(selected))
 
   const hasMaxLinesWarning = selected && selected.constraints?.maxLines
     ? draft.split('\n').length > selected.constraints.maxLines
@@ -314,6 +364,62 @@ export default function StoriesEditor({ template, packTitle, brand, hasBrand, on
         </div>
       ) : isText ? (
         <>
+          {movable && (
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] font-bold text-cherry-dark flex items-center gap-1.5 opacity-70">
+                <Move size={13} aria-hidden="true" /> Posición
+              </span>
+              <div className="flex items-center gap-1">
+                {([['up', 0, -40], ['left', -40, 0], ['right', 40, 0], ['down', 0, 40]] as const).map(([dir, dx, dy]) => (
+                  <button
+                    key={dir}
+                    type="button"
+                    onClick={() => nudge(selected, dx, dy)}
+                    className="p-1.5 rounded-[var(--radius-sm)] bg-warm-gray text-cherry-dark"
+                    aria-label={`Mover ${dir === 'up' ? 'arriba' : dir === 'down' ? 'abajo' : dir === 'left' ? 'a la izquierda' : 'a la derecha'}`}
+                  >
+                    {dir === 'up' ? <ChevronUp size={14} /> : dir === 'down' ? <ChevronDown size={14} /> : dir === 'left' ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          <div>
+            <p className="text-[11px] font-bold text-cherry-dark opacity-70 mb-1">Tipografía</p>
+            <div className="grid grid-cols-2 gap-1.5">
+              <button
+                type="button"
+                onClick={() => setFontEdits(prev => { const n = { ...prev }; delete n[selected!.id]; return n })}
+                className="px-2 py-1.5 rounded-[var(--radius-sm)] text-[12px] font-semibold"
+                style={{
+                  background: fontEdits[selected!.id] ? 'var(--color-warm-gray)' : 'var(--color-buttermilk)',
+                  outline: fontEdits[selected!.id] ? '1px solid rgba(122,24,50,0.08)' : '2px solid var(--color-cherry)',
+                  color: 'var(--color-cherry-dark)',
+                }}
+              >
+                Por defecto
+              </button>
+              {STORY_FONTS.map(f => {
+                const active = fontEdits[selected!.id] === f.css
+                return (
+                  <button
+                    key={f.key}
+                    type="button"
+                    onClick={() => setFontEdits(prev => ({ ...prev, [selected!.id]: f.css }))}
+                    className="px-2 py-1.5 rounded-[var(--radius-sm)] text-[13px] truncate"
+                    style={{
+                      background: active ? 'var(--color-buttermilk)' : 'var(--color-warm-gray)',
+                      outline: active ? '2px solid var(--color-cherry)' : '1px solid rgba(122,24,50,0.08)',
+                      color: 'var(--color-cherry-dark)',
+                      fontFamily: f.css,
+                    }}
+                  >
+                    {f.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
           <textarea
             value={draft}
             onChange={e => setDraft(e.target.value.slice(0, elementMaxLength(selected)))}
@@ -397,7 +503,7 @@ export default function StoriesEditor({ template, packTitle, brand, hasBrand, on
               aria-label={`Story ${i + 1}`}
               aria-pressed={i === idx}
             >
-              <MiniPage slide={s} edits={edits} width={64} />
+              <MiniPage slide={s} edits={edits} width={64} posEdits={posEdits} fontEdits={fontEdits} />
             </button>
           ))}
           {template.slides.length > 1 && (
@@ -418,6 +524,8 @@ export default function StoriesEditor({ template, packTitle, brand, hasBrand, on
                 contents={contents}
                 photoFrames={frames}
                 brandTokens={brandTokens}
+                positions={posEdits}
+                fontOverrides={fontEdits}
                 interactive
                 selectedId={selectedId}
                 onElementClick={(el) => { if (selectedId !== el.id) { openElement(el) } }}
@@ -439,6 +547,26 @@ export default function StoriesEditor({ template, packTitle, brand, hasBrand, on
                     background: 'transparent',
                   }}
                   aria-label="Arrastra para reencuadrar"
+                />
+              )
+            })()}
+            {/* Overlay de movimiento para textos/badges seleccionados (arrastrar para reposicionar) */}
+            {selected && canMove(selected) && (() => {
+              const box = boxFor({ ...selected, position: posOf(selected) }, scale)
+              return (
+                <div
+                  onPointerDown={(ev) => moveStart(selected, ev)}
+                  style={{
+                    position: 'absolute',
+                    left: box.left, top: box.top, width: box.width, height: box.height,
+                    transform: `rotate(${box.rotation}deg)`,
+                    borderRadius: 24,
+                    cursor: 'move', zIndex: 30,
+                    outline: '2px dashed rgba(122,24,50,0.4)', outlineOffset: 3, pointerEvents: 'auto',
+                    background: 'transparent',
+                    touchAction: 'none',
+                  }}
+                  aria-label="Arrastra para mover"
                 />
               )
             })()}
@@ -481,7 +609,7 @@ export default function StoriesEditor({ template, packTitle, brand, hasBrand, on
                 style={{ outline: i === idx ? '3px solid var(--color-cherry)' : '1.5px solid rgba(122,24,50,0.14)', outlineOffset: 1, cursor: 'pointer', background: 'none', border: 'none', padding: 0 }}
                 aria-label={`Story ${i + 1}`}
               >
-                <MiniPage slide={s} edits={edits} width={36} />
+                <MiniPage slide={s} edits={edits} width={36} posEdits={posEdits} fontEdits={fontEdits} />
               </button>
             ))}
           </div>
@@ -517,6 +645,8 @@ export default function StoriesEditor({ template, packTitle, brand, hasBrand, on
             contents={edits[String(s.order)] ?? {}}
             photoFrames={frames}
             brandTokens={brandTokens}
+            positions={posEdits}
+            fontOverrides={fontEdits}
             frameRef={node => { exportRefs.current[String(s.order)] = node }}
           />
         ))}
@@ -526,13 +656,23 @@ export default function StoriesEditor({ template, packTitle, brand, hasBrand, on
 }
 
 /* ── Miniatura de página (panel izquierdo / carrusel móvil) ── */
-function MiniPage({ slide, edits, width }: { slide: StoryDesignSlide; edits: Record<string, Record<string, string>>; width: number }) {
+function MiniPage({
+  slide, edits, width, posEdits = {}, fontEdits = {},
+}: {
+  slide: StoryDesignSlide
+  edits: Record<string, Record<string, string>>
+  width: number
+  posEdits?: Record<string, { x: number; y: number }>
+  fontEdits?: Record<string, string>
+}) {
   const scale = width / CANVAS_W
   return (
     <SlideCanvas
       slide={slide}
       scale={scale}
       contents={edits[String(slide.order)] ?? {}}
+      positions={posEdits}
+      fontOverrides={fontEdits}
     />
   )
 }

@@ -129,6 +129,9 @@ export default function StoriesTab() {
   const [slidesError, setSlidesError] = useState('')
   const [confirming, setConfirming] = useState<string | null>(null) // "pack:{id}" | "template:{id}" — segunda pulsación confirma
   const [builder, setBuilder] = useState<{ templateId: string; title: string; slides: unknown[] } | null>(null)
+  const [newTpl, setNewTpl] = useState<{ packId: string; title: string } | null>(null) // form "plantilla en blanco"
+  const [creatingTpl, setCreatingTpl] = useState(false)
+  const [newTplError, setNewTplError] = useState('')
 
   useEffect(() => {
     load()
@@ -199,6 +202,31 @@ export default function StoriesTab() {
       setError(e instanceof Error ? e.message : 'Error creando pack')
     } finally {
       setSaving(false)
+    }
+  }
+
+  /** POST action:'create-template' — plantilla en blanco dentro del pack indicado. */
+  async function createTemplateBlank() {
+    if (!newTpl) return
+    if (!newTpl.title.trim()) {
+      setNewTplError('Escribe un título')
+      return
+    }
+    const packId = newTpl.packId
+    setCreatingTpl(true)
+    setNewTplError('')
+    try {
+      await api('/api/stories-diseno/admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'create-template', packId, title: newTpl.title.trim() }),
+      })
+      await load()
+      setNewTpl(null)
+    } catch (e) {
+      setNewTplError(e instanceof Error ? e.message : 'Error creando plantilla')
+    } finally {
+      setCreatingTpl(false)
     }
   }
 
@@ -502,6 +530,39 @@ export default function StoriesTab() {
                   {/* Plantillas del pack (collapsible) */}
                   {expanded === p.id && (
                     <div className="mt-2 p-3 rounded-[var(--radius-sm)] border border-soft bg-cream">
+                      {/* "+ Plantilla en blanco": botón (o el form inline si está abierto para este pack) */}
+                      {(!newTpl || newTpl.packId !== p.id) && (
+                        <div className="flex justify-end mb-1.5">
+                          <button
+                            onClick={() => { setNewTpl({ packId: p.id, title: '' }); setNewTplError('') }}
+                            disabled={creatingTpl}
+                            className="text-[11px] font-semibold px-2 py-1 rounded-[var(--radius-sm)] bg-warm-gray text-cherry-dark hover:bg-buttermilk transition-colors disabled:opacity-40"
+                            title="Crear una plantilla vacía en este pack"
+                          >
+                            + Plantilla en blanco
+                          </button>
+                        </div>
+                      )}
+                      {newTpl && newTpl.packId === p.id && (
+                        <div className="mb-3 p-2.5 rounded-[var(--radius-sm)] border border-soft bg-warm-gray space-y-2">
+                          <label className={labelStyle}>Nueva plantilla en blanco</label>
+                          <input
+                            type="text"
+                            value={newTpl.title}
+                            onChange={e => setNewTpl(s => (s ? { ...s, title: e.target.value } : s))}
+                            placeholder="Ej: Portada promo extensiones"
+                            className={fieldStyle}
+                            disabled={creatingTpl}
+                          />
+                          {newTplError && (
+                            <div className="rounded-[var(--radius-sm)] p-2 text-xs bg-[#fde8e8] text-danger">{newTplError}</div>
+                          )}
+                          <div className="flex gap-2">
+                            <Button size="sm" loading={creatingTpl} onClick={createTemplateBlank}>Crear</Button>
+                            <Button size="sm" variant="secondary" onClick={() => { setNewTpl(null); setNewTplError('') }}>Cancelar</Button>
+                          </div>
+                        </div>
+                      )}
                       {p.templates.length === 0 ? (
                         <p className="py-3 text-xs text-center text-cherry-dark opacity-50">Sin plantillas todavía.</p>
                       ) : (

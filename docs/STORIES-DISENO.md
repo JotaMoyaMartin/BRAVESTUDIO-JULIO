@@ -19,6 +19,8 @@ Galería de plantillas de stories 9:16 estilo Canva: la usuaria elige un diseño
 | API admin | `app/api/stories-diseno/admin/*` | CRUD packs/templates; PATCH acepta `status: archived`; POST duplica plantilla |
 | API favoritos | `app/api/stories-diseno/favorites/route.ts` | GET lista / POST `{templateId}` toggle (best-effort, degrada sin tabla) |
 | Página | `app/(app)/stories-diseno/page.tsx` | Server: DB → catálogo; demo → `demoPacks()`. Descarta archived. Pasa `initialFavorites` |
+| Fonts | `lib/stories-diseno/fonts.ts` | Lista curada de tipografías (`STORY_FONTS`, css usa variables next/font montadas en `app/layout.tsx`). Nunca Cormorant/Playfair/Inter/Manrope/Jost |
+| API upload | `app/api/stories-diseno/admin/upload/route.ts` | POST multipart `file` (admin) → Storage `story-design-assets` (público, se crea si falta) → `{ url }` |
 
 ## 2. Modelo de datos
 
@@ -34,6 +36,11 @@ Galería de plantillas de stories 9:16 estilo Canva: la usuaria elige un diseño
 
 ## 3. Flujo IA
 El editor reusa el proxy `/api/ai/generate` + `generateAIContent`/`extractJSON` (no nuevos clientes). Dos modos: **variantes** de un texto editable y **adaptar secuencia** completa al brand. Inyecta brand-context siempre (`BrandFullContextInput` desde `brand_profiles`).
+
+## 3b. Edición libre de la usuaria (8-oct-2026)
+- **Mover**: los textos/badges con role editable/ai/brand se arrastran en el canvas (overlay de movimiento) y se mueven con flechas en el panel (pasos de 40px). Estado de sesión `posEdits` → `SlideCanvas` prop `positions` (canvas, miniaturas y export lo reciben = WYSIWYG).
+- **Tipografía**: chips con las 8 fuentes curadas en el panel del texto/badge (`fontEdits` → prop `fontOverrides`). Estado de sesión; el diseño por defecto vive en la plantilla.
+- La foto sigue en su hueco (pan/zoom), los elementos fixed/decorative no se mueven.
 
 ## 4. Galería (detalles concretos)
 
@@ -65,3 +72,5 @@ npm run build
 - Covers/preview/export no son interactivos: cuando no hay edición, SlideCanvas renderiza `div` en lugar de `button` (evita nested buttons / hydration).
 - `docs/ARCHITECTURE.md` y el renderer 2D de carruseles son de otra fase — este módulo no depende de ellos.
 - Los favoritos en demo (sin DB) son solo localStorage.
+- Las posiciones/typografías de la usuaria son de sesión: se exportan al PNG pero no se guardan en DB (la plantilla es intactable por diseño).
+- El builder marca las fotos con presets claros (a sangre / hero / cuadro) y acepta **arrastrar una foto al lienzo** (sube a Storage y crea el elemento image en el punto del drop); soltar texto crea un elemento de texto.

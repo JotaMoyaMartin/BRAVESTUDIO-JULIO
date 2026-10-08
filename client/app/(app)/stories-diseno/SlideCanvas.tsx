@@ -34,6 +34,10 @@ interface SlideCanvasProps {
   photoFrames?: Record<string, StoryPhotoFrame>
   /** Tokens de marca para role 'brand' ({{salon_name}}, {{ig}}…). */
   brandTokens?: StoryBrandTokens | null
+  /** Posiciones de sesión: la usuaria movió elementos (editor). */
+  positions?: Record<string, { x: number; y: number }>
+  /** Tipografía de sesión por elemento (editor): pisa style.fontFamily. */
+  fontOverrides?: Record<string, string>
   /** Modo editor: resalta los elementos que se pueden tocar. */
   interactive?: boolean
   selectedId?: string | null
@@ -48,6 +52,7 @@ function styleOf(e: StoryDesignElement): CSSProperties {
 
 export default function SlideCanvas({
   slide, scale, contents = {}, photoFrames = {}, brandTokens = null,
+  positions = {}, fontOverrides = {},
   interactive = false, selectedId = null, onElementClick, frameRef,
 }: SlideCanvasProps) {
   const w = CANVAS_W * scale
@@ -96,6 +101,7 @@ export default function SlideCanvas({
           const selected = interactive && selectedId === e.id
           const clickable = editable && !!onElementClick
           const st = styleOf(e)
+          const pos = positions[e.id] ?? e.position
           const rot = `rotate(${e.rotation ?? 0}deg)`
           const opacity = (st.opacity as number | undefined) ?? 1
 
@@ -112,8 +118,8 @@ export default function SlideCanvas({
                 className={clickable ? 'cursor-pointer text-left' : 'cursor-default text-left'}
                 style={{
                   position: 'absolute',
-                  left: e.position.x,
-                  top: e.position.y,
+                  left: pos.x,
+                  top: pos.y,
                   width: e.size.w,
                   height: e.size.h,
                   transform: rot,
@@ -167,7 +173,7 @@ export default function SlideCanvas({
                 key={e.id}
                 style={{
                   position: 'absolute',
-                  left: e.position.x, top: e.position.y,
+                  left: pos.x, top: pos.y,
                   width: e.size.w, height: e.size.h,
                   transform: rot,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -189,7 +195,7 @@ export default function SlideCanvas({
                 key={e.id}
                 style={{
                   position: 'absolute',
-                  left: e.position.x, top: e.position.y,
+                  left: pos.x, top: pos.y,
                   width: e.size.w, height: e.size.h,
                   transform: rot,
                   opacity,
@@ -206,7 +212,7 @@ export default function SlideCanvas({
                 key={e.id}
                 style={{
                   position: 'absolute',
-                  left: e.position.x, top: e.position.y,
+                  left: pos.x, top: pos.y,
                   width: e.size.w, height: e.size.h,
                   transform: rot,
                   opacity,
@@ -237,8 +243,8 @@ export default function SlideCanvas({
               className={clickable ? 'cursor-pointer text-left' : 'cursor-default text-left'}
               style={{
                 position: 'absolute',
-                left: e.position.x,
-                top: e.position.y,
+                left: pos.x,
+                top: pos.y,
                 width: e.size.w,
                 minHeight: e.size.h,
                 transform: rot,
@@ -248,7 +254,7 @@ export default function SlideCanvas({
                 padding: isBadge ? `${st.paddingTop ?? 20}px ${st.paddingLeft ?? 40}px` : 0,
                 margin: 0,
                 boxSizing: 'border-box' as const,
-                fontFamily: st.fontFamily as string,
+                fontFamily: fontOverrides[e.id] ?? st.fontFamily as string,
                 fontSize: st.fontSize as number,
                 fontWeight: st.fontWeight as number,
                 lineHeight: (st.lineHeight as string) ?? '1.2',

@@ -13,6 +13,7 @@ const VALID_SECTIONS = [
   'inspiracion-reels',
   'banco-ganchos',
   'foto-inspo',
+  'foto-pro',
   'transiciones-reels',
   'reto-10k',
   'mi-estrategia',

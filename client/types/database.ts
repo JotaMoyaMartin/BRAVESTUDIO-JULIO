@@ -914,6 +914,53 @@ export interface Database {
           generated_at?: string | null
         }
       }
+      photo_edit_jobs: {
+        Row: {
+          id: string
+          user_id: string
+          asset_path: string
+          result_path: string | null
+          mode: 'face' | 'hair' | 'background' | 'general'
+          intensity: number
+          provider: string | null
+          provider_job_id: string | null
+          status: 'pending' | 'processing' | 'completed' | 'failed'
+          error_code: string | null
+          error_message: string | null
+          saved: boolean
+          created_at: string
+          completed_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          asset_path: string
+          result_path?: string | null
+          mode: 'face' | 'hair' | 'background' | 'general'
+          intensity: number
+          provider?: string | null
+          provider_job_id?: string | null
+          status?: 'pending' | 'processing' | 'completed' | 'failed'
+          error_code?: string | null
+          error_message?: string | null
+          saved?: boolean
+          created_at?: string
+          completed_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          result_path?: string | null
+          provider?: string | null
+          provider_job_id?: string | null
+          status?: 'pending' | 'processing' | 'completed' | 'failed'
+          error_code?: string | null
+          error_message?: string | null
+          saved?: boolean
+          completed_at?: string | null
+          updated_at?: string
+        }
+      }
     }
   }
 }
@@ -942,3 +989,4 @@ export type SocialMetricsDailyRow = Database['public']['Tables']['social_metrics
 export type SocialMediaRow = Database['public']['Tables']['social_media']['Row']
 export type SocialSyncLogRow = Database['public']['Tables']['social_sync_log']['Row']
 export type SocialDiagnosisRow = Database['public']['Tables']['social_diagnoses']['Row']
+export type PhotoEditJob = Database['public']['Tables']['photo_edit_jobs']['Row']

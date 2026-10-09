@@ -7,7 +7,7 @@ import {
   Home, Sparkles, Star,
   Film, LayoutGrid, BookOpen, Calendar, LogOut, Menu, X, Zap, Camera,
   Clapperboard, Wand2, Settings, Shield, Crown, GraduationCap, Users, BarChart3,
-  ChartNoAxesColumn, Palette,
+  ChartNoAxesColumn, Palette, ImagePlus,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -35,6 +35,8 @@ const navItems: NavItem[] = [
   { href: '/inspiracion-reels', label: 'Inspiración Reels', icon: Clapperboard },
   { href: '/banco-ganchos', label: 'Banco de Ganchos', icon: Zap },
   { href: '/foto-inspo', label: 'Foto inspo', icon: Camera },
+  // FOTO PRO (8-oct-2026): Retoque Pro disponible · Sesión IA próximamente.
+  { href: '/foto-pro', label: 'Foto Pro', icon: ImagePlus },
   { href: '/biblioteca', label: 'Biblioteca', icon: BookOpen },
   { href: '/calendario', label: 'Calendario', icon: Calendar },
   // Análisis — Instagram conectado (6-oct-2026): datos reales de la cuenta.
@@ -56,6 +58,8 @@ const premiumNavItems: NavItem[] = [
   { href: '/inspiracion-reels', label: 'Inspiración Reels', icon: Clapperboard },
   { href: '/banco-ganchos', label: 'Banco de Ganchos', icon: Zap },
   { href: '/foto-inspo', label: 'Foto inspo', icon: Camera },
+  // FOTO PRO (8-oct-2026): Retoque Pro disponible · Sesión IA próximamente.
+  { href: '/foto-pro', label: 'Foto Pro', icon: ImagePlus },
   { href: '/academia', label: 'Academia', icon: GraduationCap, badge: 'NUEVO', highlight: true },
 ]
 

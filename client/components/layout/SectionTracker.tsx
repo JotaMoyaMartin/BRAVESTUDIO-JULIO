@@ -15,6 +15,8 @@ const PATH_TO_SECTION: Record<string, string> = {
   '/inspiracion-reels': 'inspiracion-reels',
   '/banco-ganchos': 'banco-ganchos',
   '/foto-inspo': 'foto-inspo',
+  // Foto Pro (8-oct-2026): /foto-pro y /foto-pro/retoque → misma sección.
+  '/foto-pro': 'foto-pro',
   '/transiciones-reels': 'transiciones-reels',
   '/reto-10k': 'reto-10k',
   '/mi-estrategia': 'mi-estrategia',

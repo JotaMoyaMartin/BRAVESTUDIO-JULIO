@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Currency, PlanKey } from '@/lib/plans'
 import Reveal from './Reveal'
 import { PRICING, CTA_PRIMARY, CTA_SIGNUP_HREF } from './content'
+import { fbqTrack } from './pixel'
 
 type PlanB = 'monthly' | 'yearly'
 
@@ -42,6 +43,8 @@ export default function V2Pricing() {
   async function goCheckout(plan: PlanB) {
     setSelected(plan)
     setError('')
+    // Conversión Meta Ads: la usuaria entra al checkout (o al signup con plan).
+    fbqTrack('InitiateCheckout', { plan, currency })
     if (hasSession) {
       setLoading(plan)
       try {

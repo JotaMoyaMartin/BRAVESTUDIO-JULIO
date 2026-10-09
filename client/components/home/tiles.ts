@@ -1,4 +1,4 @@
-import { Sparkles, Film, LayoutGrid, Star, Clapperboard, BookOpen, Calendar, BarChart3, GraduationCap, Captions, Images, Zap, Camera, ChartNoAxesColumn, Palette, ImagePlus } from 'lucide-react'
+import { Sparkles, Film, LayoutGrid, Star, Clapperboard, BookOpen, Calendar, BarChart3, GraduationCap, Captions, Images, Zap, Camera, ChartNoAxesColumn, Palette, ImagePlus, LayoutTemplate } from 'lucide-react'
 import { AppTileProps } from './AppTile'
 
 // Launcher de mini-apps — vive en /herramientas (Home v2 ya no es catálogo).
@@ -16,6 +16,8 @@ export const TILES_NORMAL: AppTileProps[] = [
   { href: '/foto-inspo', icon: Camera, label: 'Foto inspo', desc: 'Replica fotos de referencia con tu cámara', tone: 'cream' },
   // Foto Pro — 8-oct-2026: Retoque Pro disponible, Sesión IA próximamente.
   { href: '/foto-pro', icon: ImagePlus, label: 'Foto Pro', desc: 'Retoque tus fotos con IA, sin perder identidad', tone: 'pink' },
+  // DISEÑOS — 9-oct-2026: galería de plantillas de marca (sección para todas con acceso activo).
+  { href: '/disenos', icon: LayoutTemplate, label: 'Diseños', desc: 'Plantillas de tu marca listas para personalizar', tone: 'buttermilk' },
   // Botón hero interactivo (petición Jota, 2-oct-2026): fuera la imagen
   // estática — texto grande a la izquierda + portadas reales pasando a la
   // derecha con su categoría flotando (AppTile.live).
@@ -41,6 +43,8 @@ export const TILES_PREMIUM: AppTileProps[] = [
   { href: '/foto-inspo', icon: Camera, label: 'Foto inspo', desc: 'Replica fotos de referencia con tu cámara', tone: 'cream' },
   // Foto Pro — 8-oct-2026: Retoque Pro disponible, Sesión IA próximamente.
   { href: '/foto-pro', icon: ImagePlus, label: 'Foto Pro', desc: 'Retoque tus fotos con IA, sin perder identidad', tone: 'blue' },
+  // DISEÑOS — 9-oct-2026: galería de plantillas de marca (sección para todas con acceso activo).
+  { href: '/disenos', icon: LayoutTemplate, label: 'Diseños', desc: 'Plantillas de tu marca listas para personalizar', tone: 'pink' },
   { href: '/crear-contenido', icon: Film, label: 'Guiones', desc: '5 ideas → guion listo', tone: 'green', image: '/tiles/guiones-banner.jpg' },
   { href: '/carrusel', icon: Images, label: 'Carrusel', desc: 'Carrusel listo para publicar', tone: 'buttermilk' },
   { href: '/stories', icon: LayoutGrid, label: 'Stories BRÄVE', desc: 'Stories y encuestas', tone: 'cream', image: '/tiles/stories-banner.jpg', imageAspect: '1862 / 845' },

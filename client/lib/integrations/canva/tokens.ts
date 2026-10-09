@@ -4,7 +4,7 @@ import {
   getCanvaEnv,
   refreshAccessToken,
 } from './auth'
-import { CanvaConnectionRow, CanvaTokenResponse, CanvaTokens } from './types'
+import { CanvaConnectionRow, CanvaError, CanvaTokenResponse, CanvaTokens } from './types'
 
 /**
  * Almacenamiento server-only de la conexión Canva. Tokens SIEMPRE cifrados
@@ -26,6 +26,28 @@ export async function getConnectionRow(ownerId: string): Promise<CanvaConnection
     .maybeSingle()
   if (error) {
     // Tabla sin crear (SQL pendiente) → mensaje accionable, no 500 ciego.
+    if (error.code === 'PGRST205' || error.code === 'PGRST202') {
+      throw new Error('Falta la tabla canva_connections — pega SQL-CANVA-SPIKE.sql en Supabase.')
+    }
+    throw new Error(`No se pudo leer la conexión Canva: ${error.message}`)
+  }
+  return (data as unknown as CanvaConnectionRow) || null
+}
+
+/** Conexión del EQUIPO para usos clienta (/api/design/*): primera fila
+ *  activa ordenada por last_refreshed_at desc. La clienta jamás toca Canva:
+ *  el equipo mantiene UNA conexión y todo el motor la usa server-side. */
+export async function getSystemConnectionRow(): Promise<CanvaConnectionRow | null> {
+  const admin = createAdminClient()
+  const { data, error } = await admin
+    .from('canva_connections')
+    .select('*')
+    .eq('status', 'active')
+    .not('last_refreshed_at', 'is', null)
+    .order('last_refreshed_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (error) {
     if (error.code === 'PGRST205' || error.code === 'PGRST202') {
       throw new Error('Falta la tabla canva_connections — pega SQL-CANVA-SPIKE.sql en Supabase.')
     }
@@ -65,6 +87,11 @@ export async function saveNewConnection(args: {
 export async function ensureFreshToken(ownerId: string): Promise<CanvaTokens> {
   const row = await getConnectionRow(ownerId)
   if (!row) throw new Error('No hay conexión Canva — conecta la cuenta en /admin/canva-test.')
+  return ensureFreshTokenFromRow(row)
+}
+
+/** Núcleo compartido sobre una fila ya leída (owner o conexión del equipo). */
+async function ensureFreshTokenFromRow(row: CanvaConnectionRow): Promise<CanvaTokens> {
   if (row.status === 'revoked') throw new Error('La conexión Canva fue revocada — vuelve a conectarla.')
 
   const env = getCanvaEnv()
@@ -80,10 +107,21 @@ export async function ensureFreshToken(ownerId: string): Promise<CanvaTokens> {
   if (expiresAtMs - REFRESH_MARGIN_MS <= Date.now()) {
     const refreshToken = decryptSecret(row.refresh_token_encrypted)
     const renewed = await refreshAccessToken({ env, refreshToken })
-    await saveNewConnection({ ownerId, tokenRes: renewed })
+    await saveNewConnection({ ownerId: row.owner_id, tokenRes: renewed })
     return { accessToken: renewed.access_token, refreshToken: renewed.refresh_token }
   }
   return { accessToken, refreshToken: '' }
+}
+
+/**
+ * Token fresco de la conexión del EQUIPO (rutas clienta /api/design/*).
+ * Sin ninguna conexión activa → CanvaError 503 con mensaje humano
+ * ("Canva no está conectado todavía"): la clienta nunca ve un stack.
+ */
+export async function ensureFreshSystemToken(): Promise<CanvaTokens> {
+  const row = await getSystemConnectionRow()
+  if (!row) throw new CanvaError(503, 'not_connected', 'Canva no está conectado todavía')
+  return ensureFreshTokenFromRow(row)
 }
 
 /** Desconecta: revoke en Canva (best-effort) + borrado de la fila. */

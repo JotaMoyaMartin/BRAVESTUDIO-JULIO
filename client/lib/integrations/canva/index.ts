@@ -26,14 +26,21 @@ export { getDesign, getDesignDataset } from './designs'
 export { createAutofillFromDesign, awaitAutofillDesign } from './autofill'
 export type { AutofillDataValue } from './autofill'
 export { createPngExport, awaitExportUrls, fetchExportPng } from './exports'
-export { ensureDesignExportsBucket, DESIGN_EXPORTS_BUCKET } from './storage'
+export {
+  DESIGN_EXPORTS_BUCKET,
+  ensureDesignExportsBucket,
+  DESIGN_UPLOADS_BUCKET,
+  ensureDesignUploadsBucket,
+} from './storage'
 export { createUrlAssetUpload, awaitAssetId } from './assets'
 export { runDesignGeneration } from './generate'
 export type { GenerationInput, GenerationPhotoInput } from './generate'
 export {
   getConnectionRow,
+  getSystemConnectionRow,
   saveNewConnection,
   ensureFreshToken,
+  ensureFreshSystemToken,
   disconnectConnection,
   markConnectionError,
 } from './tokens'

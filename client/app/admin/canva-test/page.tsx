@@ -71,6 +71,10 @@ export default function CanvaTestPage() {
   const [genError, setGenError] = useState<string | null>(null)
   const [result, setResult] = useState<{ generatedDesignId: string; pages: { page: number; url: string; path: string }[]; usesRemaining: number | null; durationMs: number } | null>(null)
   const [tplName, setTplName] = useState('')
+  const [tplCategory, setTplCategory] = useState('')
+  const [tplStatus, setTplStatus] = useState<'draft' | 'published'>('draft')
+  const [saving, setSaving] = useState(false)
+  const [publishing, setPublishing] = useState(false)
   const [tplSaved, setTplSaved] = useState<string | null>(null)
   const [tplPreview, setTplPreview] = useState<{ url: string | null; note: string | null } | null>(null)
 
@@ -104,6 +108,8 @@ export default function CanvaTestPage() {
     setResult(null)
     setTplSaved(null)
     setTplPreview(null)
+    setTplCategory('')
+    setTplStatus('draft')
     try {
       const res = await fetch(`/api/canva/design?ref=${encodeURIComponent(ref)}`)
       const json = await res.json()
@@ -141,8 +147,7 @@ export default function CanvaTestPage() {
     }
   }
 
-  async function saveTemplate() {
-    setTplSaved(null)
+  function templatePayload(publish?: boolean): string {
     const bindingsPayload = Object.fromEntries(
       dataset.map(row => {
         const behavior = bindings[row.name]
@@ -155,14 +160,56 @@ export default function CanvaTestPage() {
         return [row.name, base]
       }),
     )
-    const res = await fetch('/api/canva/templates', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ designRef: design?.id ?? ref, name: tplName || design?.title, bindings: bindingsPayload }),
+    // publish solo se envía desde el toggle; el "Guardar" simple no lo toca
+    // (el servidor conserva el status actual y las plantillas publicadas no
+    // se despublican al re-guardarse).
+    return JSON.stringify({
+      designRef: design?.id ?? ref,
+      name: tplName || design?.title,
+      category: tplCategory.trim() || undefined,
+      bindings: bindingsPayload,
+      ...(publish === undefined ? {} : { publish }),
     })
-    const json = await res.json()
-    setTplSaved(res.ok ? (json.updated ? 'Plantilla actualizada ✓' : 'Plantilla guardada ✓') : `Error: ${json.error}`)
-    setTplPreview(res.ok ? { url: json.previewUrl ?? null, note: json.previewNote ?? null } : null)
+  }
+
+  async function saveTemplate() {
+    setSaving(true)
+    setTplSaved(null)
+    try {
+      const res = await fetch('/api/canva/templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: templatePayload(),
+      })
+      const json = await res.json()
+      setTplSaved(res.ok ? (json.updated ? 'Plantilla actualizada ✓' : 'Plantilla guardada ✓') : `Error: ${json.error}`)
+      setTplPreview(res.ok ? { url: json.previewUrl ?? null, note: json.previewNote ?? null } : null)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function togglePublish() {
+    const next: 'draft' | 'published' = tplStatus === 'published' ? 'draft' : 'published'
+    setPublishing(true)
+    setTplSaved(null)
+    try {
+      const res = await fetch('/api/canva/templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: templatePayload(next === 'published'),
+      })
+      const json = await res.json()
+      if (res.ok) {
+        setTplStatus(next)
+        setTplSaved(next === 'published' ? 'Plantilla publicada ✓' : 'Plantilla despublicada ✓')
+        setTplPreview({ url: json.previewUrl ?? null, note: json.previewNote ?? null })
+      } else {
+        setTplSaved(`Error: ${json.error}`)
+      }
+    } finally {
+      setPublishing(false)
+    }
   }
 
   async function generate() {
@@ -312,8 +359,26 @@ export default function CanvaTestPage() {
                     )}
                   </div>
                 ))}
+                <div className="max-w-xs">
+                  <Input
+                    label="Categoría"
+                    placeholder="balayage, cuidado-capilar, cortes…"
+                    value={tplCategory}
+                    onChange={e => setTplCategory(e.target.value)}
+                  />
+                </div>
                 <div className="flex items-center gap-2">
-                  <Button size="sm" variant="secondary" onClick={saveTemplate}>Guardar plantilla</Button>
+                  <Button size="sm" variant="secondary" loading={saving} onClick={saveTemplate}>Guardar plantilla</Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    loading={publishing}
+                    onClick={togglePublish}
+                    disabled={!design && !ref.trim()}
+                  >
+                    {tplStatus === 'published' ? 'Despublicar' : 'Publicar'}
+                  </Button>
+                  {tplStatus === 'published' && <Badge tone="green">Publicada</Badge>}
                   {tplSaved && <Badge tone={tplSaved.startsWith('Error') ? 'danger' : 'green'}>{tplSaved}</Badge>}
                 </div>
                 {tplPreview && (tplPreview.url || tplPreview.note) && (

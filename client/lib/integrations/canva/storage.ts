@@ -14,3 +14,17 @@ export async function ensureDesignExportsBucket(admin: ReturnType<typeof createA
     await admin.storage.createBucket(DESIGN_EXPORTS_BUCKET, { public: false })
   }
 }
+
+/**
+ * Fotos de las clientas (user_text→user_image del módulo "Diseños").
+ * Bucket PRIVADO: solo el server lee/escena — la clienta sube y nunca obtiene
+ * acceso público a otros objetos (paths aislados por user_id).
+ */
+export const DESIGN_UPLOADS_BUCKET = 'design-uploads'
+
+export async function ensureDesignUploadsBucket(admin: ReturnType<typeof createAdminClient>): Promise<void> {
+  const { data: buckets } = await admin.storage.listBuckets()
+  if (!(buckets ?? []).some(b => b.name === DESIGN_UPLOADS_BUCKET)) {
+    await admin.storage.createBucket(DESIGN_UPLOADS_BUCKET, { public: false })
+  }
+}

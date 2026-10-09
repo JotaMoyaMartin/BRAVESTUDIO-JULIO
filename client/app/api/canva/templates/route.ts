@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
   const auth = await requireAdmin()
   if (!auth.ok) return NextResponse.json({ error: auth.msg }, { status: auth.status })
   const body = (await request.json().catch(() => null)) as
-    | { designRef?: string; name?: string; category?: string; kind?: string; bindings?: unknown }
+    | { designRef?: string; name?: string; category?: string; kind?: string; publish?: boolean; bindings?: unknown }
     | null
   if (!body) return NextResponse.json({ error: 'Body inválido' }, { status: 400 })
   const designId = parseDesignRef(body.designRef ?? '')
@@ -116,7 +116,17 @@ export async function POST(request: NextRequest) {
     const dataset = await getDesignDataset({ accessToken, designId })
     const admin = createAdminClient()
 
-    const row = {
+    // publish → status (publish true = publicar, false = despublicar).
+    // Sin publish (undefined) NO se toca el status al actualizar: re-guardar
+    // bindings de una plantilla publicada no debe despublicarla.
+    const statusPatch =
+      body.publish === true ? { status: 'published' as const }
+      : body.publish === false ? { status: 'draft' as const }
+      : {}
+    const bindingsRow: Record<string, unknown> | undefined =
+      body.bindings === undefined ? undefined : asBindings(body.bindings) as unknown as Record<string, unknown>
+
+    const baseRow = {
       provider: 'canva',
       provider_design_id: designId,
       name,
@@ -124,9 +134,9 @@ export async function POST(request: NextRequest) {
       kind: body.kind === 'carousel' ? ('carousel' as const) : ('story' as const),
       page_count: design.pageCount,
       dataset: dataset as unknown as Record<string, unknown>,
-      bindings: asBindings(body.bindings) as unknown as Record<string, unknown>,
       created_by: auth.userId,
       source: { canva_edit_url: design.canvaEditUrl, canva_updated_at: design.updatedAt },
+      ...statusPatch,
     }
 
     const { data: existing } = await admin
@@ -139,9 +149,12 @@ export async function POST(request: NextRequest) {
     let templateId: string
     let updated: boolean
     if (existing) {
+      // Al actualizar: bindings solo si llegaron (guardar sin bindings no
+      // reescribe el mapper, y despublicar no debe borrarlo).
+      const withBindings = bindingsRow === undefined ? baseRow : { ...baseRow, bindings: bindingsRow }
       const { data: up, error } = await admin
         .from('design_templates')
-        .update({ ...row, updated_at: new Date().toISOString() })
+        .update({ ...withBindings, updated_at: new Date().toISOString() })
         .eq('id', (existing as { id: string }).id)
         .select('id')
         .single()
@@ -151,7 +164,7 @@ export async function POST(request: NextRequest) {
     } else {
       const { data: inserted, error } = await admin
         .from('design_templates')
-        .insert(row)
+        .insert({ ...baseRow, bindings: bindingsRow ?? {} })
         .select('id')
         .single()
       if (error) return NextResponse.json({ error: dbUserError(error) }, { status: 500 })

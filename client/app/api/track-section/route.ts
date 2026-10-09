@@ -14,6 +14,7 @@ const VALID_SECTIONS = [
   'banco-ganchos',
   'foto-inspo',
   'foto-pro',
+  'disenos',
   'transiciones-reels',
   'reto-10k',
   'mi-estrategia',

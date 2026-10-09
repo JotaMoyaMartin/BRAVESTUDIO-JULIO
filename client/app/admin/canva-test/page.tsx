@@ -77,7 +77,7 @@ export default function CanvaTestPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.get('error')) setUrlError(params.get('error'))
-    if (params.get('connected')) window.history.replaceState({}, '', '/admin/canva-test')
+    if (params.get('error') || params.get('connected')) window.history.replaceState({}, '', '/admin/canva-test')
     loadConnection()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

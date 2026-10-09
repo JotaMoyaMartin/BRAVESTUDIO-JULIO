@@ -47,7 +47,8 @@ export async function POST(request: NextRequest) {
 
   const texts: Record<string, string> = {}
   for (const [field, value] of Object.entries(body.texts ?? {})) {
-    if (typeof value === 'string') texts[field] = value.slice(0, 2000) // cota de emergencia del spike
+    // Texto vacío = Mantener original (Canva rechaza cadenas vacías en /autofills).
+    if (typeof value === 'string' && value.trim()) texts[field] = value.slice(0, 2000)
   }
   const photos = (body.photos ?? []).filter(
     p => p && typeof p.field === 'string' && typeof p.url === 'string' && p.url.startsWith('https://'),

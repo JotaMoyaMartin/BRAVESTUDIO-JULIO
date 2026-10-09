@@ -44,9 +44,12 @@ export async function GET(request: NextRequest) {
     .single()
   if (!profile || (profile.role !== 'admin' && profile.role !== 'superadmin')) return fail('not_admin')
 
-  // Canva redirige con ?error= si el admin niega el consentimiento.
+  // Canva redirige con ?error= (denegación U OTRO fallo — passthrough del código real).
   const canvaError = request.nextUrl.searchParams.get('error')
-  if (canvaError) return fail('consent_denied')
+  if (canvaError) {
+    console.error('[canva-oauth] Canva devolvió error:', canvaError)
+    return fail(canvaError)
+  }
 
   const code = request.nextUrl.searchParams.get('code')
   const state = request.nextUrl.searchParams.get('state')

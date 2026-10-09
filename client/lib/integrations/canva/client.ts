@@ -13,10 +13,13 @@ interface CanvaRawError {
 
 /** Mapea una respuesta fallida de Canva al error normalizado. */
 async function toCanvaError(res: Response, path: string): Promise<CanvaError> {
-  const raw = (await res.json().catch(() => null)) as { response?: CanvaRawError } | null
-  const code = raw?.response?.code ?? (res.status === 429 ? 'too_many_requests' : 'internal_failure')
+  const raw = (await res.json().catch(() => null)) as
+    | ({ response?: CanvaRawError; code?: string; message?: string } | null)
+  const code =
+    raw?.response?.code ?? raw?.code ?? (res.status === 429 ? 'too_many_requests' : 'internal_failure')
+  const bodyDebug = raw ? ` — ${JSON.stringify(raw).slice(0, 300)}` : ' (cuerpo no-JSON)'
   const message =
-    raw?.response?.message ?? `Canva ${res.status} en ${path} sin mensaje`
+    raw?.response?.message ?? raw?.message ?? `Canva ${res.status} en ${path} sin mensaje${bodyDebug}`
   return new CanvaError(res.status, code, message)
 }
 

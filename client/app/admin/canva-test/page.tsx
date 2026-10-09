@@ -7,6 +7,7 @@ import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
 import { Input } from '@/components/ui/Input'
 import SectionTitle from '@/components/ui/SectionTitle'
+import ZonesEditor, { type SavedTemplateRow, type ZoneBindingMap } from './ZonesEditor'
 
 /**
  * SPIKE CANVA — página de prueba end-to-end (solo admin, /admin/*).
@@ -55,18 +56,6 @@ const PURPOSES = ['gancho', 'desarrollo', 'cta', 'objeción', 'deseo'] as const
 
 type CanvaFieldRow = { name: string; type: string }
 
-interface SavedTemplateRow {
-  id: string
-  name: string
-  category: string | null
-  kind: 'story' | 'carousel'
-  page_count: number
-  status: 'draft' | 'published' | 'archived'
-  provider_design_id: string
-  preview_url?: string | null
-  updated_at: string
-}
-
 export default function CanvaTestPage() {
   const [conn, setConn] = useState<ConnectionInfo | null>(null)
   const [urlError, setUrlError] = useState<string | null>(null)
@@ -88,8 +77,9 @@ export default function CanvaTestPage() {
   const [saving, setSaving] = useState(false)
   const [publishing, setPublishing] = useState(false)
   const [tplSaved, setTplSaved] = useState<string | null>(null)
-  const [tplPreview, setTplPreview] = useState<{ url: string | null; note: string | null } | null>(null)
+  const [tplPreview, setTplPreview] = useState<{ urls: string[]; note: string | null } | null>(null)
   const [savedTemplates, setSavedTemplates] = useState<SavedTemplateRow[] | null>(null)
+  const [zonesRow, setZonesRow] = useState<SavedTemplateRow | null>(null)
   const [patchingId, setPatchingId] = useState<string | null>(null)
   const [listNote, setListNote] = useState<string | null>(null)
 
@@ -111,7 +101,11 @@ export default function CanvaTestPage() {
     const res = await fetch('/api/canva/templates')
     const json = (await res.json().catch(() => null)) as { templates?: SavedTemplateRow[] } | null
     setListNote(res.ok ? null : (json as unknown as { error?: string } | null)?.error ?? 'No se pudo cargar la lista')
-    setSavedTemplates(Array.isArray(json?.templates) ? json.templates : [])
+    const rows = Array.isArray(json?.templates) ? json.templates : []
+    setSavedTemplates(rows)
+    // Si el editor de zonas está abierto, refresca su fila (mismo id → mismo
+    // key → el estado local de zonas del editor no se resetea).
+    setZonesRow(prev => (prev ? rows.find(t => t.id === prev.id) ?? prev : null))
   }
 
   async function patchStatus(id: string, status: 'draft' | 'published') {
@@ -131,6 +125,11 @@ export default function CanvaTestPage() {
     } finally {
       setPatchingId(null)
     }
+  }
+
+  /** El editor de zonas guardó bindings → refresca la copia en la lista. */
+  function onZoneBindingsSaved(id: string, bindings: ZoneBindingMap) {
+    setSavedTemplates(prev => (prev ?? []).map(t => (t.id === id ? { ...t, bindings } : t)))
   }
 
   function defaultBehavior(field: string, type: string): Behavior {
@@ -226,7 +225,7 @@ export default function CanvaTestPage() {
       })
       const json = await res.json()
       setTplSaved(res.ok ? (json.updated ? 'Plantilla actualizada ✓' : 'Plantilla guardada ✓') : `Error: ${json.error}`)
-      setTplPreview(res.ok ? { url: json.previewUrl ?? null, note: json.previewNote ?? null } : null)
+      setTplPreview(res.ok ? { urls: Array.isArray(json.previewUrls) ? json.previewUrls : [], note: json.previewNote ?? null } : null)
       if (res.ok) loadTemplates()
     } finally {
       setSaving(false)
@@ -247,7 +246,7 @@ export default function CanvaTestPage() {
       if (res.ok) {
         setTplStatus(next)
         setTplSaved(next === 'published' ? 'Plantilla publicada ✓' : 'Plantilla despublicada ✓')
-        setTplPreview({ url: json.previewUrl ?? null, note: json.previewNote ?? null })
+        setTplPreview({ urls: Array.isArray(json.previewUrls) ? json.previewUrls : [], note: json.previewNote ?? null })
         setTplStatus(next)
         loadTemplates()
       } else {
@@ -378,6 +377,9 @@ export default function CanvaTestPage() {
                     {t.kind === 'carousel' ? 'Carrusel' : 'Historia'} · {t.page_count} {t.page_count === 1 ? 'página' : 'páginas'} · {t.category ?? 'sin categoría'}
                   </p>
                 </div>
+                <Button size="sm" variant="secondary" onClick={() => setZonesRow(t)}>
+                  Zonas
+                </Button>
                 <Button size="sm" variant="secondary" onClick={() => importDesign(t.provider_design_id)}>
                   Cargar
                 </Button>
@@ -394,6 +396,22 @@ export default function CanvaTestPage() {
           </div>
         )}
       </Card>
+
+      {/* ── 1c) Editor de zonas (calibración para la clienta) ── */}
+      {zonesRow && (
+        <Card>
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <p className="text-sm font-bold">Editor de zonas (calibración para la clienta)</p>
+            <Badge tone="buttermilk">{zonesRow.kind === 'carousel' ? 'Carrusel' : 'Historia'}</Badge>
+          </div>
+          <ZonesEditor
+            key={zonesRow.id}
+            row={zonesRow}
+            onClose={() => setZonesRow(null)}
+            onBindingsSaved={onZoneBindingsSaved}
+          />
+        </Card>
+      )}
 
       {/* ── 2) Importar diseño ── */}
       <Card>
@@ -480,19 +498,21 @@ export default function CanvaTestPage() {
                   {tplStatus === 'published' && <Badge tone="green">Publicada</Badge>}
                   {tplSaved && <Badge tone={tplSaved.startsWith('Error') ? 'danger' : 'green'}>{tplSaved}</Badge>}
                 </div>
-                {tplPreview && (tplPreview.url || tplPreview.note) && (
-                  <div className="flex items-center gap-3">
-                    {tplPreview.url ? (
-                      <>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={tplPreview.url} alt="Preview original de la plantilla" className="h-28 rounded-[var(--radius-sm)] border" style={{ borderColor: 'rgba(59,16,26,0.15)' }} />
-                        <p className="text-xs" style={{ color: 'var(--color-cherry-dark)', opacity: 0.7 }}>
-                          Preview original (página 1) guardado en Storage BRÄVE.
-                        </p>
-                      </>
-                    ) : (
-                      <p className="text-xs" style={{ color: 'var(--color-cherry-dark)', opacity: 0.7 }}>{tplPreview.note}</p>
+                {tplPreview && (tplPreview.urls.length > 0 || tplPreview.note) && (
+                  <div className="flex items-start gap-3">
+                    {tplPreview.urls.length > 0 && (
+                      <div className="flex max-h-44 flex-wrap gap-2 overflow-hidden">
+                        {tplPreview.urls.map(u => (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img key={u} src={u} alt="Preview de la plantilla" className="h-28 rounded-[var(--radius-sm)] border" style={{ borderColor: 'rgba(59,16,26,0.15)' }} />
+                        ))}
+                      </div>
                     )}
+                    <p className="text-xs" style={{ color: 'var(--color-cherry-dark)', opacity: 0.7 }}>
+                      {tplPreview.urls.length > 0
+                        ? `Previews de ${tplPreview.urls.length} ${tplPreview.urls.length === 1 ? 'página' : 'páginas'} guardados en Storage BRÄVE.`
+                        : tplPreview.note}
+                    </p>
                   </div>
                 )}
               </div>

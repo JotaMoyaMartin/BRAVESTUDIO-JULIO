@@ -31,11 +31,12 @@ export interface DesignTemplateRow {
   dataset: CanvaDataset
   bindings: CanvaBindingMap
   preview_storage_path: string | null
+  source?: Record<string, unknown> | null
   created_at: string
   updated_at: string
 }
 
-/** Payload seguro para la UI clienta (sin created_by/source/updated_at). */
+/** Payload seguro para la UI clienta (sin created_by/updated_at). */
 export interface DesignTemplateLite {
   id: string
   name: string
@@ -45,6 +46,7 @@ export interface DesignTemplateLite {
   dataset: CanvaDataset
   bindings: CanvaBindingMap
   previewUrl: string | null
+  previewUrls: string[]
 }
 
 // ── Gate ─────────────────────────────────────────────────────────────────────
@@ -97,20 +99,46 @@ export async function fetchPublishedTemplate(
   return ((data as unknown as DesignTemplateRow) ?? null)
 }
 
-/** Preview (PNG en Storage privado) → signed URL de 7 días para la UI. */
+/** Paths de preview persistidos: source.preview_paths (1 por página) o, en su defecto, el path page-1 antiguo. */
+function sourcePreviewPaths(row: DesignTemplateRow): string[] {
+  const raw = (row.source as { preview_paths?: unknown } | null)?.preview_paths
+  if (Array.isArray(raw)) {
+    const paths = raw.filter((p): p is string => typeof p === 'string' && p.length > 0)
+    if (paths.length > 0) return paths
+  }
+  return row.preview_storage_path ? [row.preview_storage_path] : []
+}
+
+/**
+ * Previews de TODAS las páginas (PNG en Storage privado) → signed URLs de
+ * 7 días para la UI clienta. bindings (con zonas) viajan completos en el Lite.
+ */
+export async function templatePreviewUrls(
+  admin: ReturnType<typeof createAdminClient>,
+  row: DesignTemplateRow,
+): Promise<string[]> {
+  const paths = sourcePreviewPaths(row)
+  if (paths.length === 0) return []
+  const signed = await Promise.all(paths.map(async p => {
+    const { data } = await admin.storage
+      .from(DESIGN_EXPORTS_BUCKET)
+      .createSignedUrl(p, 7 * 24 * 3600)
+    return data?.signedUrl ?? null
+  }))
+  return signed.filter((u): u is string => u !== null)
+}
+
+/** Preview página 1 (compat con la UI existente). */
 export async function templatePreviewUrl(
   admin: ReturnType<typeof createAdminClient>,
   row: DesignTemplateRow,
 ): Promise<string | null> {
-  if (!row.preview_storage_path) return null
-  const { data: signed } = await admin.storage
-    .from(DESIGN_EXPORTS_BUCKET)
-    .createSignedUrl(row.preview_storage_path, 7 * 24 * 3600)
-  return signed?.signedUrl ?? null
+  const urls = await templatePreviewUrls(admin, row)
+  return urls[0] ?? null
 }
 
 export function toTemplateLite(
-  previewUrl: string | null,
+  previewUrls: string[],
   row: DesignTemplateRow,
 ): DesignTemplateLite {
   return {
@@ -121,7 +149,8 @@ export function toTemplateLite(
     page_count: row.page_count,
     dataset: (row.dataset ?? {}) as CanvaDataset,
     bindings: (row.bindings ?? {}) as CanvaBindingMap,
-    previewUrl,
+    previewUrl: previewUrls[0] ?? null,
+    previewUrls,
   }
 }
 
@@ -137,7 +166,7 @@ export async function listPublishedTemplates():
   if (error) throw new Error(dbUserError(error))
   const rows = (data ?? []) as unknown as DesignTemplateRow[]
   const lites = await Promise.all(rows.map(async row =>
-    toTemplateLite(await templatePreviewUrl(admin, row), row),
+    toTemplateLite(await templatePreviewUrls(admin, row), row),
   ))
   return lites
 }

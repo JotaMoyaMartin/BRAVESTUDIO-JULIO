@@ -4,7 +4,7 @@ import {
   DesignTemplateLite,
   fetchPublishedTemplate,
   requireDesignAccess,
-  templatePreviewUrl,
+  templatePreviewUrls,
   toTemplateLite,
   isUuid,
 } from '@/lib/design/server'
@@ -28,7 +28,7 @@ export async function GET(
     const row = await fetchPublishedTemplate(admin, id)
     if (!row) return NextResponse.json({ error: 'Plantilla no encontrada' }, { status: 404 })
     const template: DesignTemplateLite = toTemplateLite(
-      await templatePreviewUrl(admin, row),
+      await templatePreviewUrls(admin, row),
       row,
     )
     return NextResponse.json({ template })

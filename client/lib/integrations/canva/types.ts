@@ -39,12 +39,26 @@ export type CanvaBindingBehavior =
   | 'user_image'   // foto reemplazable por la usuaria
   | 'keep_default' // valor original del diseño (no se envía al autofill)
 
+/**
+ * Zona click-to-edit calibrada por el admin sobre el preview de UNA página.
+ * x/y/w/h en PORCENTAJES (0-100) relativos a esa página — aspect-agnostic
+ * (el preview y el canvas de la clienta pueden tener proporciones distintas).
+ */
+export interface CanvaBindingZone {
+  page: number // 1-based
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
 export interface CanvaBinding {
   behavior: CanvaBindingBehavior
   label?: string
   purpose?: string       // propósito IA (hook, desarrollo, cta...)
   maxLength?: number     // máximo de caracteres para textos
   instructions?: string  // instrucciones IA opcionales
+  zone?: CanvaBindingZone // zona tap-editable por la clienta (opcional)
 }
 
 /** Mapa campo → comportamiento, el source of truth de bindings en BRÄVE. */

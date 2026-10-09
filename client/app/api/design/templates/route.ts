@@ -4,8 +4,9 @@ import { requireDesignAccess, listPublishedTemplates, DesignTemplateLite } from 
 
 /**
  * Plantillas PUBLICADAS del módulo clienta "Diseños".
- * La clienta solo ve este recurso: nada de Canva, provider, bindings internos
- * de admin ni paths crudos de preview (ese dato sí viaja: es un path sin URL).
+ * La clienta solo ve este recurso: nada de Canva ni paths crudos (son server),
+ * pero SÍ viajan dataset + bindings completos (con zonas calibradas por el
+ * admin) y previewUrls signed de 7 días (una por página).
  */
 export async function GET(_request: NextRequest) {
   const auth = await requireDesignAccess()

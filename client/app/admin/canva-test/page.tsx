@@ -300,7 +300,7 @@ export default function CanvaTestPage() {
         subtitle="Validación end-to-end: import → dataset → generación con Autofill → export PNG a Storage. La clienta jamás ve Canva."
         icon={<Sparkles size={18} />}
         action={
-          <Button size="sm" variant="secondary" icon={<RefreshCw size={14} />} loading={conn === null} onClick={loadConnection}>
+          <Button size="sm" variant="secondary" icon={<RefreshCw size={14} />} loading={conn === null || savedTemplates === null} onClick={() => { loadConnection(); loadTemplates() }}>
             Recargar
           </Button>
         }
@@ -353,7 +353,9 @@ export default function CanvaTestPage() {
         {listNote && (
           <p className="mb-2 text-xs" style={{ color: 'var(--color-cherry)' }}>{listNote}</p>
         )}
-        {(savedTemplates ?? []).length === 0 ? (
+        {!savedTemplates ? (
+          <p className="text-xs" style={{ color: 'var(--color-cherry-dark)', opacity: 0.6 }}>Cargando plantillas…</p>
+        ) : savedTemplates.length === 0 ? (
           <p className="text-xs" style={{ color: 'var(--color-cherry-dark)', opacity: 0.6 }}>
             Aún no hay plantillas guardadas — importa un diseño y dale a Guardar plantilla.
           </p>

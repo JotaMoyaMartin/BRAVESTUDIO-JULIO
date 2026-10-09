@@ -55,6 +55,18 @@ const PURPOSES = ['gancho', 'desarrollo', 'cta', 'objeción', 'deseo'] as const
 
 type CanvaFieldRow = { name: string; type: string }
 
+interface SavedTemplateRow {
+  id: string
+  name: string
+  category: string | null
+  kind: 'story' | 'carousel'
+  page_count: number
+  status: 'draft' | 'published' | 'archived'
+  provider_design_id: string
+  preview_url?: string | null
+  updated_at: string
+}
+
 export default function CanvaTestPage() {
   const [conn, setConn] = useState<ConnectionInfo | null>(null)
   const [urlError, setUrlError] = useState<string | null>(null)
@@ -77,12 +89,16 @@ export default function CanvaTestPage() {
   const [publishing, setPublishing] = useState(false)
   const [tplSaved, setTplSaved] = useState<string | null>(null)
   const [tplPreview, setTplPreview] = useState<{ url: string | null; note: string | null } | null>(null)
+  const [savedTemplates, setSavedTemplates] = useState<SavedTemplateRow[] | null>(null)
+  const [patchingId, setPatchingId] = useState<string | null>(null)
+  const [listNote, setListNote] = useState<string | null>(null)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.get('error')) setUrlError(params.get('error'))
     if (params.get('error') || params.get('connected')) window.history.replaceState({}, '', '/admin/canva-test')
     loadConnection()
+    loadTemplates()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -91,13 +107,40 @@ export default function CanvaTestPage() {
     setConn(await res.json())
   }
 
+  async function loadTemplates() {
+    const res = await fetch('/api/canva/templates')
+    const json = (await res.json().catch(() => null)) as { templates?: SavedTemplateRow[] } | null
+    setListNote(res.ok ? null : (json as unknown as { error?: string } | null)?.error ?? 'No se pudo cargar la lista')
+    setSavedTemplates(Array.isArray(json?.templates) ? json.templates : [])
+  }
+
+  async function patchStatus(id: string, status: 'draft' | 'published') {
+    setPatchingId(id)
+    setListNote(null)
+    try {
+      const res = await fetch('/api/canva/templates', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status }),
+      })
+      if (res.ok) await loadTemplates()
+      else {
+        const j = (await res.json().catch(() => null)) as { error?: string } | null
+        setListNote(j?.error ?? 'No se pudo cambiar el estado')
+      }
+    } finally {
+      setPatchingId(null)
+    }
+  }
+
   function defaultBehavior(field: string, type: string): Behavior {
     if (type === 'image') return 'user_image'
     if (/brand/.test(field)) return 'brand_text'
     return type === 'text' ? 'user_text' : 'keep_default'
   }
 
-  async function importDesign() {
+  async function importDesign(refOverride?: string) {
+    const target = (refOverride ?? ref).trim()
     setImporting(true)
     setGenError(null)
     setDesign(null)
@@ -111,7 +154,7 @@ export default function CanvaTestPage() {
     setTplCategory('')
     setTplStatus('draft')
     try {
-      const res = await fetch(`/api/canva/design?ref=${encodeURIComponent(ref)}`)
+      const res = await fetch(`/api/canva/design?ref=${encodeURIComponent(target)}`)
       const json = await res.json()
       if (!res.ok) {
         setGenError(json.error || 'No se pudo importar el diseño')
@@ -184,6 +227,7 @@ export default function CanvaTestPage() {
       const json = await res.json()
       setTplSaved(res.ok ? (json.updated ? 'Plantilla actualizada ✓' : 'Plantilla guardada ✓') : `Error: ${json.error}`)
       setTplPreview(res.ok ? { url: json.previewUrl ?? null, note: json.previewNote ?? null } : null)
+      if (res.ok) loadTemplates()
     } finally {
       setSaving(false)
     }
@@ -204,6 +248,8 @@ export default function CanvaTestPage() {
         setTplStatus(next)
         setTplSaved(next === 'published' ? 'Plantilla publicada ✓' : 'Plantilla despublicada ✓')
         setTplPreview({ url: json.previewUrl ?? null, note: json.previewNote ?? null })
+        setTplStatus(next)
+        loadTemplates()
       } else {
         setTplSaved(`Error: ${json.error}`)
       }
@@ -296,6 +342,57 @@ export default function CanvaTestPage() {
         </div>
       </Card>
 
+      {/* ── 1b) Plantillas guardadas ── */}
+      <Card>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <p className="text-sm font-bold">Plantillas guardadas</p>
+          <Button size="sm" variant="secondary" icon={<RefreshCw size={14} />} loading={savedTemplates === null} onClick={loadTemplates}>
+            Actualizar
+          </Button>
+        </div>
+        {listNote && (
+          <p className="mb-2 text-xs" style={{ color: 'var(--color-cherry)' }}>{listNote}</p>
+        )}
+        {(savedTemplates ?? []).length === 0 ? (
+          <p className="text-xs" style={{ color: 'var(--color-cherry-dark)', opacity: 0.6 }}>
+            Aún no hay plantillas guardadas — importa un diseño y dale a Guardar plantilla.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {(savedTemplates ?? []).map(t => (
+              <div key={t.id} className="flex items-center gap-3 rounded-[var(--radius-sm)] p-2" style={{ background: 'rgba(59, 16, 26, 0.04)' }}>
+                {t.preview_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={t.preview_url} alt={t.name} className="h-14 w-11 shrink-0 rounded-[var(--radius-sm)] object-cover" />
+                ) : (
+                  <div className="h-14 w-11 shrink-0 rounded-[var(--radius-sm)]" style={{ background: 'var(--color-buttermilk)' }} />
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="truncate text-sm font-bold">{t.name}</p>
+                    {t.status === 'published' && <Badge tone="green">Publicada</Badge>}
+                  </div>
+                  <p className="truncate text-xs" style={{ color: 'var(--color-cherry-dark)', opacity: 0.7 }}>
+                    {t.kind === 'carousel' ? 'Carrusel' : 'Historia'} · {t.page_count} {t.page_count === 1 ? 'página' : 'páginas'} · {t.category ?? 'sin categoría'}
+                  </p>
+                </div>
+                <Button size="sm" variant="secondary" onClick={() => importDesign(t.provider_design_id)}>
+                  Cargar
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  loading={patchingId === t.id}
+                  onClick={() => patchStatus(t.id, t.status === 'published' ? 'draft' : 'published')}
+                >
+                  {t.status === 'published' ? 'Despublicar' : 'Publicar'}
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
       {/* ── 2) Importar diseño ── */}
       <Card>
         <div className="flex items-end gap-3">
@@ -307,7 +404,7 @@ export default function CanvaTestPage() {
               onChange={e => setRef(e.target.value)}
             />
           </div>
-          <Button size="sm" loading={importing} disabled={!ref.trim()} onClick={importDesign}>Importar</Button>
+          <Button size="sm" loading={importing} disabled={!ref.trim()} onClick={() => importDesign()}>Importar</Button>
         </div>
 
         {design && (

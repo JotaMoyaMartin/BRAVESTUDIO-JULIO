@@ -16,6 +16,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Profile, BrandProfile } from '@/types/database'
+import { fbqTrack } from '@/lib/pixel-track'
 import BraviMascot from '@/components/bravi/BraviMascot'
 import { TEAM_INFO_LABELS, type TeamInfoValue } from '@/lib/ai/brain-grammar'
 
@@ -134,6 +135,20 @@ export default function OnboardingClient({ profile, brand, mode = 'onboarding', 
     if (isEdit) return
     try { localStorage.setItem(`${DRAFT_KEY}${userId}${DRAFT_SUFFIX}`, JSON.stringify(draft)) } catch { /* ignore */ }
   }, [draft, isEdit, userId])
+
+  // Meta Pixel: vuelta del checkout de Stripe (?checkout=success) → pago completado.
+  // La conversión se dispara UNA vez por navegador (localStorage) y se limpia la query.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (new URLSearchParams(window.location.search).get('checkout') !== 'success') return
+    try {
+      if (localStorage.getItem('brave_fbq_checkout_done') === '1') return
+      localStorage.setItem('brave_fbq_checkout_done', '1')
+    } catch { /* ignore */ }
+    fbqTrack('CompleteRegistration', { source: 'stripe_checkout' })
+    window.history.replaceState(null, '', '/onboarding')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   function patch(d: Partial<WizardDraft>) {
     setDraft(prev => ({ ...prev, ...d }))

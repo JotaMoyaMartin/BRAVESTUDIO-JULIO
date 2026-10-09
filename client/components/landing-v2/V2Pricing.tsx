@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Currency, PlanKey } from '@/lib/plans'
 import Reveal from './Reveal'
 import { PRICING, CTA_PRIMARY, CTA_SIGNUP_HREF } from './content'
-import { fbqTrack } from './pixel'
+import { fbqTrack } from '@/lib/pixel-track'
 
 type PlanB = 'monthly' | 'yearly'
 

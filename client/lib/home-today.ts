@@ -65,7 +65,7 @@ const SECTION_LINKS: Record<string, string> = {
 
 const SECTION_LABELS: Record<string, string> = {
   planificar: 'Planificación',
-  'crear-contenido': 'Guiones',
+  'crear-contenido': 'Crear guiones',
   stories: 'Stories',
   'mi-marca': 'Mi Marca',
   biblioteca: 'Biblioteca',

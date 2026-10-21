@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Body ───────────────────────────────────────────────────────
-  let body: { prompt?: string }
+  let body: { prompt?: string; temperature?: number }
   try {
     body = await req.json()
   } catch {
@@ -76,7 +76,11 @@ export async function POST(req: NextRequest) {
 
   // ── LLM ────────────────────────────────────────────────────────
   try {
-    const { content } = await callLLM({ prompt, timeoutMs: 60_000, retries: 1 })
+    // Temperatura opcional (p. ej. ganchos más variados); acotada a un rango sano.
+    const temperature = typeof body.temperature === 'number'
+      ? Math.min(1.2, Math.max(0, body.temperature))
+      : undefined
+    const { content } = await callLLM({ prompt, temperature, timeoutMs: 60_000, retries: 1 })
     return NextResponse.json({ content })
   } catch (err) {
     if (err instanceof Error && err.message === 'AI not configured') {

@@ -28,7 +28,7 @@ const navItems: NavItem[] = [
   // de tiles.ts. La ruta /reto-10k sigue existiendo por URL directa.
   { href: '/mi-marca', label: 'Mi Marca', icon: Star },
   { href: '/planificar', label: 'Planificación', icon: Sparkles },
-  { href: '/crear-contenido', label: 'Guiones', icon: Film },
+  { href: '/crear-contenido', label: 'Crear guiones', icon: Film },
   { href: '/stories', label: 'Stories BRÄVE', icon: LayoutGrid },
   // STORIES DISEÑO — rework mini-Canva (galería de plantillas, 7-oct-2026).
   { href: '/stories-diseno', label: 'Stories Diseño', icon: Palette },
@@ -52,7 +52,7 @@ const premiumNavItems: NavItem[] = [
   { href: '/metricas', label: 'Métricas', icon: BarChart3 },
   // Análisis — Instagram conectado (6-oct-2026): datos propios de la cuenta.
   { href: '/analisis', label: 'Análisis', icon: ChartNoAxesColumn },
-  { href: '/crear-contenido', label: 'Guiones', icon: Film },
+  { href: '/crear-contenido', label: 'Crear guiones', icon: Film },
   { href: '/biblioteca', label: 'Biblioteca', icon: BookOpen },
   { href: '/stories', label: 'Stories BRÄVE', icon: LayoutGrid },
   // STORIES DISEÑO — rework mini-Canva (galería de plantillas, 7-oct-2026).

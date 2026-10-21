@@ -3,9 +3,9 @@ import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPoi
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
-  CameraOff, SwitchCamera, Play, Pause, Circle, Square, Download, Share2,
+  CameraOff, Play, Pause, Circle, Square, Download,
   Plus, Minus, X, RotateCcw, Copy, Check, ChevronLeft, Film, Clapperboard, ChevronDown,
-  FlipHorizontal2,
+  Type,
 } from 'lucide-react'
 import {
   TeleprompterInput,
@@ -27,6 +27,28 @@ import { useCameraRecorder, CAMERA_ERROR_MESSAGES, type RecordingQuality } from 
 
 type Stage = 'editor' | 'setup' | 'ready' | 'countdown' | 'recording' | 'preview'
 
+// Ajustes del texto que se lee: se recuerdan en este dispositivo.
+type TextPos = 'top' | 'center'
+type TextWidth = 'narrow' | 'normal' | 'wide'
+interface TextPrefs { fontSize: number; speed: number; pos: TextPos; width: TextWidth; backdrop: boolean }
+const PREFS_KEY = 'brave_teleprompter_prefs'
+const DEFAULT_PREFS: TextPrefs = { fontSize: 30, speed: 1, pos: 'top', width: 'normal', backdrop: true }
+const WIDTH_CLASS: Record<TextWidth, string> = { narrow: 'max-w-[17rem]', normal: 'max-w-md', wide: 'max-w-2xl' }
+// Siempre lo máximo que dé la cámara delantera (hasta 4K, sin inflar píxeles):
+// la alumna no tiene que elegir calidad.
+const QUALITY: RecordingQuality = 'uhd'
+
+function isMobileDevice(): boolean {
+  if (typeof navigator === 'undefined') return false
+  return /Android|iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+}
+function isIOSDevice(): boolean {
+  if (typeof navigator === 'undefined') return false
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+}
+
 // Teleprompter V1 — una sola experiencia reutilizable (Home=dir / Crear=libertad:
 // esto es CAPACIDAD, no herramienta nueva de edición). Solo graba bien: sin
 // editor, filtros ni subtítulos. Móvil primero (iOS/Safari: MP4 + playsInline).
@@ -38,9 +60,28 @@ export default function TeleprompterClient({ savedScripts = null }: { savedScrip
   const [stage, setStage] = useState<Stage>('editor')
   const [input, setInput] = useState<TeleprompterInput | null>(null)
   const [script, setScript] = useState('')
-  const [fontSize, setFontSize] = useState(26)
-  const [speed, setSpeed] = useState(1)
-  const [quality, setQuality] = useState<RecordingQuality>('hd')
+  const [prefs, setPrefs] = useState<TextPrefs>(DEFAULT_PREFS)
+  const { fontSize, speed } = prefs
+  const setFontSize = useCallback((f: (n: number) => number) => setPrefs(p => ({ ...p, fontSize: f(p.fontSize) })), [])
+  const setSpeed = useCallback((f: (n: number) => number) => setPrefs(p => ({ ...p, speed: f(p.speed) })), [])
+  const prefsLoaded = useRef(false)
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(PREFS_KEY)
+      if (raw) setPrefs(p => ({ ...p, ...JSON.parse(raw) }))
+    } catch { /* sin almacenamiento: valores por defecto */ }
+    prefsLoaded.current = true
+  }, [])
+  useEffect(() => {
+    if (!prefsLoaded.current) return
+    try { window.localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)) } catch { /* noop */ }
+  }, [prefs])
+  const [showSettings, setShowSettings] = useState(false)
+  const [savedOk, setSavedOk] = useState(false)
+  const [confirmRepeat, setConfirmRepeat] = useState(false)
+  const [onMobile, setOnMobile] = useState(false)
+  const [onIOS, setOnIOS] = useState(false)
+  useEffect(() => { setOnMobile(isMobileDevice()); setOnIOS(isIOSDevice()) }, [])
   const [playing, setPlaying] = useState(false)
   const [countdown, setCountdown] = useState(3)
   const [recorded, setRecorded] = useState<{ blob: Blob; url: string; mime: string } | null>(null)
@@ -96,23 +137,39 @@ export default function TeleprompterClient({ savedScripts = null }: { savedScrip
   }, [input, router])
 
   // --- Carga inicial: payload precargado (Reel/Stories) o borrador local ---
+  // Con payload la cámara se ABRE DIRECTO (dictado de Jota: "directamente se
+  // abre Teleprompter con la cámara y listo": sin pantalla intermedia). Si el
+  // permiso falla, la propia pantalla de grabación pide reintento. "Salir" del
+  // grabador deja al usuario en el editor con el guion cargado — nada se pierde.
+  const camRef = useRef(cam)
+  camRef.current = cam
   useEffect(() => {
     const incoming = readTeleprompterInput()
-    if (incoming) {
-      setInput(incoming)
-      setScript(incoming.script)
-    } else {
+    if (!incoming) {
       try {
         setScript(window.localStorage.getItem(TELEPROMPTER_DRAFT_KEY) || '')
       } catch {
         /* storage bloqueado: escribir a mano */
       }
+      return
     }
+    setInput(incoming)
+    setScript(incoming.script)
+    ;(async () => {
+      camRef.current.closeCamera()
+      setStage('setup')
+      const ok = await camRef.current.openCamera('user')
+      if (ok) setStage('ready')
+    })()
   }, [])
 
   // Borrador siempre a salvo: si el usuario edita un guion precargado y navega
-  // fuera sin grabar, el texto no se pierde (el muevo payload gana al cargar).
+  // fuera sin grabar, el texto no se pierde (el nuevo payload gana al cargar).
   useEffect(() => {
+    // Nunca escribir vacío: al montar (y en los re-montajes de StrictMode en dev)
+    // `script` aún está '' y el setItem machacaba el borrador guardado ANTES de
+    // que corra la restauración → recarga = guion borrado. Solo se persiste texto real.
+    if (!script) return
     try {
       window.localStorage.setItem(TELEPROMPTER_DRAFT_KEY, script)
     } catch {
@@ -210,12 +267,13 @@ export default function TeleprompterClient({ savedScripts = null }: { savedScrip
 
   // --- Flujo de grabación ---
   const startCountdown = useCallback(() => {
+    setShowSettings(false)
     setSavedMessage(null)
     setCountdown(3)
     setStage('countdown')
   }, [])
 
-  const startRecordingFn = useCallback(() => cam.startRecording(quality), [cam, quality])
+  const startRecordingFn = useCallback(() => cam.startRecording(QUALITY), [cam])
   useEffect(() => {
     if (stage !== 'countdown') return
     if (countdown <= 0) {
@@ -248,6 +306,8 @@ export default function TeleprompterClient({ savedScripts = null }: { savedScrip
       // srcObject, en el mismo nodo tapa al src=blob (era la "cámara de nuevo").
       cam.hideCameraFeed()
       setRecorded({ blob: result.blob, url: result.url, mime: result.mime })
+      setSavedOk(false)
+      setConfirmRepeat(false)
       setStage('preview')
     } else {
       // Grabación vacía: repetir sin castigo, pero aviso claro.
@@ -261,6 +321,8 @@ export default function TeleprompterClient({ savedScripts = null }: { savedScrip
     if (recorded) URL.revokeObjectURL(recorded.url)
     setRecorded(null)
     setSavedMessage(null)
+    setSavedOk(false)
+    setConfirmRepeat(false)
     resetScroll()
     cam.showCameraFeed() // vuelve la proyección en vivo al <video>
     setStage('ready')
@@ -271,22 +333,19 @@ export default function TeleprompterClient({ savedScripts = null }: { savedScrip
     resetScroll()
   }, [resetScroll])
 
-  /** Guardado SIN hoja de compartir en ordenador/Android: descarga directa.
-   *  Solo iOS usa navigator.share (ahí es la vía fiable a Fotos — un
-   *  a[download] en Safari solo abre el visor). */
+  /** «Guardar en mi teléfono»: en iPhone y Android abre el menú del sistema
+   *  (ahí está «Guardar vídeo» → Fotos / «Fotos»·«Galería» en Android). En
+   *  ordenador, descarga directa. */
   const saveVideo = useCallback(async () => {
     if (!recorded) return
     const name = fileNameFor(input?.source, input?.sequence?.current ?? null, recorded.mime)
-    const isIOS =
-      typeof navigator !== 'undefined' &&
-      (/iPad|iPhone|iPod/.test(navigator.userAgent) ||
-        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1))
     const file = new File([recorded.blob], name, { type: recorded.mime || 'video/mp4' })
-    if (isIOS) {
+    if (isMobileDevice()) {
       try {
         if (navigator.canShare?.({ files: [file] })) {
           await navigator.share({ files: [file], title: name })
-          setSavedMessage('Guardado. Búscalo en tus fotos o archivos.')
+          setSavedOk(true)
+          setSavedMessage(isIOSDevice() ? 'Listo. Lo tienes en Fotos (o en Archivos si elegiste esa opción).' : 'Listo. Lo tienes en tu galería.')
           return
         }
       } catch (err) {
@@ -301,12 +360,13 @@ export default function TeleprompterClient({ savedScripts = null }: { savedScrip
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
-      setSavedMessage('Vídeo guardado en tus descargas.')
+      setSavedOk(true)
+      setSavedMessage(onMobile ? 'Vídeo guardado en Descargas. Ábrelo y guárdalo en tu galería.' : 'Vídeo guardado en tus descargas.')
     } catch {
       window.open(recorded.url, '_blank')
       setSavedMessage('Abre el vídeo y guárdalo desde el menú compartir.')
     }
-  }, [recorded, input])
+  }, [recorded, input, onMobile])
 
   const continueAfterRecording = useCallback(() => {
     const next = input ? buildNextSequenceInput(input) : null
@@ -318,6 +378,7 @@ export default function TeleprompterClient({ savedScripts = null }: { savedScrip
       if (recorded) URL.revokeObjectURL(recorded.url)
       setRecorded(null)
       setSavedMessage(null)
+      setSavedOk(false)
       cam.showCameraFeed() // siguiente story: cámara de vuelta en el <video>
       setStage('ready')
       return
@@ -549,9 +610,12 @@ export default function TeleprompterClient({ savedScripts = null }: { savedScrip
             >
               <X size={16} /> Salir
             </button>
-            <p className="text-xs font-bold uppercase tracking-widest text-white/80 truncate max-w-[45%] text-right">
-              {input?.title || 'Teleprompter'}
-            </p>
+            {/* Grabando: el título se oculta para que el contador se lea limpio */}
+            {stage !== 'recording' && (
+              <p className="text-xs font-bold uppercase tracking-widest text-white/80 truncate max-w-[45%] text-right">
+                {input?.title || 'Teleprompter'}
+              </p>
+            )}
           </div>
 
           {/* Texto superpuesto (arriba: mirada cerca de la cámara del móvil).
@@ -560,8 +624,12 @@ export default function TeleprompterClient({ savedScripts = null }: { savedScrip
             <div
               ref={windowRef}
               data-testid="teleprompter-text"
-              className={`absolute inset-x-0 top-[14%] h-[40%] overflow-hidden px-5 z-10 ${stage === 'countdown' ? '' : 'touch-none select-none'}`}
-              style={{ pointerEvents: stage === 'countdown' ? 'none' : 'auto' }}
+              className={`absolute inset-x-3 ${prefs.pos === 'top' ? 'top-[calc(env(safe-area-inset-top)+4.25rem)]' : 'top-[26%]'} h-[38%] overflow-hidden px-4 z-10 rounded-3xl transition-colors ${prefs.backdrop ? 'bg-black/45' : ''} ${stage === 'countdown' ? '' : 'touch-none select-none'}`}
+              style={{
+                pointerEvents: stage === 'countdown' ? 'none' : 'auto',
+                maskImage: 'linear-gradient(180deg, transparent 0%, #000 10%, #000 88%, transparent 100%)',
+                WebkitMaskImage: 'linear-gradient(180deg, transparent 0%, #000 10%, #000 88%, transparent 100%)',
+              }}
               onPointerDown={stage === 'countdown' ? undefined : onTextPointerDown}
               onPointerMove={stage === 'countdown' ? undefined : onTextPointerMove}
               onPointerUp={stage === 'countdown' ? undefined : onTextPointerEnd}
@@ -569,7 +637,7 @@ export default function TeleprompterClient({ savedScripts = null }: { savedScrip
             >
               <div
                 ref={innerRef}
-                className="mx-auto max-w-xl whitespace-pre-wrap text-center font-bold text-white will-change-transform"
+                className={`mx-auto ${WIDTH_CLASS[prefs.width]} whitespace-pre-wrap text-center font-bold text-white will-change-transform`}
                 style={{ fontSize, lineHeight: 1.55, textShadow: '0 2px 10px rgba(0,0,0,0.95), 0 0 3px rgba(0,0,0,1)' }}
               >
                 {script}
@@ -586,7 +654,7 @@ export default function TeleprompterClient({ savedScripts = null }: { savedScrip
 
           {/* Timer de grabación */}
           {stage === 'recording' && (
-            <div className="absolute top-16 inset-x-0 z-10 flex justify-center">
+            <div className="absolute top-[calc(env(safe-area-inset-top)+1.25rem)] inset-x-0 z-20 flex justify-center pointer-events-none">
               <p className="px-3 py-1 rounded-full bg-black/50 text-white text-xs font-bold tabular-nums flex items-center gap-1.5">
                 <Circle size={10} fill="var(--color-cherry)" style={{ color: 'var(--color-cherry)' }} />
                 {formatSeconds(seconds)}
@@ -635,88 +703,38 @@ export default function TeleprompterClient({ savedScripts = null }: { savedScrip
             </div>
           )}
 
-          {/* Controles (ready): mínimos, abajo, nunca sobre el texto */}
+          {/* Controles (ready): lo mínimo a la vista; los ajustes del texto en su panel */}
           {stage === 'ready' && (
-            <div className="absolute bottom-0 inset-x-0 z-10 pb-6 pt-10" style={{ background: 'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.55) 60%)' }}>
-              <div className="flex items-center justify-center gap-4 flex-wrap px-4">
-                <ControlChip label="Texto" onMinus={() => setFontSize(f => clampFontSize(f - FONT_STEP))} onPlus={() => setFontSize(f => clampFontSize(f + FONT_STEP))} value={`${fontSize}px`} />
-                <button
-                  onClick={() => setPlaying(p => !p)}
-                  className="flex items-center justify-center w-11 h-11 rounded-full text-white"
-                  style={{ background: 'rgba(255,255,255,0.18)', border: '1.5px solid rgba(255,255,255,0.4)' }}
-                  aria-label={playing ? 'Pausar texto' : 'Reproducir texto'}
-                >
-                  {playing ? <Pause size={17} /> : <Play size={17} />}
-                </button>
-                <ControlChip label="Velocidad" onMinus={() => setSpeed(s => clampSpeed(s - SPEED_STEP))} onPlus={() => setSpeed(s => clampSpeed(s + SPEED_STEP))} value={`${speed.toFixed(2).replace(/\.?0+$/, '')}x`} />
-                {/* Elige calidad tocando la opción, como en la cámara del iPhone */}
-                <div className="flex flex-col items-center gap-1">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-white/80">Calidad</p>
-                  <div
-                    className="flex rounded-full"
-                    style={{ background: 'rgba(255,255,255,0.14)', border: '1.5px solid rgba(255,255,255,0.4)', padding: 2 }}
-                  >
-                    <button
-                      onClick={() => setQuality('hd')}
-                      aria-pressed={quality === 'hd'}
-                      className="px-3 py-1 rounded-full text-xs font-bold transition-all"
-                      style={{
-                        background: quality === 'hd' ? 'white' : 'transparent',
-                        color: quality === 'hd' ? 'var(--color-ink)' : 'rgba(255,255,255,0.75)',
-                      }}
-                    >
-                      HD
-                    </button>
-                    <button
-                      onClick={() => setQuality('uhd')}
-                      aria-pressed={quality === 'uhd'}
-                      className="px-3 py-1 rounded-full text-xs font-bold transition-all"
-                      style={{
-                        background: quality === 'uhd' ? 'white' : 'transparent',
-                        color: quality === 'uhd' ? 'var(--color-ink)' : 'rgba(255,255,255,0.75)',
-                      }}
-                    >
-                      4K
-                    </button>
-                  </div>
-                </div>
-                {/* Espejo Sí/No: gobierna el preview Y el archivo (WYSIWYG).
-                    Activo = blanco relleno, como la opción de calidad elegida. */}
-                <div className="flex flex-col items-center gap-1">
+            <div className="absolute bottom-0 inset-x-0 z-10 px-4 pt-10 pb-[calc(1.25rem+env(safe-area-inset-bottom))]" style={{ background: 'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.6) 45%)' }}>
+              {showSettings && (
+                <TextSettings
+                  prefs={prefs}
+                  onChange={setPrefs}
+                  mirror={cam.mirror}
+                  onMirror={() => cam.setMirror(m => !m)}
+                  onClose={() => setShowSettings(false)}
+                />
+              )}
+              <div className="flex items-end justify-center gap-8">
+                <RoundButton label="Texto" active={showSettings} onClick={() => setShowSettings(v => !v)}>
+                  <Type size={19} />
+                </RoundButton>
+                <div className="flex flex-col items-center gap-1.5">
                   <button
-                    onClick={() => cam.setMirror(m => !m)}
-                    className="flex items-center justify-center w-11 h-11 rounded-full transition-all"
-                    style={{
-                      background: cam.mirror ? 'white' : 'rgba(255,255,255,0.18)',
-                      border: '1.5px solid rgba(255,255,255,0.4)',
-                      color: cam.mirror ? 'var(--color-ink)' : 'white',
-                    }}
-                    aria-pressed={cam.mirror}
-                    aria-label="Efecto espejo"
+                    onClick={startCountdown}
+                    className="flex items-center justify-center w-[74px] h-[74px] rounded-full border-4 border-white/90"
+                    style={{ background: 'var(--color-cherry)', boxShadow: '0 6px 24px rgba(122,24,50,0.5)' }}
+                    aria-label="Grabar"
                   >
-                    <FlipHorizontal2 size={17} />
+                    <Circle size={30} className="text-white" fill="white" />
                   </button>
-                  <p className="text-[9px] font-bold uppercase tracking-widest text-white/70">Espejo</p>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-white/85">Grabar</span>
                 </div>
-                <button
-                  onClick={cam.flipCamera}
-                  className="flex items-center justify-center w-11 h-11 rounded-full text-white"
-                  style={{ background: 'rgba(255,255,255,0.18)', border: '1.5px solid rgba(255,255,255,0.4)' }}
-                  aria-label="Cambiar cámara"
-                >
-                  <SwitchCamera size={17} />
-                </button>
+                <RoundButton label={playing ? 'Pausar' : 'Probar'} onClick={() => setPlaying(p => !p)}>
+                  {playing ? <Pause size={19} /> : <Play size={19} />}
+                </RoundButton>
               </div>
-              <div className="flex justify-center mt-5">
-                <button
-                  onClick={startCountdown}
-                  className="flex items-center justify-center w-16 h-16 rounded-full"
-                  style={{ background: 'var(--color-cherry)', boxShadow: '0 6px 24px rgba(122,24,50,0.5)' }}
-                  aria-label="Grabar"
-                >
-                  <Circle size={30} className="text-white" fill="white" />
-                </button>
-              </div>
+              <p className="text-center text-[11px] text-white/60 mt-3">Cámara delantera · máxima calidad · desliza el texto para volver atrás</p>
             </div>
           )}
 
@@ -757,33 +775,168 @@ export default function TeleprompterClient({ savedScripts = null }: { savedScrip
             </div>
           )}
 
-          {/* Preview: repetir / guardar / continuar (flujo normal bajo el vídeo,
-              nunca tapando los controles nativos de reproducción) */}
+          {/* Final: guardar en el teléfono (lo principal) · repetir · continuar */}
           {stage === 'preview' && recorded && (
-            <div className="shrink-0 z-10 p-5 pb-8" style={{ background: 'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.85) 20%)' }}>
-              <p className="text-center text-[11px] text-white/70 mb-2">Míralo completo antes de guardarlo</p>
-              <div className="flex flex-wrap items-center justify-center gap-3">
-                <button onClick={repeat} className="px-5 py-3 rounded-[var(--radius-sm)] text-sm font-semibold text-white" style={{ border: '1.5px solid rgba(255,255,255,0.4)' }}>
-                  <RotateCcw size={15} /> Repetir
-                </button>
-                <button
-                  onClick={saveVideo}
-                  className="btn-primary text-sm py-3"
-                >
-                  <Share2 size={15} /> Guardar vídeo
-                </button>
-                {continueLabel && (
-                  <button onClick={continueAfterRecording} className="btn-secondary text-sm py-3">
-                    {continueLabel} →
-                  </button>
+            <div className="shrink-0 z-10 bg-black px-5 pt-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
+              <div className="max-w-sm mx-auto flex flex-col gap-2.5">
+                {confirmRepeat ? (
+                  <div className="rounded-2xl bg-white/10 p-4 text-center">
+                    <p className="text-sm font-semibold text-white">Esta toma aún no está guardada.</p>
+                    <p className="text-xs text-white/70 mt-0.5">Si repites, se borra.</p>
+                    <div className="flex gap-2.5 mt-3">
+                      <button onClick={() => { setConfirmRepeat(false); saveVideo() }} className="btn-primary flex-1 justify-center text-sm py-3">
+                        <Download size={15} /> Guardar primero
+                      </button>
+                      <button onClick={repeat} className="flex-1 rounded-[var(--radius-sm)] text-sm font-semibold text-white border-[1.5px] border-white/40">
+                        Sí, repetir
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <button onClick={saveVideo} className="btn-primary w-full justify-center py-3.5 text-base">
+                      {savedOk ? <Check size={17} /> : <Download size={17} />}
+                      {savedOk ? 'Guardado · guardar otra vez' : 'Guardar en mi teléfono'}
+                    </button>
+                    {!savedOk && onMobile && (
+                      <p className="text-center text-[11px] text-white/65 -mt-1">
+                        {onIOS ? 'En el menú que se abre, pulsa «Guardar vídeo».' : 'En el menú que se abre, elige «Fotos» o «Galería».'}
+                      </p>
+                    )}
+                    <div className="flex gap-2.5">
+                      <button
+                        onClick={() => (savedOk ? repeat() : setConfirmRepeat(true))}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-[var(--radius-sm)] text-sm font-semibold text-white border-[1.5px] border-white/40"
+                      >
+                        <RotateCcw size={15} /> Repetir toma
+                      </button>
+                      {continueLabel && (
+                        <button onClick={continueAfterRecording} className="btn-secondary flex-1 justify-center text-sm py-3">
+                          {continueLabel} →
+                        </button>
+                      )}
+                    </div>
+                  </>
                 )}
-                {savedMessage && <p className="w-full text-center text-xs text-white/85 mt-1">{savedMessage}</p>}
+                {savedMessage && <p className="text-center text-xs text-white/85">{savedMessage}</p>}
               </div>
             </div>
           )}
         </div>
       )}
     </>
+  )
+}
+
+function RoundButton({ label, active = false, onClick, children }: { label: string; active?: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col items-center gap-1.5">
+      <button
+        onClick={onClick}
+        aria-pressed={active}
+        aria-label={label}
+        className={`flex items-center justify-center w-12 h-12 rounded-full transition-all border-[1.5px] ${active ? 'bg-white text-ink border-white' : 'bg-white/15 text-white border-white/40'}`}
+      >
+        {children}
+      </button>
+      <span className="text-[10px] font-bold uppercase tracking-widest text-white/85">{label}</span>
+    </div>
+  )
+}
+
+/** Panel «Texto»: todo lo que afecta a cómo se lee el guion, en un solo sitio. */
+function TextSettings({
+  prefs, onChange, mirror, onMirror, onClose,
+}: {
+  prefs: TextPrefs
+  onChange: (f: (p: TextPrefs) => TextPrefs) => void
+  mirror: boolean
+  onMirror: () => void
+  onClose: () => void
+}) {
+  const set = (patch: Partial<TextPrefs>) => onChange(p => ({ ...p, ...patch }))
+  // Compacto a propósito: el texto de arriba debe seguir viéndose mientras se ajusta.
+  return (
+    <div className="mx-auto max-w-sm mb-3 rounded-3xl bg-white/95 backdrop-blur px-4 py-3 space-y-2.5 text-ink shadow-2xl">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-bold">Ajustes del texto</p>
+        <button onClick={onClose} className="text-xs font-bold text-white bg-cherry rounded-full px-3 py-1">Listo</button>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <Stepper
+          label="Tamaño"
+          value={`${prefs.fontSize}`}
+          onMinus={() => set({ fontSize: clampFontSize(prefs.fontSize - FONT_STEP) })}
+          onPlus={() => set({ fontSize: clampFontSize(prefs.fontSize + FONT_STEP) })}
+        />
+        <Stepper
+          label="Velocidad"
+          value={`${prefs.speed.toFixed(2).replace(/\.?0+$/, '')}x`}
+          onMinus={() => set({ speed: clampSpeed(prefs.speed - SPEED_STEP) })}
+          onPlus={() => set({ speed: clampSpeed(prefs.speed + SPEED_STEP) })}
+        />
+      </div>
+      <Segmented
+        label="Posición"
+        value={prefs.pos}
+        options={[['top', 'Cerca de la cámara'], ['center', 'En el centro']]}
+        onChange={v => set({ pos: v as TextPos })}
+      />
+      <Segmented
+        label="Ancho"
+        value={prefs.width}
+        options={[['narrow', 'Estrecho'], ['normal', 'Normal'], ['wide', 'Ancho']]}
+        onChange={v => set({ width: v as TextWidth })}
+      />
+      <div className="grid grid-cols-2 gap-2">
+        <Toggle label="Fondo oscuro" on={prefs.backdrop} onClick={() => set({ backdrop: !prefs.backdrop })} />
+        <Toggle label="Espejo" on={mirror} onClick={onMirror} />
+      </div>
+    </div>
+  )
+}
+
+function Toggle({ label, on, onClick }: { label: string; on: boolean; onClick: () => void }) {
+  return (
+    <button onClick={onClick} aria-pressed={on} className="flex items-center justify-between gap-2 rounded-2xl bg-warm-gray px-3 py-2">
+      <span className="text-xs font-semibold text-ink/75">{label}</span>
+      <span className={`relative w-9 h-5 rounded-full transition-colors ${on ? 'bg-cherry' : 'bg-ink/20'}`}>
+        <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${on ? 'left-[18px]' : 'left-0.5'}`} />
+      </span>
+    </button>
+  )
+}
+
+function Stepper({ label, value, onMinus, onPlus }: { label: string; value: string; onMinus: () => void; onPlus: () => void }) {
+  return (
+    <div className="rounded-2xl bg-warm-gray px-2 py-1.5">
+      <p className="text-[10px] font-bold uppercase tracking-wider text-ink/55 text-center">{label}</p>
+      <div className="flex items-center justify-between">
+        <button onClick={onMinus} className="w-8 h-8 rounded-full bg-white text-cherry-dark flex items-center justify-center" aria-label={`Menos ${label.toLowerCase()}`}><Minus size={14} /></button>
+        <span className="text-sm font-bold tabular-nums">{value}</span>
+        <button onClick={onPlus} className="w-8 h-8 rounded-full bg-white text-cherry-dark flex items-center justify-center" aria-label={`Más ${label.toLowerCase()}`}><Plus size={14} /></button>
+      </div>
+    </div>
+  )
+}
+
+function Segmented({ label, value, options, onChange }: { label: string; value: string; options: Array<[string, string]>; onChange: (v: string) => void }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-xs font-semibold text-ink/70 w-16 flex-shrink-0">{label}</span>
+      <div className="flex flex-1 rounded-full bg-warm-gray p-0.5">
+        {options.map(([v, l]) => (
+          <button
+            key={v}
+            onClick={() => onChange(v)}
+            aria-pressed={value === v}
+            className={`flex-1 px-2 py-1.5 rounded-full text-[11px] font-bold transition-all ${value === v ? 'bg-cherry text-white shadow' : 'text-cherry-dark/70'}`}
+          >
+            {l}
+          </button>
+        ))}
+      </div>
+    </div>
   )
 }
 

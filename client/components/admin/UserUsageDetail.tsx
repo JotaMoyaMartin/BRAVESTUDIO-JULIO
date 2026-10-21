@@ -81,7 +81,7 @@ const STATUS_LABELS: Record<string, { label: string; tone: 'green' | 'cherry' | 
 const SECTION_LABELS: Record<string, string> = {
   'inicio': 'Inicio',
   'planificar': 'Planificación',
-  'crear-contenido': 'Crear Contenido',
+  'crear-contenido': 'Crear guiones',
   'mi-marca': 'Mi Marca',
   'biblioteca': 'Biblioteca',
   'calendario': 'Calendario',

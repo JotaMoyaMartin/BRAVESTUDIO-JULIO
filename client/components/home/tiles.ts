@@ -5,7 +5,7 @@ import { AppTileProps } from './AppTile'
 export const TILES_NORMAL: AppTileProps[] = [
   { href: '/mi-marca', icon: Star, label: 'Mi Marca', desc: 'Perfil de tu salón', tone: 'buttermilk', image: '/tiles/mi-marca-banner.jpg', imageAspect: '1746 / 901' },
   { href: '/planificar', icon: Sparkles, label: 'Planificar', desc: 'Ideas para el mes', tone: 'pink', image: '/tiles/planificar-banner.jpg' },
-  { href: '/crear-contenido', icon: Film, label: 'Guiones', desc: '5 ideas → guion listo', tone: 'blue', image: '/tiles/guiones-banner.jpg' },
+  { href: '/crear-contenido', icon: Film, label: 'Crear guiones', desc: 'Tu idea → gancho → guion', tone: 'blue', image: '/tiles/guiones-banner.jpg' },
   { href: '/stories', icon: LayoutGrid, label: 'Stories BRÄVE', desc: 'Stories y encuestas', tone: 'green', image: '/tiles/stories-banner.jpg', imageAspect: '1862 / 845' },
   // STORIES DISEÑO — rework mini-Canva (galería de plantillas, 7-oct-2026).
   { href: '/stories-diseno', icon: Palette, label: 'Stories Diseño', desc: 'Secuencias de stories con plantillas e IA', tone: 'buttermilk' },
@@ -45,7 +45,7 @@ export const TILES_PREMIUM: AppTileProps[] = [
   { href: '/foto-pro', icon: ImagePlus, label: 'Foto Pro', desc: 'Retoque tus fotos con IA, sin perder identidad', tone: 'blue' },
   // DISEÑOS — 9-oct-2026: galería de plantillas de marca (sección para todas con acceso activo).
   { href: '/disenos', icon: LayoutTemplate, label: 'Diseños', desc: 'Plantillas de tu marca listas para personalizar', tone: 'pink' },
-  { href: '/crear-contenido', icon: Film, label: 'Guiones', desc: '5 ideas → guion listo', tone: 'green', image: '/tiles/guiones-banner.jpg' },
+  { href: '/crear-contenido', icon: Film, label: 'Crear guiones', desc: 'Tu idea → gancho → guion', tone: 'green', image: '/tiles/guiones-banner.jpg' },
   { href: '/carrusel', icon: Images, label: 'Carrusel', desc: 'Carrusel listo para publicar', tone: 'buttermilk' },
   { href: '/stories', icon: LayoutGrid, label: 'Stories BRÄVE', desc: 'Stories y encuestas', tone: 'cream', image: '/tiles/stories-banner.jpg', imageAspect: '1862 / 845' },
   // STORIES DISEÑO — rework mini-Canva (galería de plantillas, 7-oct-2026).

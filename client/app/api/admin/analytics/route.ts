@@ -270,7 +270,7 @@ export async function GET() {
 
   // --- Section usage ---
   const sections: { section: string; label: string; users: Set<string>; totalActions: number }[] = [
-    { section: 'crear-contenido', label: 'Crear Contenido', users: new Set(), totalActions: 0 },
+    { section: 'crear-contenido', label: 'Crear guiones', users: new Set(), totalActions: 0 },
     { section: 'stories', label: 'Stories BRÄVE', users: new Set(), totalActions: 0 },
     { section: 'mi-marca', label: 'Mi Marca', users: new Set(), totalActions: 0 },
     { section: 'reto-10k', label: 'Reto 10K', users: new Set(), totalActions: 0 },

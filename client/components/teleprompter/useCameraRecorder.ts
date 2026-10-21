@@ -325,7 +325,7 @@ export function useCameraRecorder(videoRef: React.RefObject<HTMLVideoElement | n
     // Bitrate alto: los navegadores comprimen muy agresivamente por defecto
     // (por eso "se guarda en mala calidad"). Safari ignora esta opción, pero
     // Chrome/Android y el WebM de escritorio la respetan.
-    const bitrate = quality === 'uhd' ? 18_000_000 : 5_000_000
+    const bitrate = quality === 'uhd' ? 18_000_000 : 8_000_000
     const tryRecorder = (s: MediaStream, m: string | null): MediaRecorder | null => {
       try {
         return new MediaRecorder(s, { ...(m ? { mimeType: m } : {}), videoBitsPerSecond: bitrate })

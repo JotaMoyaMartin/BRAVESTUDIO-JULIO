@@ -17,11 +17,14 @@ export { extractJSON } from './extract'
  * Calls the server AI route with a built prompt and returns the raw model text.
  * Throws on any non-200 response so callers can fall back to mock.
  */
-export async function generateAIContent(prompt: string, opts: { signal?: AbortSignal } = {}): Promise<string> {
+export async function generateAIContent(
+  prompt: string,
+  opts: { signal?: AbortSignal; temperature?: number } = {},
+): Promise<string> {
   const res = await fetch('/api/ai/generate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt }),
+    body: JSON.stringify({ prompt, temperature: opts.temperature }),
     signal: opts.signal,
   })
 

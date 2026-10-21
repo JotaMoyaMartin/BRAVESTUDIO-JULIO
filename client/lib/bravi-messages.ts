@@ -125,11 +125,11 @@ export const BRAVI_MESSAGES: Record<BraviCategory, BraviMessage[]> = {
     { text: '¡Fuego! Días sin parar. No bajes el ritmo ahora.', pose: 'normal' },
   ],
   section_crear: [
-    { text: 'Escribe tu idea y yo te ayudo a convertirla en un guión.', pose: 'normal' },
+    { text: 'Escríbeme tu idea o mándame una nota de voz: yo la convierto en guion.', pose: 'normal' },
     { text: '¿Tienes una idea en mente? Cuéntamela y la convertimos en contenido.', pose: 'thinking' },
     { text: 'El gancho lo es todo. Los primeros 3 segundos deciden si se quedan.', pose: 'thinking' },
     { text: 'No lo pienses mucho, escribe y yo me encargo del resto.', pose: 'normal' },
-    { text: 'Tu próximo reels empieza aquí. Vamos a crearlo juntos.', pose: 'celebrating' },
+    { text: 'Tu próximo Reel empieza aquí. Vamos a crearlo juntas.', pose: 'celebrating' },
   ],
   section_planificar: [
     { text: 'Planifica con calma. Un buen plan = semanas sin estrés.', pose: 'normal' },

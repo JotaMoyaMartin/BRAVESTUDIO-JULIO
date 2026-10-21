@@ -28,7 +28,7 @@ export default function ContinueCard({ item, section }: ContinueCardProps) {
   const href = section ? (SECTION_LINKS[section] || '/inicio') : '/biblioteca'
   const sectionLabel = section
     ? section === 'planificar' ? 'Planificación'
-    : section === 'crear-contenido' ? 'Guiones'
+    : section === 'crear-contenido' ? 'Crear guiones'
     : section === 'stories' ? 'Stories'
     : section === 'mi-marca' ? 'Mi Marca'
     : 'Biblioteca'

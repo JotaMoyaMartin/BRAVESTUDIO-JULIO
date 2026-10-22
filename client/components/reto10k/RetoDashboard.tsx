@@ -38,7 +38,7 @@ export default function RetoDashboard({ profile, progress, config, brand, conten
   return (
     <div className="space-y-1">
       <div className="px-1 pt-2 pb-1">
-        <BraviGuide section="reto-10k" size={56} context={{ retoActive: true, retoStatus: progress.status, retoDay: progress.current_day, retoItemsCount: contentItems.filter(i => i.tag === 'reto-10k').length }} />
+        <BraviGuide section="reto-10k" size={56} placement="empty" context={{ retoActive: true, retoStatus: progress.status, retoDay: progress.current_day, retoItemsCount: contentItems.filter(i => i.tag === 'reto-10k').length }} />
       </div>
       <RetoTabs active={activeTab} onChange={setActiveTab} ideaCount={ideaCount} />
 

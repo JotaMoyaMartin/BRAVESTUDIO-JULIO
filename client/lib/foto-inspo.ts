@@ -1,7 +1,7 @@
 // Foto inspo — referencias fotográficas para que la estilista se haga fotos
 // (petición Jota, 5-oct-2026). MVP estático: catálogo en lib, sin BD.
-// Las portadas las dará Jota de a una (igual que las tiles): `cover: null`
-// hasta entonces — la UI muestra placeholder.
+// Las portadas las da Jota; las que faltaban (café y detalles) se recrearon
+// con IA (Higgsfield, 22-oct-2026) para que todas tengan ejemplo visual.
 
 export type FotoInspoCategoryId = 'selfie' | 'poses' | 'plano-cafe' | 'detalles'
 
@@ -124,21 +124,21 @@ export const FOTO_INSPO_ITEMS: FotoInspoItem[] = [
     categoryId: 'plano-cafe',
     title: 'El café en la barra',
     tip: 'La taza sobre la barra impecable transmite calma y salón cuidado. Es el plano lifestyle que hace que quieran venir a estar aquí.',
-    cover: null,
+    cover: '/foto-inspo/cafe-barra.jpg',
   },
   {
     id: 'cafe-manos-taza',
     categoryId: 'plano-cafe',
     title: 'Tus manos con la taza',
     tip: 'Primer plano de manos con la taza (y un anillo, si te gustan) humaniza sin enseñar cara. Da ganas de parar a charlar contigo.',
-    cover: null,
+    cover: '/foto-inspo/cafe-manos-taza.jpg',
   },
   {
     id: 'cafe-ventana',
     categoryId: 'plano-cafe',
     title: 'Café junto a la ventana',
     tip: 'El contraluz suave de la mañana es luz gratis que favorece. Este plano dice "aquí se sabe estar" sin escribir nada.',
-    cover: null,
+    cover: '/foto-inspo/cafe-ventana.jpg',
   },
 
   // ── Tijeras y detalles ───────────────────────────────────────
@@ -168,20 +168,20 @@ export const FOTO_INSPO_ITEMS: FotoInspoItem[] = [
     categoryId: 'detalles',
     title: 'Tijeras y peine en la mesa',
     tip: 'Las herramientas bien puestas enseñan oficio antes de decir palabra. Busca la luz sobre las tijeras y fondo limpio.',
-    cover: null,
+    cover: '/foto-inspo/detalle-tijeras-peine.jpg',
   },
   {
     id: 'detalle-manos-corte',
     categoryId: 'detalles',
     title: 'Manos en pleno corte',
     tip: 'Las manos trabajando son EL plano de oficio: demuestran que sabes hacer y detienen el scroll. Acércate, sin miedo.',
-    cover: null,
+    cover: '/foto-inspo/detalle-manos-corte.jpg',
   },
   {
     id: 'detalle-estacion-frascos',
     categoryId: 'detalles',
     title: 'Tu estación de frascos y colores',
     tip: 'Colores alineados y frascos limpios comunican higiene y orden: dos cosas que las clientas miran antes de sentarse.',
-    cover: null,
+    cover: '/foto-inspo/detalle-estacion-frascos.jpg',
   },
 ]

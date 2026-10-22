@@ -126,7 +126,12 @@ const CAROUSEL_STRUCTURES: Record<number, string[]> = {
 export function getMockCarousel(input: CarouselInput): CarouselOutput {
   const count = CAROUSEL_STRUCTURES[input.slideCount] ? input.slideCount : 5
   const roles = CAROUSEL_STRUCTURES[count]
-  const topic = input.freeText?.trim() || input.service
+  // Ejemplo sin IA: un tema corto («alopecia») encaja en las plantillas; una frase
+  // entera (título de una idea del plan) no, así que usamos el servicio y
+  // conservamos la frase como título.
+  const ft = input.freeText?.trim() || ''
+  const shortTopic = ft && ft.split(/\s+/).length <= 3
+  const topic = shortTopic ? ft : input.service
 
   const slides: CarouselSlide[] = roles.map((role, i) => {
     const built = buildSlide(role, topic)
@@ -135,7 +140,7 @@ export function getMockCarousel(input: CarouselInput): CarouselOutput {
 
   const l = serviceLabel(topic)
   return {
-    title: `${count} cosas que debes saber sobre ${l.el}`,
+    title: ft && !shortTopic ? ft : `${count} cosas que debes saber sobre ${l.el}`,
     slides,
     visualIdea: `Diseño limpio con fondo claro y una frase grande por slide. Mantén el mismo estilo en todas las slides. Puedes usar fotos del proceso o del resultado como fondo difuminado.`,
     captionWithHashtags: `Lo que nadie te cuenta sobre ${l.el} ✨ Guarda este carrusel para cuando lo necesites.\n\n#${topic.replace(/\s/g, '').toLowerCase()} #estilista #salonbelleza #consejoscabello #bellezaprofesional`,

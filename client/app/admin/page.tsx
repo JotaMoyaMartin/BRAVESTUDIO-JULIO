@@ -64,14 +64,20 @@ async function computeMRR(): Promise<number | null> {
 export default async function AdminPage() {
   if (!IS_CONFIGURED) {
     return (
-      <AdminClient
-        currentUserId="demo"
-        currentUserRole="superadmin"
-        users={[]}
-        promoCodes={[]}
-        userStats={{}}
-        metrics={{ totalUsers: 0, activeUsers: 0, newThisWeek: 0, canceledThisMonth: 0, trialUsers: 0, mrr: null }}
-      />
+      <div>
+        {/* Sin Supabase configurado todo aquí es simulado; sin saberlo, parece dashboard real. */}
+        <div className="px-4 py-2.5 text-center text-xs md:text-sm font-semibold" style={{ background: 'var(--color-buttermilk)', color: 'var(--color-cherry-dark)' }}>
+          Modo demo — Supabase no está configurado: no hay datos reales ni control de permisos.
+        </div>
+        <AdminClient
+          currentUserId="demo"
+          currentUserRole="superadmin"
+          users={[]}
+          promoCodes={[]}
+          userStats={{}}
+          metrics={{ totalUsers: 0, activeUsers: 0, newThisWeek: 0, canceledThisMonth: 0, trialUsers: 0, mrr: null }}
+        />
+      </div>
     )
   }
   const supabase = await createClient()

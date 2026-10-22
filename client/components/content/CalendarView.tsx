@@ -39,7 +39,8 @@ function MiniCard({ item, onClick, isDragging }: MiniCardProps) {
   return (
     <button
       onClick={onClick}
-      className="w-full text-left text-xs px-2 py-1.5 rounded-[var(--radius-sm)] truncate transition-all hover:opacity-90"
+      aria-label={`${config.label}: ${item.title}`}
+      className="w-full text-left text-[11px] leading-tight px-1 py-1 sm:px-2 sm:py-1.5 rounded-[var(--radius-sm)] transition-all hover:opacity-90"
       style={{
         background: config.bg,
         color: config.color,
@@ -48,8 +49,12 @@ function MiniCard({ item, onClick, isDragging }: MiniCardProps) {
         cursor: isDragging ? 'grabbing' : 'pointer',
       }}
     >
-      {isReto && <span className="inline-block w-1.5 h-1.5 rounded-full mr-1" style={{ background: 'var(--color-cherry)' }} />}
-      <span className="font-semibold">{config.label}:</span> {item.title}
+      {/* Móvil: barra de color por tipo (el título no cabe). Ordenador: título en 2 líneas. */}
+      <span aria-hidden className="sm:hidden block h-1.5 rounded-full" style={{ background: config.color }} />
+      <span className="hidden sm:[display:-webkit-box] [-webkit-line-clamp:2] [-webkit-box-orient:vertical] overflow-hidden font-medium">
+        {isReto && <span className="inline-block w-1.5 h-1.5 rounded-full mr-1" style={{ background: 'var(--color-cherry)' }} />}
+        {item.title}
+      </span>
     </button>
   )
 }

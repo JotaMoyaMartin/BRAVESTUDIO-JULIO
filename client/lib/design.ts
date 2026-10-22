@@ -24,6 +24,19 @@ export interface DesignBindingZone {
   h: number
 }
 
+/** Estilo visual de una zona editable (para renderizar texto real sobre el PNG). */
+export interface ZoneStyle {
+  fontFamily?: string
+  fontSize?: string       // porcentaje del ancho del contenedor, e.g. '3.7cqw'
+  color?: string
+  bg?: string             // fondo que cubre el texto del PNG
+  fontWeight?: string
+  fontStyle?: string
+  textAlign?: 'start' | 'center' | 'end'
+  letterSpacing?: string
+  lineHeight?: number
+}
+
 export interface DesignBinding {
   behavior: DesignBehavior
   label?: string
@@ -31,6 +44,12 @@ export interface DesignBinding {
   maxLength?: number
   instructions?: string
   zone?: DesignBindingZone
+  /** Cuando existe, la zona renderiza texto real estilizado (no chips). */
+  zoneStyle?: ZoneStyle
+  /** Texto por defecto (el original del diseño Canva). */
+  defaultText?: string
+  /** URL de la imagen por defecto (e.g. foto exportada de Canva como capa). */
+  defaultPhotoUrl?: string
 }
 
 export interface DesignTemplate {
@@ -41,8 +60,12 @@ export interface DesignTemplate {
   pageCount: number
   previewUrl: string | null
   previewUrls?: string[]
+  /** Background-only PNGs (text removed) for the editor canvas. Falls back to previewUrls. */
+  bgUrls?: string[]
   dataset: Record<string, DesignDatasetType>
   bindings: Record<string, DesignBinding>
+  /** CSS aspect-ratio override (e.g. '4 / 5'). When set, overrides kindAspect(). */
+  aspect?: string
 }
 
 /** GET /api/design/templates → { templates: [...] } */
@@ -99,6 +122,12 @@ export function parseTemplate(raw: unknown): DesignTemplate | null {
   const previewUrls = (urlsRaw as unknown[]).filter(
     (u): u is string => typeof u === 'string' && u.trim() !== '',
   )
+  // bgUrls (fondos sin texto para el editor) + aspect (override CSS) — aditivos.
+  const bgRaw = Array.isArray(r.bgUrls) ? r.bgUrls : Array.isArray(r.bg_urls) ? r.bg_urls : []
+  const bgUrls = (bgRaw as unknown[]).filter(
+    (u): u is string => typeof u === 'string' && u.trim() !== '',
+  )
+  const aspect = typeof r.aspect === 'string' && r.aspect.trim() ? r.aspect : undefined
   const kind = r.kind === 'carousel' ? 'carousel' : 'story'
   return {
     id,
@@ -110,6 +139,8 @@ export function parseTemplate(raw: unknown): DesignTemplate | null {
     dataset: isRecord(r.dataset) ? (r.dataset as Record<string, DesignDatasetType>) : {},
     bindings: isRecord(r.bindings) ? (r.bindings as Record<string, DesignBinding>) : {},
     ...(previewUrls.length > 0 ? { previewUrls } : {}),
+    ...(bgUrls.length > 0 ? { bgUrls } : {}),
+    ...(aspect ? { aspect } : {}),
   }
 }
 
@@ -165,8 +196,9 @@ export function kindLabel(kind: DesignKind): string {
   return kind === 'story' ? 'Historia' : 'Carrusel'
 }
 
-/** Aspecto del preview según formato: 4:5 historias, 3:2 carruseles. */
-export function kindAspect(kind: DesignKind): string {
+/** Aspecto del preview. Usa template.aspect si existe; sino default por kind. */
+export function kindAspect(kind: DesignKind, template?: DesignTemplate | null): string {
+  if (template?.aspect) return template.aspect
   return kind === 'story' ? '4 / 5' : '3 / 2'
 }
 
@@ -221,6 +253,12 @@ export function templateHasZones(template: DesignTemplate): boolean {
 export function previewPages(template: DesignTemplate): string[] {
   if (template.previewUrls && template.previewUrls.length > 0) return template.previewUrls
   return template.previewUrl ? [template.previewUrl] : []
+}
+
+/** Urls de fondo limpio (sin texto) para el editor. Falls back a previewPages. */
+export function editorBgPages(template: DesignTemplate): string[] {
+  if (template.bgUrls && template.bgUrls.length > 0) return template.bgUrls
+  return previewPages(template)
 }
 
 export interface PageZone {

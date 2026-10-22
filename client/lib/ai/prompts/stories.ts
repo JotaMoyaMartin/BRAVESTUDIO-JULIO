@@ -1,4 +1,5 @@
 import { generateAIContent, extractJSON } from '../client'
+import { sequenceType, type SequenceType } from '@/lib/stories/sequences'
 
 export interface StoryInput {
   service: string
@@ -9,6 +10,8 @@ export interface StoryInput {
   /** Idea de la estilista (dictada por voz o escrita): la secuencia gira
    *  enteramente sobre esta temática, no sobre el servicio genérico. */
   idea?: string
+  /** Para qué es la secuencia (estándar BRÄVE, máx. 3 stories). */
+  sequenceType?: SequenceType
 }
 
 export interface StorySticker {
@@ -53,10 +56,14 @@ ${input.detail ? `DETALLE ADICIONAL: ${input.detail}` : ''}
 MODO: ${input.mode === 'camera' ? 'Guion para grabar a cámara (conversacional)' : 'Texto para copiar y pegar'}
 ${input.brandContext ? `CONTEXTO DEL SALÓN: ${input.brandContext}` : ''}
 
-METODOLOGÍA OBLIGATORIA:
+${input.sequenceType ? (() => { const t = sequenceType(input.sequenceType); return `TIPO DE SECUENCIA: ${t.name} — objetivo: ${t.goal}.
+ESTRUCTURA OBLIGATORIA (una story por bloque, en este orden; "role" = nombre del bloque):
+${t.beats.map((b, i) => `- Story ${i + 1}: ${b.role.toUpperCase()} — ${b.guide}`).join('\n')}` })() : `METODOLOGÍA OBLIGATORIA:
 - Story 1: PROBLEMA/IDENTIFICACIÓN - Conseguir atención generando INTRIGA. Usar problema real, frase de clienta, duda frecuente o curiosidad. NO resuelvas el problema aquí — deja la incógnita abierta para que la clienta quiera ver la siguiente Story.
 - Story 2 (si aplica): AUTORIDAD - La estilista demuestra su criterio profesional. Explica qué detectó, analizó y decidió. Debe explicar QUÉ haces, CÓMO lo haces y POR QUÉ lo haces.
-- Story 3 (si aplica): RESULTADO + ACCIÓN - Muestra el beneficio final + CTA conversacional.
+- Story 3 (si aplica): RESULTADO + ACCIÓN - Muestra el beneficio final + CTA conversacional.`}
+
+BREVEDAD (estándar BRÄVE): cada story dice UNA sola cosa. ${input.mode === 'camera' ? 'Guion de 10–15 segundos por story (2–3 frases habladas).' : 'Texto en pantalla de 12 a 22 palabras: se tiene que leer en 3–4 segundos.'} Nada de relleno.
 ${input.idea ? 'REGLA ESPECIAL (hay historia personal): la Story 1 debe partir del HECHO REAL del mensaje (el momento más impactante), no de una frase genérica de intriga.\n' : ''}
 
 CTA: NUNCA dependas de palabras clave ni automatizaciones.
@@ -138,8 +145,10 @@ export function getMockStories(input: StoryInput): StoriesOutput {
     },
   ]
 
+  // Ejemplo sin IA: si hay tipo de secuencia, se usan sus nombres de bloque.
+  const beats = input.sequenceType ? sequenceType(input.sequenceType).beats : null
   return {
-    stories: storyTemplates.slice(0, input.count),
+    stories: storyTemplates.slice(0, input.count).map((st, i) => (beats?.[i] ? { ...st, role: beats[i].role } : st)),
   }
 }
 
@@ -223,10 +232,11 @@ export async function generateStories(input: StoryInput): Promise<StoriesOutput>
 
 // ── Question Box ───────────────────────────────────────────────────
 
-export function buildQuestionsPrompt(input: { topic: string; brandContext?: string }): string {
+export function buildQuestionsPrompt(input: { topic: string; detail?: string; brandContext?: string }): string {
   return `Eres un experto en contenido para salones de belleza en Instagram. Genera preguntas naturales que las clientas hacen frecuentemente sobre el tema indicado.
 
 TEMA: ${input.topic}
+${input.detail ? `ENFOQUE ESPECÍFICO: orienta las preguntas hacia esto que dice la usuaria: ${input.detail}` : ''}
 ${input.brandContext ? `CONTEXTO DEL SALÓN: ${input.brandContext}` : ''}
 
 Devuelve 8-10 preguntas reales que las clientas se hacen sobre este tema. Las preguntas deben sonar naturales, como algo que una clienta escribiría en un DM o preguntaría en persona. Evita preguntas demasiado técnicas.
@@ -264,6 +274,7 @@ Responde directamente, como si le estuvieras hablando a la clienta. No digas "co
 /** LLM-backed question generation with mock fallback. */
 export async function generateQuestions(input: {
   topic: string
+  detail?: string
   brandContext?: string
 }): Promise<QuestionBoxOutput> {
   try {

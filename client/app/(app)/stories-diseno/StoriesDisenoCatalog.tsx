@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import PageHeader from '@/components/ui/PageHeader'
 import { Lock, Search, Sparkles, Star, X } from 'lucide-react'
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
@@ -173,17 +174,11 @@ function Gallery({ items, initialFavorites, onUse }: { items: Item[]; initialFav
 
   return (
     <div className="py-7">
-      {/* Header */}
-      <div className="text-center mb-5">
-        <p className="text-[11px] font-extrabold tracking-[4px]" style={{ color: 'var(--color-cherry)', textTransform: 'uppercase' }}>
-          Biblioteca de stories
-        </p>
-        <h1 className="text-[28px] sm:text-[34px] font-extrabold text-cherry-dark leading-tight mt-2" style={{ letterSpacing: '-0.8px' }}>
-          Diseños listos para tu salón
-        </h1>
-        <p className="mt-2 text-sm text-cherry-dark opacity-70 max-w-lg mx-auto leading-relaxed">
-          Elige un diseño, BRÄVE adapta los textos a tu salón y tú pones las fotos. Descarga la secuencia en PNG y súbelas a Instagram por orden.
-        </p>
+      <div className="mb-5">
+        <PageHeader
+          title="Stories Diseño"
+          subtitle="Elige un diseño: BRÄVE adapta los textos a tu salón y tú pones las fotos. Descargas la secuencia y la subes a Instagram por orden."
+        />
       </div>
 
       {/* Buscador */}

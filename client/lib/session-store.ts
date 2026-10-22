@@ -74,3 +74,16 @@ export function clearAllSessionState() {
   const keys = Object.keys(localStorage).filter(k => k.startsWith(PREFIX))
   keys.forEach(k => localStorage.removeItem(k))
 }
+/**
+ * Escribe un valor de sesión desde fuera del componente que lo usa (p. ej.
+ * «Secuencias listas» deja la secuencia elegida para que el diseñador de
+ * Stories la abra al montarse). Mismo formato que useSessionState.
+ */
+export function setSessionValue<T>(key: string, value: T) {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.setItem(PREFIX + key, JSON.stringify(value))
+  } catch {
+    // almacenamiento lleno o bloqueado: no pasa nada, el usuario sigue
+  }
+}

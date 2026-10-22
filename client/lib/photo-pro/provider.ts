@@ -11,11 +11,10 @@
  *   3. Configura sus envs (ver docs/FOTO-PRO.md)
  *
  * Proveedores:
- *   - "gemini": Gemini 2.5 Flash Image (nano banana) — edición real preservando
- *     identidad. Requiere GEMINI_API_KEY (server). Es el default.
+ *   - "gemini": Gemini 2.0 Flash Exp — edición real preservando identidad.
+ *     Requiere GEMINI_API_KEY (server). Es el default.
  *   - "mock": SOLO para desarrollo/demo. Devuelve la misma foto tras una
- *     pausa simulada. Nunca lo fuerces en producción (photo_edit_jobs deja
- *     registro en el row — ver provider en el job).
+ *     pausa simulada. Nunca lo fuerces en producción.
  *
  * NOTA: este es un cliente de EDICIÓN DE IMAGEN (REST, bytes), no un 4º
  * cliente de texto LLM — la regla de clientes consolidados de CLAUDE.md §8.8
@@ -30,8 +29,11 @@ import {
 
 const GEMINI_BASE_URL =
   process.env.PHOTO_EDIT_BASE_URL || 'https://generativelanguage.googleapis.com/v1beta'
+// gemini-2.0-flash-exp soporta edición de imagen (input imagen + texto → output imagen)
+// con generationConfig.responseModalities: ["IMAGE", "TEXT"].
+// Anterior "gemini-2.5-flash-image" era nombre incorrecto — causaba 404 o texto-only.
 const GEMINI_MODEL =
-  process.env.PHOTO_EDIT_MODEL || 'gemini-2.5-flash-image'
+  process.env.PHOTO_EDIT_MODEL || 'gemini-2.0-flash-exp'
 const PROVIDER_TIMEOUT_MS = Number(process.env.PHOTO_EDIT_TIMEOUT_MS || 110_000)
 
 export type PhotoEditProviderId = 'gemini' | 'mock'
@@ -48,7 +50,6 @@ function resolveProviderId(): PhotoEditProviderId | null {
   const forced = (process.env.PHOTO_EDIT_PROVIDER || '').toLowerCase()
   if (forced === 'mock') return 'mock'
   if (forced === 'gemini') return 'gemini'
-  // Sin PIN: gemini si hay key, si no no hay proveedor (honesto en prod).
   return process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY ? 'gemini' : null
 }
 
@@ -81,74 +82,107 @@ const geminiProvider: ImageEditProvider = {
 
     const { goal, preserve, avoid } = req.instructions
     const prompt = [
-      `Edita esta fotografía de una cliente de peluquería. Tu tarea: ${goal}`,
+      'Eres un retocador profesional de fotografías de peluquería y estética.',
+      `Tu tarea: ${goal}`,
       '',
-      'Conserva SIEMPRE:',
-      ...preserve.map(p => `- ${p}`),
+      'Reglas OBLIGATORIAS — conserva exactamente:',
+      ...preserve.map(p => `• ${p}`),
       '',
-      'Prohibido:',
-      ...avoid.map(a => `- ${a}`),
+      'Prohibido absolutamente:',
+      ...avoid.map(a => `• ${a}`),
       '',
-      'Devuelve la misma persona, encuadre y composición de la fotografía editada.',
-      'No añadas texto, logos ni marcas de agua.',
+      'IMPORTANTE: devuelve la fotografía editada con exactamente el mismo encuadre,',
+      'la misma persona y la misma composición. La edición debe parecer natural,',
+      'no generada por IA. No añadas texto, logos, marcos ni marcas de agua.',
     ].join('\n')
 
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), PROVIDER_TIMEOUT_MS)
+
+    // Gemini a veces no devuelve imagen en el primer intento (~15-20% de los casos).
+    // Reintentamos 1 vez antes de fallar.
+    const MAX_ATTEMPTS = 2
+
     try {
-      const res = await fetch(
-        `${GEMINI_BASE_URL}/models/${GEMINI_MODEL}:generateContent?key=${key}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          signal: controller.signal,
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  { text: prompt },
-                  { inline_data: { mime_type: req.sourceMime, data: stripDataUrl(req.sourceBase64) } },
-                ],
+      let lastError: ProviderEditError | null = null
+
+      for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+        if (attempt > 1) await sleep(1_500)
+
+        const res = await fetch(
+          `${GEMINI_BASE_URL}/models/${GEMINI_MODEL}:generateContent?key=${key}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            signal: controller.signal,
+            body: JSON.stringify({
+              contents: [
+                {
+                  parts: [
+                    { text: prompt },
+                    {
+                      inline_data: {
+                        mime_type: req.sourceMime,
+                        data: stripDataUrl(req.sourceBase64),
+                      },
+                    },
+                  ],
+                },
+              ],
+              // SIN responseModalities Gemini devuelve solo texto → no_image_returned.
+              // IMAGE + TEXT obligatorio para que el modelo devuelva la imagen editada.
+              generationConfig: {
+                responseModalities: ['IMAGE', 'TEXT'],
               },
-            ],
-          }),
-        },
-      )
+            }),
+          },
+        )
 
-      if (!res.ok) {
-        const body = await res.text().catch(() => '')
-        if (res.status === 429 || res.status >= 500) {
-          throw new ProviderEditError('provider_error', `proveedor respondió ${res.status}`)
-        }
-        throw new ProviderEditError('provider_error', `provider error ${res.status}: ${body.slice(0, 200)}`)
-      }
-
-      const data = (await res.json()) as {
-        candidates?: {
-          content?: {
-            parts?: {
-              inlineData?: { mimeType?: string; data?: string }
-              inline_data?: { mime_type?: string; data?: string }
-            }[]
+        if (!res.ok) {
+          const body = await res.text().catch(() => '')
+          if (res.status === 429 || res.status >= 500) {
+            throw new ProviderEditError('provider_error', `proveedor respondió ${res.status}`)
           }
-        }[]
+          throw new ProviderEditError(
+            'provider_error',
+            `provider error ${res.status}: ${body.slice(0, 200)}`,
+          )
+        }
+
+        const data = (await res.json()) as {
+          candidates?: {
+            content?: {
+              parts?: {
+                inlineData?: { mimeType?: string; data?: string }
+                inline_data?: { mime_type?: string; data?: string }
+              }[]
+            }
+          }[]
+        }
+
+        const parts = data.candidates?.[0]?.content?.parts || []
+        const imgPart = parts.find(p => p.inlineData?.data || p.inline_data?.data)
+        const b64 = imgPart?.inlineData?.data || imgPart?.inline_data?.data
+        const mime =
+          imgPart?.inlineData?.mimeType || imgPart?.inline_data?.mime_type || 'image/jpeg'
+
+        if (!b64) {
+          lastError = new ProviderEditError('no_image_returned', `intento ${attempt}`)
+          continue
+        }
+
+        return { resultBase64: b64, mime, model: GEMINI_MODEL }
       }
 
-      const parts = data.candidates?.[0]?.content?.parts || []
-      const imgPart = parts.find(p => p.inlineData?.data || p.inline_data?.data)
-      const b64 = imgPart?.inlineData?.data || imgPart?.inline_data?.data
-      const mime =
-        imgPart?.inlineData?.mimeType || imgPart?.inline_data?.mime_type || 'image/png'
-
-      if (!b64) throw new ProviderEditError('no_image_returned')
-
-      return { resultBase64: b64, mime, model: GEMINI_MODEL }
+      throw lastError ?? new ProviderEditError('no_image_returned')
     } catch (err) {
       if (err instanceof ProviderEditError) throw err
       if (err instanceof Error && err.name === 'AbortError') {
-        throw new ProviderEditError('provider_timeout', `El proveedor tardó más de ${PROVIDER_TIMEOUT_MS / 1000}s`)
+        throw new ProviderEditError(
+          'provider_timeout',
+          `El proveedor tardó más de ${PROVIDER_TIMEOUT_MS / 1000}s`,
+        )
       }
-      // Retriable 5xx/429 → ProviderError genérico, otros → fatal
       throw new ProviderEditError(
         'provider_error',
         err instanceof Error ? err.message : 'error de red',

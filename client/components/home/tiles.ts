@@ -1,36 +1,35 @@
-import { Sparkles, Film, LayoutGrid, Star, Clapperboard, BookOpen, Calendar, BarChart3, GraduationCap, Captions, Images, Zap, Camera, ChartNoAxesColumn, Palette, ImagePlus, LayoutTemplate } from 'lucide-react'
+import { Sparkles, Film, LayoutGrid, Star, Clapperboard, BookOpen, Calendar, BarChart3, GraduationCap, Captions, Images, Zap, Camera, ChartNoAxesColumn, Palette, LayoutTemplate, Scissors } from 'lucide-react'
 import { AppTileProps } from './AppTile'
 
 // Launcher de mini-apps — vive en /herramientas (Home v2 ya no es catálogo).
 export const TILES_NORMAL: AppTileProps[] = [
   { href: '/mi-marca', icon: Star, label: 'Mi Marca', desc: 'Perfil de tu salón', tone: 'buttermilk', image: '/tiles/mi-marca-banner.jpg', imageAspect: '1746 / 901' },
-  { href: '/planificar', icon: Sparkles, label: 'Planificar', desc: 'Ideas para el mes', tone: 'pink', image: '/tiles/planificar-banner.jpg' },
+  { href: '/calendario', icon: Calendar, label: 'Mi plan', desc: 'Lo que toca hoy y tu mes', tone: 'pink', image: '/tiles/planificar-banner.jpg' },
   { href: '/crear-contenido', icon: Film, label: 'Crear guiones', desc: 'Tu idea → gancho → guion', tone: 'blue', image: '/tiles/guiones-banner.jpg' },
-  { href: '/stories', icon: LayoutGrid, label: 'Stories BRÄVE', desc: 'Stories y encuestas', tone: 'green', image: '/tiles/stories-banner.jpg', imageAspect: '1862 / 845' },
+  { href: '/stories', icon: LayoutGrid, label: 'Stories', desc: 'Secuencias listas: pon tu foto y publica', tone: 'green', image: '/tiles/stories-banner.jpg', imageAspect: '1862 / 845' },
   // STORIES DISEÑO — rework mini-Canva (galería de plantillas, 7-oct-2026).
-  { href: '/stories-diseno', icon: Palette, label: 'Stories Diseño', desc: 'Secuencias de stories con plantillas e IA', tone: 'buttermilk' },
   { href: '/teleprompter', icon: Captions, label: 'Teleprompter', desc: 'Graba hablando a cámara', tone: 'cream', image: '/tiles/teleprompter-banner.jpg' },
   // Banco de Ganchos — los 80 ganchos de Jota en 4 intenciones (5-oct-2026).
   { href: '/banco-ganchos', icon: Zap, label: 'Banco de Ganchos', desc: '80 ganchos → guion en 1 toque', tone: 'pink' },
   // Foto inspo — 5 oct (petición Jota)
-  { href: '/foto-inspo', icon: Camera, label: 'Foto inspo', desc: 'Replica fotos de referencia con tu cámara', tone: 'cream' },
+  { href: '/estudio', icon: Camera, label: 'Estudio de fotos', desc: 'Hazte la foto, déjala bonita y úsala', tone: 'cream' },
   // Foto Pro — 8-oct-2026: Retoque Pro disponible, Sesión IA próximamente.
-  { href: '/foto-pro', icon: ImagePlus, label: 'Foto Pro', desc: 'Retoque tus fotos con IA, sin perder identidad', tone: 'pink' },
   // DISEÑOS — 9-oct-2026: galería de plantillas de marca (sección para todas con acceso activo).
   { href: '/disenos', icon: LayoutTemplate, label: 'Diseños', desc: 'Plantillas de tu marca listas para personalizar', tone: 'buttermilk' },
+  // EDITAR VIDEOS — 13-oct-2026: recorte de silencios guiado (todo en el navegador).
+  { href: '/editar-videos', icon: Scissors, label: 'Editar Videos', desc: 'Sube tu reel y corta los silencios', tone: 'pink' },
   // Botón hero interactivo (petición Jota, 2-oct-2026): fuera la imagen
   // estática — texto grande a la izquierda + portadas reales pasando a la
   // derecha con su categoría flotando (AppTile.live).
-  { href: '/inspiracion-reels', icon: Clapperboard, label: 'Inspiración Reels', desc: 'Róbale las ideas al feed', tone: 'cherry', liveCaption: 'Róbale las ideas al feed', liveNoun: 'ideas listas' },
+  { href: '/inspiracion-reels', icon: Clapperboard, label: 'Reels virales', desc: 'Reels que ya funcionan, listos para copiar', tone: 'cherry', liveCaption: 'Róbale las ideas al feed', liveNoun: 'ideas listas' },
   // Transiciones fusionada dentro de Inspiración Reels (2-oct-2026, aprobación Jota):
   // su tile y nav se quitan; /transiciones-reels redirige a la pestaña correspondiente.
   { href: '/biblioteca', icon: BookOpen, label: 'Biblioteca', desc: 'Todo tu contenido', tone: 'buttermilk', image: '/tiles/biblioteca-banner.jpg' },
-  { href: '/calendario', icon: Calendar, label: 'Calendario', desc: 'Tu plan del mes', tone: 'green', image: '/tiles/calendario-banner.jpg' },
   // Análisis — Instagram conectado (6-oct-2026): métricas de la cuenta de IG.
   { href: '/analisis', icon: ChartNoAxesColumn, label: 'Análisis', desc: '¿Qué funciona en tu Instagram?', tone: 'blue' },
   // Reto 10K oculto por Jota (30 sep): simplificar. La ruta /reto-10k sigue viva —
   // para reactivarlo: devolver esta línea a TILES_NORMAL (y el nav de Sidebar).
-  { href: '/carrusel', icon: Images, label: 'Carrusel', desc: 'Carrusel listo para publicar', tone: 'green' },
+  { href: '/carrusel', icon: Images, label: 'Carruseles', desc: 'Carrusel listo para publicar', tone: 'green' },
 ]
 
 export const TILES_PREMIUM: AppTileProps[] = [
@@ -40,17 +39,17 @@ export const TILES_PREMIUM: AppTileProps[] = [
   // Análisis — Instagram conectado (6-oct-2026): datos propios de la cuenta.
   { href: '/analisis', icon: ChartNoAxesColumn, label: 'Análisis', desc: '¿Qué funciona en tu Instagram?', tone: 'cream' },
   { href: '/banco-ganchos', icon: Zap, label: 'Banco de Ganchos', desc: '80 ganchos → guion en 1 toque', tone: 'blue' },
-  { href: '/foto-inspo', icon: Camera, label: 'Foto inspo', desc: 'Replica fotos de referencia con tu cámara', tone: 'cream' },
+  { href: '/estudio', icon: Camera, label: 'Estudio de fotos', desc: 'Hazte la foto, déjala bonita y úsala', tone: 'cream' },
   // Foto Pro — 8-oct-2026: Retoque Pro disponible, Sesión IA próximamente.
-  { href: '/foto-pro', icon: ImagePlus, label: 'Foto Pro', desc: 'Retoque tus fotos con IA, sin perder identidad', tone: 'blue' },
   // DISEÑOS — 9-oct-2026: galería de plantillas de marca (sección para todas con acceso activo).
   { href: '/disenos', icon: LayoutTemplate, label: 'Diseños', desc: 'Plantillas de tu marca listas para personalizar', tone: 'pink' },
+  // EDITAR VIDEOS — 13-oct-2026: recorte de silencios guiado (todo en el navegador).
+  { href: '/editar-videos', icon: Scissors, label: 'Editar Videos', desc: 'Sube tu reel y corta los silencios', tone: 'blue' },
   { href: '/crear-contenido', icon: Film, label: 'Crear guiones', desc: 'Tu idea → gancho → guion', tone: 'green', image: '/tiles/guiones-banner.jpg' },
-  { href: '/carrusel', icon: Images, label: 'Carrusel', desc: 'Carrusel listo para publicar', tone: 'buttermilk' },
-  { href: '/stories', icon: LayoutGrid, label: 'Stories BRÄVE', desc: 'Stories y encuestas', tone: 'cream', image: '/tiles/stories-banner.jpg', imageAspect: '1862 / 845' },
+  { href: '/carrusel', icon: Images, label: 'Carruseles', desc: 'Carrusel listo para publicar', tone: 'buttermilk' },
+  { href: '/stories', icon: LayoutGrid, label: 'Stories', desc: 'Secuencias listas: pon tu foto y publica', tone: 'cream', image: '/tiles/stories-banner.jpg', imageAspect: '1862 / 845' },
   // STORIES DISEÑO — rework mini-Canva (galería de plantillas, 7-oct-2026).
-  { href: '/stories-diseno', icon: Palette, label: 'Stories Diseño', desc: 'Secuencias de stories con plantillas e IA', tone: 'buttermilk' },
   { href: '/teleprompter', icon: Captions, label: 'Teleprompter', desc: 'Graba hablando a cámara', tone: 'blue', image: '/tiles/teleprompter-banner.jpg' },
-  { href: '/inspiracion-reels', icon: Clapperboard, label: 'Inspiración Reels', desc: 'Róbale las ideas al feed', tone: 'cherry', liveCaption: 'Róbale las ideas al feed', liveNoun: 'ideas listas' },
+  { href: '/inspiracion-reels', icon: Clapperboard, label: 'Reels virales', desc: 'Reels que ya funcionan, listos para copiar', tone: 'cherry', liveCaption: 'Róbale las ideas al feed', liveNoun: 'ideas listas' },
   { href: '/academia', icon: GraduationCap, label: 'Academia', desc: 'Formación BRÄVE', tone: 'cherry' },
 ]

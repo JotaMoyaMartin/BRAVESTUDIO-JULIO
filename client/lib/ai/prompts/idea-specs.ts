@@ -13,6 +13,8 @@ export interface IdeaItem {
   objective: string     // 'educacion' | 'autoridad' | 'inspiracion' | 'venta' | 'deseo' | 'dolor' | 'objecion' | 'testimonio' | 'caso_exito' | 'viralidad'
   service: string       // uno de brand_profiles.main_services o service_to_promote
   hook_idea: string     // gancho breve (3-8 palabras) siguiendo el manual BRÄVE
+  /** true = la IA no respondió y la idea salió del generador de ejemplo. */
+  mock?: boolean
 }
 
 export interface IdeasOutput {

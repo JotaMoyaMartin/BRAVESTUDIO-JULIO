@@ -68,6 +68,8 @@ export async function middleware(request: NextRequest) {
   const isPublicAuthRoute =
     pathname === '/' ||
     pathname.startsWith('/landing-v2') ||
+    pathname.startsWith('/landingv3') ||
+    pathname === '/link' ||
     pathname.startsWith('/login') ||
     pathname.startsWith('/signup') ||
     pathname.startsWith('/reset-password') ||
@@ -92,18 +94,18 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/api/canva/oauth/callback')
 
   if (isPublicAuthRoute) {
-    // Redirect authenticated users with active access away from public marketing/auth pages
-    const isMarketingOrAuthPage =
-      pathname === '/' ||
-      pathname.startsWith('/landing-v2') ||
+    // Redirect authenticated users away ONLY from auth pages (login, signup…).
+    // Las landings (/, /landing-v2, /landingv3, /link, /pricing) se pueden
+    // visitar con sesión iniciada: entrar a la app queda a decisión de la
+    // usuaria (enlace directo a /inicio o botón "Iniciar sesión").
+    const isAuthPage =
       pathname.startsWith('/login') ||
       pathname.startsWith('/signup') ||
       pathname.startsWith('/forgot-password') ||
       pathname.startsWith('/reset-password') ||
       pathname.startsWith('/skool-access') ||
-      pathname === '/access-blocked' ||
-      pathname.startsWith('/pricing')
-    if (user && isMarketingOrAuthPage) {
+      pathname === '/access-blocked'
+    if (user && isAuthPage) {
       const { data: profile } = await supabase
         .from('profiles')
         .select('role, access_status, subscription_status, is_active, access_source, access_expires_at, full_name, salon_name')
@@ -208,5 +210,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|manifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp|webmanifest)$).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|manifest|mediapipe/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|webmanifest)$).*)'],
 }

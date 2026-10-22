@@ -5,6 +5,7 @@ import {
   CanvaBindingMap,
   CanvaDataset,
   DESIGN_EXPORTS_BUCKET,
+  isTemplateAssetPath,
 } from '@/lib/integrations/canva'
 
 /**
@@ -47,6 +48,10 @@ export interface DesignTemplateLite {
   bindings: CanvaBindingMap
   previewUrl: string | null
   previewUrls: string[]
+  /** Fondos "bare" sin texto (PNG firmados 7d, posicional por página). Solo si cubren TODAS las páginas. */
+  bg_urls?: string[]
+  /** Override de aspect-ratio del diseño (source.aspect, 'W / H'). */
+  aspect?: string
 }
 
 // ── Gate ─────────────────────────────────────────────────────────────────────
@@ -137,10 +142,74 @@ export async function templatePreviewUrl(
   return urls[0] ?? null
 }
 
-export function toTemplateLite(
+/**
+ * Paths de fondo "bare" (source.bg_paths, posicional por página con '' = hueco).
+ * V1: SOLO si cubren TODAS las páginas — si falta alguna/huecos/demás, se
+ * omite y el editor cae a los previews (nunca URLs desalineadas).
+ */
+function sourceBgPaths(row: DesignTemplateRow): string[] {
+  const raw = (row.source as { bg_paths?: unknown } | null)?.bg_paths
+  if (!Array.isArray(raw)) return []
+  const paths = raw
+    .filter((p): p is string => typeof p === 'string' && isTemplateAssetPath(p))
+  const count = typeof row.page_count === 'number' && row.page_count > 0 ? Math.round(row.page_count) : 0
+  if (count > 0 && paths.length !== count) return []
+  return paths
+}
+
+/** Firmas de 7 días para los bg paths (mismo helper de firma que los previews). */
+async function templateBgUrls(
+  admin: ReturnType<typeof createAdminClient>,
+  row: DesignTemplateRow,
+): Promise<string[]> {
+  const paths = sourceBgPaths(row)
+  if (paths.length === 0) return []
+  const signed = await Promise.all(paths.map(async p => {
+    const { data } = await admin.storage
+      .from(DESIGN_EXPORTS_BUCKET)
+      .createSignedUrl(p, 7 * 24 * 3600)
+    return data?.signedUrl ?? null
+  }))
+  // Una sola firma fallida ⇒ se omite TODO el campo (nunca crash, nunca huecos).
+  if (signed.some(u => u === null)) return []
+  return signed.filter((u): u is string => u !== null)
+}
+
+/**
+ * defaultPhotoPath → defaultPhotoUrl firmada (7d), ADITIVO sobre bindings
+ * verbatim: la clienta renderiza la capa default con la URL; el path queda
+ * para trazabilidad. Sin path válido o firma fallida → binding intacto.
+ */
+async function bindingsWithDefaultPhotoUrls(
+  admin: ReturnType<typeof createAdminClient>,
+  row: DesignTemplateRow,
+): Promise<CanvaBindingMap> {
+  const bindings = (row.bindings ?? {}) as CanvaBindingMap
+  const withPhoto = Object.entries(bindings).filter(([, b]) => isTemplateAssetPath(b?.defaultPhotoPath))
+  if (withPhoto.length === 0) return bindings
+  const out: CanvaBindingMap = { ...bindings }
+  await Promise.all(withPhoto.map(async ([field, binding]) => {
+    const { data } = await admin.storage
+      .from(DESIGN_EXPORTS_BUCKET)
+      .createSignedUrl(binding.defaultPhotoPath as string, 7 * 24 * 3600)
+    if (data?.signedUrl && out[field]) {
+      out[field] = { ...out[field], defaultPhotoUrl: data.signedUrl }
+    }
+  }))
+  return out
+}
+
+export async function toTemplateLite(
   previewUrls: string[],
   row: DesignTemplateRow,
-): DesignTemplateLite {
+  admin: ReturnType<typeof createAdminClient>,
+): Promise<DesignTemplateLite> {
+  const [bgUrls, bindings] = await Promise.all([
+    templateBgUrls(admin, row),
+    bindingsWithDefaultPhotoUrls(admin, row),
+  ])
+  const aspectRaw = (row.source as { aspect?: unknown } | null)?.aspect
+  const aspect = typeof aspectRaw === 'string' && aspectRaw.trim() !== '' ? aspectRaw : undefined
   return {
     id: row.id,
     name: row.name,
@@ -148,9 +217,11 @@ export function toTemplateLite(
     kind: row.kind,
     page_count: row.page_count,
     dataset: (row.dataset ?? {}) as CanvaDataset,
-    bindings: (row.bindings ?? {}) as CanvaBindingMap,
+    bindings,
     previewUrl: previewUrls[0] ?? null,
     previewUrls,
+    ...(bgUrls.length > 0 ? { bg_urls: bgUrls } : {}),
+    ...(aspect ? { aspect } : {}),
   }
 }
 
@@ -166,7 +237,7 @@ export async function listPublishedTemplates():
   if (error) throw new Error(dbUserError(error))
   const rows = (data ?? []) as unknown as DesignTemplateRow[]
   const lites = await Promise.all(rows.map(async row =>
-    toTemplateLite(await templatePreviewUrls(admin, row), row),
+    toTemplateLite(await templatePreviewUrls(admin, row), row, admin),
   ))
   return lites
 }

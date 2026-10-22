@@ -25,7 +25,7 @@ type Filter = FotoInspoCategoryId | null
 
 /** Foto inspo — galería + cámara in-app ("Hacer esta foto"). MVP estático:
  *  sin favoritos ni BD; las portadas llegan después (cover: null → placeholder). */
-export default function FotoInspoClient() {
+export default function FotoInspoClient({ embedded = false }: { embedded?: boolean } = {}) {
   const [filter, setFilter] = useState<Filter>(null)
   const [activeItem, setActiveItem] = useState<FotoInspoItem | null>(null)
 
@@ -38,8 +38,8 @@ export default function FotoInspoClient() {
 
   return (
     <div className="space-y-6">
-      {/* Cabecera */}
-      <div className="flex items-center gap-4">
+      {/* Cabecera (dentro del Estudio de fotos la pone el Estudio) */}
+      {!embedded && <div className="flex items-center gap-4">
         <BraviGuide section="foto-inspo" size={56} />
         <div className="flex-1">
           <h1 className="text-2xl md:text-3xl font-bold text-cherry-dark">Foto inspo</h1>
@@ -47,7 +47,7 @@ export default function FotoInspoClient() {
             Referencias para hacerte la foto perfecta — replica y dispara
           </p>
         </div>
-      </div>
+      </div>}
 
       {/* Chips de categoría (conteo) */}
       <div className="flex flex-wrap gap-2">

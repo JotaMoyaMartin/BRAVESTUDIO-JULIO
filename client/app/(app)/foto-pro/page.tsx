@@ -1,13 +1,7 @@
-import type { Metadata } from 'next'
-import FotoProClient from './FotoProClient'
-import PageTransition from '@/components/ui/PageTransition'
+import { redirect } from 'next/navigation'
 
-export const metadata: Metadata = { title: 'Foto Pro · BRÄVE Studio' }
-
+// Foto Pro vive ahora dentro del Estudio de fotos (paso «Edítala»).
+// El retoque con IA (/foto-pro/retoque) vuelve en la fase 2.
 export default function FotoProPage() {
-  return (
-    <PageTransition>
-      <FotoProClient />
-    </PageTransition>
-  )
+  redirect('/estudio?paso=editala')
 }

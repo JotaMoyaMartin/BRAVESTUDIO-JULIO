@@ -3,11 +3,14 @@
 // semana: añade/quita códigos aquí y listo — sin tocar la base de datos.
 
 export const NOVEDADES_CODES = new Set([
-  'Da0503gBGq7', // cobrizo viral @yasminahzir
-  'Dd6-uBpASXl', // salir del salón @ale_mcseven
-  'Ddjb78mqe7S', // blonde maintenance @adrianramoshair
-  'DbndrcaNvp5', // suma 130.100€ @semsconcept
-  'DauQkNONDwN', // fórmula de color @salvador.ali.official
+  // 21-oct-2026: carpeta «Trend salones»
+  'DeSS5zeJRmT', // @tayloratartistry
+  'Ded-x9HtU5h', // @nina.theclub
+  'Ddbp7iwgQJW', // @rosse_tattoostudio
+  'Dd9m0oJB0yX', // @balayage.blonde
+  'DdRvUSoTqfR', // @aliciaramirezhair
+  'DdE3-OroCcI', // @eeia.studio
+  'DbV0W7-k7Cg', // @abdelamranioficial
 ])
 
 export function isNovedad(item: { instagram_url?: string | null }): boolean {

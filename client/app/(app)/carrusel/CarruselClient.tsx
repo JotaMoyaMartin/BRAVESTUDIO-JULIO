@@ -10,12 +10,14 @@ import { CAROUSEL_FAMILIES, getFamily, brandMarkText } from '@/lib/carousel/temp
 import { drawCarouselSlide, ensureCanvasFont, ensureEditorialFonts, exportFileName, SLIDE_W, SLIDE_H } from '@/lib/carousel/render'
 import { loadEditorialAssets } from '@/lib/carousel/assets'
 import { pickLayout } from '@/lib/carousel/text'
-import type { SlideContent, CarouselFamily, CarouselPalette, SlideImage, EditorialAssetsSpec } from '@/lib/carousel/types'
+import { pickTextBox } from '@/lib/carousel/geometry'
+import type { EmittedTextBox, SlideContent, CarouselFamily, CarouselPalette, SlideImage, TextAdjust, EditorialAssetsSpec } from '@/lib/carousel/types'
 import UsarMiMarcaToggle from '@/components/ui/UsarMiMarcaToggle'
 import BraviGuide from '@/components/bravi/BraviGuide'
+import PhotoSourceBar from '@/components/editor/PhotoSourceBar'
 import {
   Images, Sparkles, RefreshCw, Download, BookOpen, ArrowRight, Upload, Trash2, Check,
-  Copy, Minus, Plus, Layers,
+  Copy, Minus, Plus, Layers, MousePointerClick,
 } from 'lucide-react'
 
 // Creador de Carruseles BRÄVE V1 — La estilista no diseña, la estilista elige.
@@ -59,6 +61,12 @@ export default function CarruselClient({ userId, brandFull }: { userId: string; 
   const [imgVersion, setImgVersion] = useState(0)
   const imgElsRef = useRef<Record<number, HTMLImageElement>>({})
   const dragRef = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null)
+  // Editor de texto: ajustes de texto y cajas emitidas por el render (hit-test).
+  const [adjusts, setAdjusts] = useSessionState<Record<string, TextAdjust>>(`u:${userId}:carrusel:adjusts`, {})
+  const [selectedText, setSelectedText] = useSessionState<string | null>(`u:${userId}:carrusel:selectedText`, null)
+  const textboxesRef = useRef<Record<number, EmittedTextBox[]>>({})
+  const [tbVersion, setTbVersion] = useState(0) // re-render para pintar los handles
+  const textDragRef = useRef<{ id: string; x: number; y: number; bx: number; by: number } | null>(null)
 
   const brandContext = useMemo(() => {
     if (!useMiMarca || !brandFull) return undefined
@@ -86,7 +94,7 @@ export default function CarruselClient({ userId, brandFull }: { userId: string; 
   const total = slides.length
 
   const renderOpts = useCallback(
-    (i: number) => ({
+    (i: number, opts: { emit?: boolean } = {}) => ({
       slide: slides[i],
       layout: pickLayout(i, total, { family, hasPhoto: !!imgElsMap().has(i), text: slides[i]?.text ?? '' }),
       index: i,
@@ -97,17 +105,56 @@ export default function CarruselClient({ userId, brandFull }: { userId: string; 
       image: photos[i] ?? null,
       imageEl: imgElsMap().get(i) ?? null,
       fontFamily,
+      textAdjust: adjustsForSlide(i),
+      emitTextBox: opts.emit ? () => {} : undefined,
       editorialAssets,
       serifFamily: editorialFonts?.serif,
       scriptFamily: editorialFonts?.script,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [slides, total, family, palette, salonName, photos, fontFamily, imgVersion, editorialAssets, editorialFonts],
+    [slides, total, family, palette, salonName, photos, fontFamily, imgVersion, editorialAssets, editorialFonts, adjusts],
   )
 
   function imgElsMap(): Map<number, HTMLImageElement> {
     return new Map(Object.entries(imgElsRef.current).map(([k, v]) => [Number(k), v]))
   }
+
+  // --- Editor de texto (cajas emitidas por el propio render: única fuente de verdad) ---
+  const adjustKey = (index0: number, id: string) => `${index0}:${id}`
+
+  function adjustsForSlide(index0: number): Record<string, TextAdjust> {
+    const prefix = `${index0}:`
+    const out: Record<string, TextAdjust> = {}
+    for (const [k, v] of Object.entries(adjusts)) {
+      if (k.startsWith(prefix)) out[k.slice(prefix.length)] = v
+    }
+    return out
+  }
+
+  function setAdjustFor(index0: number, id: string, patch: Partial<TextAdjust>) {
+    setAdjusts(prev => {
+      const key = adjustKey(index0, id)
+      const cur = prev[key] ?? { dx: 0, dy: 0, sizeFactor: 1 }
+      const clamp = (n: number) => Math.max(-1, Math.min(1, Number.isFinite(n) ? n : 0))
+      return { ...prev, [key]: { dx: clamp(patch.dx ?? cur.dx), dy: clamp(patch.dy ?? cur.dy), sizeFactor: Math.max(0.6, Math.min(1.8, patch.sizeFactor ?? cur.sizeFactor)) } }
+    })
+  }
+
+  function resetAdjusts(index0: number) {
+    setAdjusts(prev => {
+      const next: Record<string, TextAdjust> = {}
+      const prefix = `${index0}:`
+      for (const [k, v] of Object.entries(prev)) if (!k.startsWith(prefix)) next[k] = v
+      return next
+    })
+    setSelectedText(null)
+  }
+
+  // Opts MEMORIZADOS (hooks SIEMPRE top-level): el objeto opts debe ser estable
+  // entre renders — si no, el effect de SlideCanvas re-dibuja (y re-emite) en bucle.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const bigOpts = useMemo(() => renderOpts(currentSlide, { emit: true }), [renderOpts, currentSlide])
+  const thumbOpts = useMemo(() => slides.map((_, i) => renderOpts(i)), [renderOpts, slides]) // eslint-disable-line
 
   // --- Generación (reusa generateCarousel: mismo cliente IA, mock en demo) ---
   async function generate() {
@@ -123,6 +170,7 @@ export default function CarruselClient({ userId, brandFull }: { userId: string; 
     setResult(out)
     setSavedPlan(false)
     setCurrentSlide(0)
+    setAdjusts({}) // el texto cambia ⇒ los ajustes de posición/tamaño quedan sin sentido
     setGenerating(false)
     setStep('contenido')
   }
@@ -139,6 +187,8 @@ export default function CarruselClient({ userId, brandFull }: { userId: string; 
     })
     setResult(out)
     setSavedPlan(false)
+    setAdjusts({})
+    setSelectedText(null)
     setGenerating(false)
   }
 
@@ -146,16 +196,35 @@ export default function CarruselClient({ userId, brandFull }: { userId: string; 
     setResult(prev => (prev ? { ...prev, slides: prev.slides.map(s => (s.number === number ? { ...s, text } : s)) } : prev))
   }
 
-  // --- Fotos del salón (en memoria en V1) ---
-  function handlePhoto(index0: number, file: File) {
-    const src = URL.createObjectURL(file)
+  // --- Fotos del salón (en memoria en V1) de las 3 fuentes: subida/catálogo/cámara ---
+  function loadImage(index0: number, src: string) {
     const img = new Image()
+    // crossOrigin: la URL firmada de Storage (cross-origin) mancharía el canvas
+    // → toBlob lanzaría SecurityError. Supabase Storage sirve CORS *.
+    img.crossOrigin = 'anonymous'
     img.onload = () => {
       imgElsRef.current[index0] = img
       setImgVersion(v => v + 1)
     }
     img.src = src
+  }
+
+  function setPhotoSrc(index0: number, src: string) {
+    const old = photos[index0]
+    // revoke solo objectURLs (las rutas públicas del catálogo no son blobs)
+    if (old && old.src.startsWith('blob:') && old.src !== src) URL.revokeObjectURL(old.src)
+    loadImage(index0, src)
     setPhotos(prev => ({ ...prev, [index0]: { src, scale: 1, offsetX: 0, offsetY: 0 } }))
+  }
+
+  // La subida a Storage acabó: misma foto, src estable (conserva zoom/pan y
+  // revoca el blob). El preview nunca se interrumpe.
+  function stabilizePhoto(index0: number, src: string) {
+    const old = photos[index0]
+    if (!old || old.src === src || !old.src.startsWith('blob:')) return
+    URL.revokeObjectURL(old.src)
+    loadImage(index0, src)
+    setPhotos(prev => (prev[index0] ? { ...prev, [index0]: { ...prev[index0]!, src } } : prev))
   }
 
   function removePhoto(index0: number) {
@@ -215,13 +284,33 @@ export default function CarruselClient({ userId, brandFull }: { userId: string; 
     setSavedPlan(true)
   }
 
-  const panFor = (index0: number) => ({
+  // --- Drag unificado: primero hit-test de TEXTO (cajas emitidas), si no, PAN de foto ---
+  const slidePointerFor = (index0: number) => ({
     onPointerDown: (e: React.PointerEvent<HTMLCanvasElement>) => {
+      const canvas = e.currentTarget
+      const box = canvas.getBoundingClientRect()
+      const x = ((e.clientX - box.left) / (box.width || 1)) * SLIDE_W
+      const y = ((e.clientY - box.top) / (box.height || 1)) * SLIDE_H
+      const hit = pickTextBox({ x, y }, textboxesRef.current[index0] ?? [])
+      if (hit) {
+        const cur = adjusts[adjustKey(index0, hit.id)] ?? { dx: 0, dy: 0, sizeFactor: 1 }
+        textDragRef.current = { id: hit.id, x: e.clientX, y: e.clientY, bx: cur.dx, by: cur.dy }
+        setSelectedText(hit.id)
+        canvas.setPointerCapture(e.pointerId)
+        return
+      }
       if (!photos[index0]) return
       dragRef.current = { x: e.clientX, y: e.clientY, ox: photos[index0].offsetX, oy: photos[index0].offsetY }
-      ;(e.currentTarget as HTMLCanvasElement).setPointerCapture(e.pointerId)
+      canvas.setPointerCapture(e.pointerId)
     },
     onPointerMove: (e: React.PointerEvent<HTMLCanvasElement>) => {
+      if (textDragRef.current) {
+        const box = e.currentTarget.getBoundingClientRect()
+        const dx = textDragRef.current.bx + (e.clientX - textDragRef.current.x) / (box.width || 1)
+        const dy = textDragRef.current.by + (e.clientY - textDragRef.current.y) / (box.height || 1)
+        setAdjustFor(index0, textDragRef.current.id, { dx, dy })
+        return
+      }
       if (!dragRef.current || !photos[index0]) return
       const w = e.currentTarget.clientWidth || 1
       const dx = (e.clientX - dragRef.current.x) / w
@@ -231,6 +320,7 @@ export default function CarruselClient({ userId, brandFull }: { userId: string; 
       setPhotos(prev => ({ ...prev, [index0]: { ...prev[index0], offsetX: ox, offsetY: oy } }))
     },
     onPointerUp: () => {
+      textDragRef.current = null
       dragRef.current = null
     },
   })
@@ -380,7 +470,6 @@ export default function CarruselClient({ userId, brandFull }: { userId: string; 
 
   // ═══════════ PASO 3 — DISEÑO ═══════════
   if (step === 'diseno' && result && total > 0) {
-    const hasPhotoCurrent = !!imgElsMap().has(currentSlide)
     return (
       <div className="max-w-2xl space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -434,10 +523,40 @@ export default function CarruselClient({ userId, brandFull }: { userId: string; 
         <div className="space-y-3">
           <div
             className="mx-auto overflow-hidden rounded-[var(--radius-md)]"
-            style={{ boxShadow: '0 10px 32px -12px rgba(122,24,50,0.35)', touchAction: photos[currentSlide] ? 'none' : 'auto', cursor: photos[currentSlide] ? 'grab' : 'auto' }}
+            style={{ boxShadow: '0 10px 32px -12px rgba(122,24,50,0.35)', touchAction: 'none', cursor: 'grab' }}
           >
-            <SlideCanvas opts={renderOpts(currentSlide)} key={`${currentSlide}-${imgVersion}-${fontFamily}`} {...(photos[currentSlide] ? panFor(currentSlide) : {})} />
+            <div className="relative">
+              <SlideCanvas
+                opts={bigOpts}
+                onEmitted={boxes => {
+                  textboxesRef.current[currentSlide] = boxes
+                  setTbVersion(v => v + 1)
+                }}
+                key={`${currentSlide}-${imgVersion}-${fontFamily}`}
+                {...slidePointerFor(currentSlide)}
+              />
+              {(textboxesRef.current[currentSlide] ?? []).map(b => {
+                const sel = selectedText === b.id
+                return (
+                  <div
+                    key={`${b.id}-${tbVersion}`}
+                    className="absolute pointer-events-none rounded-md"
+                    style={{
+                      left: `${(b.rect.x / SLIDE_W) * 100}%`,
+                      top: `${(b.rect.y / SLIDE_H) * 100}%`,
+                      width: `${(b.rect.w / SLIDE_W) * 100}%`,
+                      height: `${(b.rect.h / SLIDE_H) * 100}%`,
+                      border: sel ? '2px dashed var(--color-cherry)' : '1.5px dashed rgba(122,24,50,0.18)',
+                      background: sel ? 'rgba(122,24,50,0.05)' : 'transparent',
+                    }}
+                  />
+                )
+              })}
+            </div>
           </div>
+          <p className="text-center text-[10px] text-cherry-dark" style={{ opacity: 0.5 }}>
+            Toca y arrastra el texto para ajustarlo{photos[currentSlide] ? ' · arrastra la imagen para encuadrarla' : ''}
+          </p>
 
           <div className="flex gap-2 overflow-x-auto pb-1" style={{ WebkitOverflowScrolling: 'touch' }}>
             {slides.map((s, i) => (
@@ -447,7 +566,7 @@ export default function CarruselClient({ userId, brandFull }: { userId: string; 
                 className="relative flex-shrink-0 rounded-lg overflow-hidden"
                 style={{ width: 72, border: currentSlide === i ? '2px solid var(--color-cherry)' : '1.5px solid rgba(122,24,50,0.15)' }}
               >
-                <SlideCanvas opts={renderOpts(i)} thumb />
+                <SlideCanvas opts={thumbOpts[i]} thumb />
                 <span className="absolute top-1 left-1 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold" style={{ background: 'var(--color-cherry)', color: 'white' }}>
                   {s.number}
                 </span>
@@ -467,43 +586,58 @@ export default function CarruselClient({ userId, brandFull }: { userId: string; 
             style={{ background: 'var(--color-cream)', border: '1.5px solid rgba(122,24,50,0.12)', borderRadius: 'var(--radius-sm)', padding: '10px 12px', color: '#1a1a1a' }}
           />
 
-          <div className="flex flex-wrap items-center gap-2">
-              <label className="btn-ghost text-sm cursor-pointer">
-                <Upload size={13} /> {photos[currentSlide] ? 'Cambiar foto' : 'Subir foto'}
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={e => {
-                    const f = e.target.files?.[0]
-                    if (f) handlePhoto(currentSlide, f)
-                    e.currentTarget.value = ''
-                  }}
-                />
-              </label>
-              {photos[currentSlide] && (
-                <>
-                  <div className="flex items-center gap-2">
-                    <button onClick={() => setPhotoZoom(currentSlide, Math.max(1, (photos[currentSlide]?.scale ?? 1) - 0.1))} className="btn-ghost text-xs px-2 py-1.5">
+          {(() => {
+            const boxes = textboxesRef.current[currentSlide] ?? []
+            const sel = boxes.find(b => b.id === selectedText) ?? null
+            if (!sel) return null
+            const sf = adjusts[adjustKey(currentSlide, sel.id)]?.sizeFactor ?? 1
+            const resizable = sel.kind === 'fitted'
+            return (
+              <div className="flex flex-wrap items-center gap-2 rounded-[var(--radius-sm)] p-2" style={{ background: 'var(--color-warm-gray)' }}>
+                <MousePointerClick size={13} style={{ color: 'var(--color-cherry)' }} />
+                <p className="text-xs font-bold text-cherry">{sel.id === 'text' ? 'Texto' : sel.id === 'headline' ? 'Titular' : 'Cuerpo'}</p>
+                {resizable ? (
+                  <>
+                    <button onClick={() => setAdjustFor(currentSlide, sel.id, { sizeFactor: sf - 0.1 })} className="btn-ghost text-xs px-2 py-1" aria-label="Texto más pequeño">
                       <Minus size={12} />
                     </button>
-                    <span className="text-xs text-cherry-dark" style={{ opacity: 0.6 }}>{Math.round((photos[currentSlide]?.scale ?? 1) * 100)}%</span>
-                    <button onClick={() => setPhotoZoom(currentSlide, Math.min(2.5, (photos[currentSlide]?.scale ?? 1) + 0.1))} className="btn-ghost text-xs px-2 py-1.5">
+                    <span className="text-xs text-cherry-dark" style={{ opacity: 0.7 }}>{Math.round(sf * 100)}%</span>
+                    <button onClick={() => setAdjustFor(currentSlide, sel.id, { sizeFactor: sf + 0.1 })} className="btn-ghost text-xs px-2 py-1" aria-label="Texto más grande">
                       <Plus size={12} />
                     </button>
-                  </div>
-                  <button
-                    onClick={() => removePhoto(currentSlide)}
-                    className="flex items-center gap-1 text-xs font-semibold"
-                    style={{ color: 'var(--color-cherry)', opacity: 0.7 }}
-                  >
-                    <Trash2 size={12} /> Quitar foto
+                  </>
+                ) : (
+                  <span className="text-[10px] text-cherry-dark" style={{ opacity: 0.55 }}>solo se puede mover</span>
+                )}
+                <button onClick={() => resetAdjusts(currentSlide)} className="ml-auto flex items-center gap-1 text-xs font-semibold text-cherry" style={{ opacity: 0.8 }}>
+                  <RefreshCw size={11} /> Restablecer slide
+                </button>
+              </div>
+            )
+          })()}
+
+          <div className="flex flex-wrap items-center gap-2">
+              <PhotoSourceBar
+                hasPhoto={!!photos[currentSlide]}
+                onPick={src => setPhotoSrc(currentSlide, src)}
+                onStabilize={src => stabilizePhoto(currentSlide, src)}
+                uploadField={`s${currentSlide + 1}_foto`}
+                onRemove={() => removePhoto(currentSlide)}
+                stockTitle={`Foto del slide ${currentSlide + 1}`}
+              />
+              {photos[currentSlide] && (
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setPhotoZoom(currentSlide, Math.max(1, (photos[currentSlide]?.scale ?? 1) - 0.1))} className="btn-ghost text-xs px-2 py-1.5">
+                    <Minus size={12} />
                   </button>
-                  <p className="w-full text-[10px] text-cherry-dark" style={{ opacity: 0.5 }}>Arrastra la imagen para encuadrarla.</p>
-                </>
+                  <span className="text-xs text-cherry-dark" style={{ opacity: 0.6 }}>{Math.round((photos[currentSlide]?.scale ?? 1) * 100)}%</span>
+                  <button onClick={() => setPhotoZoom(currentSlide, Math.min(2.5, (photos[currentSlide]?.scale ?? 1) + 0.1))} className="btn-ghost text-xs px-2 py-1.5">
+                    <Plus size={12} />
+                  </button>
+                </div>
               )}
               {!photos[currentSlide] && (
-                <p className="text-[10px] text-cherry-dark" style={{ opacity: 0.5 }}>Opcional: una foto de tu salón le da fuerza al slide.</p>
+                <p className="text-[10px] text-cherry-dark" style={{ opacity: 0.5 }}>Opcional: una foto de tu salón le da fuerza al slide (catálogo, cámara o subida).</p>
               )}
         </div>
         </div>
@@ -556,14 +690,24 @@ export default function CarruselClient({ userId, brandFull }: { userId: string; 
 function SlideCanvas({
   opts,
   thumb = false,
+  onEmitted,
   ...handlers
 }: {
   opts: Parameters<typeof drawCarouselSlide>[1]
   thumb?: boolean
+  onEmitted?: (boxes: EmittedTextBox[]) => void
 } & React.CanvasHTMLAttributes<HTMLCanvasElement>) {
   const ref = useRef<HTMLCanvasElement | null>(null)
   useEffect(() => {
-    if (ref.current) drawCarouselSlide(ref.current, opts)
+    if (!ref.current) return
+    if (!onEmitted) {
+      drawCarouselSlide(ref.current, opts)
+      return
+    }
+    const buf: EmittedTextBox[] = []
+    drawCarouselSlide(ref.current, { ...opts, emitTextBox: (e: EmittedTextBox) => buf.push(e) } as Parameters<typeof drawCarouselSlide>[1])
+    onEmitted(buf)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opts])
   return (
     <canvas

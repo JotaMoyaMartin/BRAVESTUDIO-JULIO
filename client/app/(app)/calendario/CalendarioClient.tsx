@@ -7,7 +7,11 @@ import { ContentItem } from '@/types/database'
 import { createClient } from '@/lib/supabase/client'
 import { demoGetPlan, demoUpdatePlan, demoDeletePlan } from '@/lib/demo-store'
 import CalendarView, { MONTHS } from '@/components/content/CalendarView'
-import BraviGuide from '@/components/bravi/BraviGuide'
+import PageHeader from '@/components/ui/PageHeader'
+import { useRouter } from 'next/navigation'
+import { openInTool } from '@/lib/plan/open-in-tool'
+import { HoyToca, WeekPlan, MonthCounter, typeStyle } from '@/components/plan/WeekPlan'
+import { monthProgress, setPlanStatus, PLAN_STATUSES, type PlanStatus } from '@/lib/plan/progress'
 import { useToast } from '@/components/ui/Toast'
 import {
   copyToClipboard,
@@ -29,7 +33,6 @@ const TYPE_CONFIG: Record<string, { color: string; bg: string; label: string }> 
   story: { color: 'var(--color-cherry-dark)', bg: 'rgba(255,241,181,0.6)', label: 'Stories' },
 }
 
-const MONTH_ABBR = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 const WEEKDAY = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
 
 function dateLabel(dateStr: string): string {
@@ -38,16 +41,10 @@ function dateLabel(dateStr: string): string {
   return `${WEEKDAY[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()].toLowerCase()}`
 }
 
-function shortBadge(dateStr: string): { day: string; month: string } {
-  const d = new Date(dateStr + 'T00:00:00')
-  if (isNaN(d.getTime())) return { day: '--', month: '---' }
-  return { day: String(d.getDate()), month: MONTH_ABBR[d.getMonth()] }
-}
-
 export default function CalendarioClient({ userId, items: initialItems }: Props) {
   const isDemoMode = userId === 'demo'
   const { show: showToast } = useToast()
-  const [view, setView] = useState<'lista' | 'calendario'>('calendario')
+  const [view, setView] = useState<'semana' | 'mes'>('semana')
   const [items, setItems] = useState<ContentItem[]>(initialItems)
   const [refreshing, setRefreshing] = useState(false)
   const [selectedItem, setSelectedItem] = useState<ContentItem | null>(null)
@@ -56,6 +53,23 @@ export default function CalendarioClient({ userId, items: initialItems }: Props)
   const [copied, setCopied] = useState(false)
   const [confirmingClear, setConfirmingClear] = useState(false)
   const [clearing, setClearing] = useState(false)
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
+  const router = useRouter()
+  /** Abre la herramienta con el texto de la publicación ya puesto. */
+  const createNow = (it: ContentItem) => router.push(openInTool(it, userId))
+
+  /** Cambia el estado (Idea → Preparado → Publicado) sin recargar la lista. */
+  async function changeStatus(it: ContentItem, s: PlanStatus) {
+    const updated = await setPlanStatus(it, s, isDemoMode)
+    if (!updated) {
+      showToast('No se ha podido guardar el estado. Inténtalo de nuevo.', 'info')
+      return
+    }
+    setItems(prev => prev.map(x => (x.id === it.id ? updated : x)))
+    setSelectedItem(cur => (cur && cur.id === it.id ? updated : cur))
+    if (s === 'publicado') showToast('¡Publicado! Una menos 💪')
+  }
 
   const refresh = useCallback(async () => {
     if (isDemoMode) {
@@ -90,18 +104,6 @@ export default function CalendarioClient({ userId, items: initialItems }: Props)
     const db = b.scheduled_date || ''
     return da < db ? -1 : da > db ? 1 : 0
   })
-
-  // Group by date for list view
-  const grouped: { date: string; items: ContentItem[] }[] = []
-  for (const item of sorted) {
-    const date = item.scheduled_date || 'sin-fecha'
-    let group = grouped.find(g => g.date === date)
-    if (!group) {
-      group = { date, items: [] }
-      grouped.push(group)
-    }
-    group.items.push(item)
-  }
 
   async function handleMove(itemId: string, newDate: string) {
     if (isDemoMode) {
@@ -193,153 +195,53 @@ export default function CalendarioClient({ userId, items: initialItems }: Props)
 
   return (
     <div className="space-y-5">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-4">
-          <BraviGuide section="calendario" size={56} />
-          <div>
-            <h1 className="text-2xl font-bold text-ink">Calendario</h1>
-            <p className="text-sm text-cherry-dark opacity-70">
-              {sorted.length} {sorted.length === 1 ? 'contenido programado' : 'contenidos programados'}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {sorted.length > 0 && (
-            <button
-              onClick={() => setConfirmingClear(true)}
-              disabled={isDemoMode}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[var(--radius-sm)] text-xs font-semibold transition-all bg-[var(--color-warm-gray)] text-cherry"
-              style={{ opacity: isDemoMode ? 0.4 : 1 }}
-              title={isDemoMode ? 'Disponible en modo completo' : 'Quita todas las fechas y envía el contenido a la Biblioteca'}
-            >
-              <Trash2 size={14} /> <span className="hidden sm:inline">Limpiar calendario</span>
+      <PageHeader
+        title="Mi plan"
+        subtitle="Lo que toca hoy, tu semana y tu mes. Planifica una vez y ve marcando."
+        actions={
+          <>
+            <Link href="/planificar" className="btn-primary"><Sparkles size={16} aria-hidden /> Planifícame el mes</Link>
+            <button onClick={refresh} className="btn-ghost" aria-label="Actualizar" title="Actualizar">
+              <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} aria-hidden />
             </button>
-          )}
-          <button
-            onClick={refresh}
-            className="p-2 rounded-[var(--radius-sm)] transition-transform hover:scale-105 bg-[var(--color-warm-gray)] text-cherry"
-            aria-label="Actualizar"
-            title="Actualizar"
-          >
-            <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
+          </>
+        }
+      />
+
+      {/* «Hoy» depende del reloj del móvil: se pinta tras montar. */}
+      {mounted ? <HoyToca items={sorted} onOpen={setSelectedItem} onCreate={createNow} onStatus={changeStatus} /> : <div className="h-40 rounded-[var(--radius-lg)] bg-white/60 animate-pulse" aria-busy="true" />}
+
+      {mounted && <MonthCounter {...monthProgress(sorted)} />}
+
+      {/* Semana (principal) / Mes */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex p-1 rounded-full bg-[var(--color-warm-gray)]" role="tablist" aria-label="Vista">
+          {([['semana', 'Semana', ListIcon], ['mes', 'Mes', CalendarIcon]] as const).map(([id, label, Icon]) => (
+            <button key={id} role="tab" aria-selected={view === id} onClick={() => setView(id)}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-[14px] font-semibold transition-all ${view === id ? 'bg-burdeos text-crema' : 'text-cherry-dark'}`}>
+              <Icon size={15} aria-hidden /> {label}
+            </button>
+          ))}
+        </div>
+        {sorted.length > 0 && (
+          <button onClick={() => setConfirmingClear(true)} disabled={isDemoMode}
+            className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-cereza disabled:opacity-40"
+            title={isDemoMode ? 'Disponible en modo completo' : 'Quita todas las fechas y envía el contenido a la Biblioteca'}>
+            <Trash2 size={14} aria-hidden /> Vaciar plan
           </button>
-
-          {/* Toggle Lista / Calendario */}
-          <div className="flex p-1 rounded-full bg-[var(--color-warm-gray)]">
-            <button
-              onClick={() => setView('lista')}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all"
-              style={{
-                background: view === 'lista' ? 'var(--color-cherry)' : 'transparent',
-                color: view === 'lista' ? 'white' : 'var(--color-cherry-dark)',
-              }}
-            >
-              <ListIcon size={14} /> <span className="hidden sm:inline">Lista</span>
-            </button>
-            <button
-              onClick={() => setView('calendario')}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all"
-              style={{
-                background: view === 'calendario' ? 'var(--color-cherry)' : 'transparent',
-                color: view === 'calendario' ? 'white' : 'var(--color-cherry-dark)',
-              }}
-            >
-              <CalendarIcon size={14} /> <span className="hidden sm:inline">Calendario</span>
-            </button>
-          </div>
-        </div>
+        )}
       </div>
 
-      {/* Empty state + calendar always visible */}
-      {sorted.length === 0 && (
-        <div
-          className="rounded-[var(--radius-md)] p-5 flex items-start gap-4"
-          style={{ background: 'var(--color-buttermilk)', border: '1.5px solid rgba(122,24,50,0.12)' }}
-        >
-          <BraviGuide section="calendario" size={72} className="flex-shrink-0" />
-          <div className="flex-1">
-            <p className="text-sm font-semibold text-cherry-dark">
-              Todavía no tienes contenido programado.
-            </p>
-            <p className="text-sm mt-1 text-cherry-dark opacity-70">
-              Cuando guardes una idea con fecha, aparecerá aquí. Arrastra las tarjetas entre días para organizar tu calendario.
-            </p>
-            <div className="flex gap-2 mt-3">
-              <Link
-                href="/planificar"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-[var(--radius-sm)] text-sm font-semibold transition-transform hover:scale-105 bg-cherry text-white"
-              >
-                <Sparkles size={14} /> Crear planificación
-              </Link>
-              <Link
-                href="/biblioteca"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-[var(--radius-sm)] text-sm font-semibold transition-colors bg-white text-cherry-dark hover:bg-[var(--color-warm-gray)]"
-                style={{ border: '1.5px solid rgba(122,24,50,0.18)' }}
-              >
-                <BookOpen size={14} /> Ir a Biblioteca
-              </Link>
-            </div>
+      {view === 'semana' && mounted && <WeekPlan items={sorted} onOpen={setSelectedItem} onStatus={changeStatus} />}
+      {view === 'mes' && (
+        <div className="space-y-2">
+          <CalendarView items={sorted} onItemClick={setSelectedItem} onItemMove={handleMove} />
+          <div className="flex flex-wrap gap-4 text-[13px] text-tinta-2 px-1">
+            {(['reel', 'carrusel', 'story'] as const).map(t => (
+              <span key={t} className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full" style={{ background: typeStyle(t).color }} />{typeStyle(t).label}</span>
+            ))}
+            <span className="hidden sm:inline">· Arrastra una publicación para cambiarla de día</span>
           </div>
-        </div>
-      )}
-
-      {/* Calendar view — ALWAYS show */}
-      {view === 'calendario' && (
-        <CalendarView items={sorted} onItemClick={setSelectedItem} onItemMove={handleMove} />
-      )}
-
-      {/* List view — grouped by date */}
-      {view === 'lista' && (
-        <div className="space-y-6">
-          {sorted.length === 0 && (
-            <div className="text-center py-8 text-cherry-dark opacity-50 text-sm">
-              Cambia a vista Calendario o programa contenido desde la Biblioteca.
-            </div>
-          )}
-          {grouped.map(group => (
-            <div key={group.date}>
-              <div className="flex items-center gap-2 mb-2">
-                <div
-                  className="flex flex-col items-center justify-center px-3 py-1.5 rounded-[var(--radius-sm)] flex-shrink-0"
-                  style={{ background: 'var(--color-pastel-blue)' }}
-                >
-                  {(() => {
-                    const b = shortBadge(group.date)
-                    return <>
-                      <span className="text-base font-bold leading-none" style={{ color: '#2c5a78' }}>{b.day}</span>
-                      <span className="text-xs font-semibold" style={{ color: '#2c5a78' }}>{b.month}</span>
-                    </>
-                  })()}
-                </div>
-                <h3 className="text-sm font-semibold text-cherry-dark capitalize">
-                  {dateLabel(group.date)}
-                </h3>
-              </div>
-              <div className="space-y-2 ml-1">
-                {group.items.map(item => {
-                  const config = TYPE_CONFIG[item.type] || TYPE_CONFIG.story
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => setSelectedItem(item)}
-                      className="w-full flex items-center gap-3 p-3 rounded-[var(--radius-sm)] bg-white text-left transition-all hover:shadow-soft"
-                      style={{ border: '1.5px solid var(--color-buttermilk)' }}
-                    >
-                      <span
-                        className="text-xs font-bold uppercase px-2 py-0.5 rounded-full flex-shrink-0"
-                        style={{ background: config.color, color: 'white' }}
-                      >
-                        {config.label}
-                      </span>
-                      <span className="flex-1 text-sm font-medium text-ink truncate">{item.title}</span>
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          ))}
         </div>
       )}
 
@@ -460,6 +362,18 @@ export default function CalendarioClient({ userId, items: initialItems }: Props)
                 ) : null}
 
                 {/* Actions */}
+                <div className="grid grid-cols-3 gap-1 p-1 rounded-2xl bg-warm-gray" role="radiogroup" aria-label="Estado">
+                  {PLAN_STATUSES.map(st => {
+                    const on = ((selectedItem.content_json as Record<string, unknown> | null)?.plan_status ?? 'idea') === st.id
+                    return (
+                      <button key={st.id} role="radio" aria-checked={on} onClick={() => changeStatus(selectedItem, st.id)} title={st.hint}
+                        className={`rounded-xl py-2 text-[13px] font-semibold ${on ? 'bg-white text-burdeos shadow-sm' : 'text-tinta-2'}`}>{st.label}</button>
+                    )
+                  })}
+                </div>
+                <button onClick={() => createNow(selectedItem)} className="btn-primary w-full justify-center">
+                  <Sparkles size={16} aria-hidden /> {typeStyle(selectedItem.type).create.label}
+                </button>
                 <div className="flex flex-wrap gap-2 pt-2 border-t border-soft">
                   <button onClick={() => handleCopy(selectedItem)} className="btn-secondary text-xs py-2 px-3">
                     {copied ? <Check size={13} /> : <Copy size={13} />} {copied ? 'Copiado' : 'Copiar'}

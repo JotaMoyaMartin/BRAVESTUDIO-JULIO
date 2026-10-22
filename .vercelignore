@@ -1,0 +1,9 @@
+# Subida a Vercel desde la raíz (el proyecto apunta a client/)
+**/node_modules
+client/.next
+client/.next-*
+**/.env*
+client/.playwright-mcp
+**/*.log
+# Fotos de Pinterest: solo referencia, sin licencia para publicar
+client/public/stock

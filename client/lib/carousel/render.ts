@@ -8,10 +8,12 @@ import {
   SlideImage,
   SLIDE_H,
   SLIDE_W,
+  TextEntry,
 } from './types'
 import { fitFontSize, listItems, Measure, wrapText } from './text'
 import { EDITORIAL_GEOMETRY } from './assets'
 import { EDITORIAL_TOKENS } from './templates'
+import { applyTextBoxAdjust, Rect, sizeFactorFor, textEntriesFor } from './geometry'
 
 const GEOM = EDITORIAL_GEOMETRY
 
@@ -24,6 +26,34 @@ export function makeMeasurer(ctx: Ctx, fontFamily: string): Measure {
     ctx.font = `${weight} ${size}px ${fontFamily}`
     return ctx.measureText(text).width
   }
+}
+
+// ── Editor: consulta de geometría + ajuste + emisión ────────────────────────
+
+/**
+ * Caja de texto del slide según la tabla (caja base) + TextAdjust del editor
+ * (clamp dentro del lienzo) + emisión de la caja final para el hit-test.
+ * sin textAdjust ⇒ caja base sin transformar (bit-idéntico al prod).
+ */
+function textBoxFor(
+  o: RenderSlideOptions,
+  id: string,
+  fallbackBox: Rect,
+  fallbackKind: TextEntry['kind'] = 'fitted',
+): { box: Rect; sf: number } {
+  const entry = textEntriesFor(o.family, o.layout).find(t => t.id === id)
+  const kind = entry?.kind ?? fallbackKind
+  const adj = o.textAdjust?.[id] ?? null
+  const box = applyTextBoxAdjust(entry ? entry.box : fallbackBox, adj)
+  const sf = sizeFactorFor(kind, adj)
+  o.emitTextBox?.({ id, kind, rect: box })
+  return { box, sf }
+}
+
+/** y inicial de un flujo de lista (el bbox real lo emite el render tras el bucle). */
+function listFlowTop(o: RenderSlideOptions, id: string, fallbackTop: number): number {
+  const entry = textEntriesFor(o.family, o.layout).find(t => t.id === id)
+  return applyTextBoxAdjust(entry ? entry.box : { x: 0, y: fallbackTop, w: SLIDE_W, h: 0 }, o.textAdjust?.[id] ?? null).y
 }
 
 function pageLabel(index0: number, total: number): string {
@@ -70,7 +100,8 @@ function roundedRectPath(ctx: Ctx, x: number, y: number, w: number, h: number, r
   ctx.closePath()
 }
 
-function drawPhoto(
+/** Cover-fit + pan (offsets en fracción del hueco) + zoom, con clamp de huecos. */
+export function drawPhoto(
   ctx: Ctx,
   img: HTMLImageElement | null,
   x: number,
@@ -262,7 +293,7 @@ function thinRule(ctx: Ctx, x: number, y: number, w: number, color: string, alph
 }
 
 /** Dibuja un bloque de texto ajustado (auto-fit) y devuelve la altura usada. */
-function drawFittedText(
+export function drawFittedText(
   ctx: Ctx,
   text: string,
   box: { x: number; y: number; w: number; h: number },
@@ -327,7 +358,8 @@ function renderMinimal(ctx: Ctx, o: RenderSlideOptions, brand: string, measurer:
     ctx.beginPath()
     ctx.arc(M + 126, 272, 5, 0, Math.PI * 2)
     ctx.fill()
-    drawFittedText(ctx, o.slide.text, { x: M, y: 420, w: W, h: 640 }, { startSize: 104, minSize: 50, weight: 800, lineHeight: 1.12, color: p.ink, measure: measurer, fontFamily: o.fontFamily })
+    const ct = textBoxFor(o, 'text', { x: M, y: 420, w: W, h: 640 })
+    drawFittedText(ctx, o.slide.text, ct.box, { startSize: 104 * ct.sf, minSize: 50 * ct.sf, weight: 800, lineHeight: 1.12, color: p.ink, measure: measurer, fontFamily: o.fontFamily })
     cornerMarks(ctx, 44, 26, p.ink)
     drawBrandMark(ctx, brand, M, SLIDE_H - 110, p.ink, o.fontFamily)
     drawPageNumber(ctx, pageLabel(0, o.total), SLIDE_W - M, SLIDE_H - 110, p.accent, o.fontFamily)
@@ -344,7 +376,8 @@ function renderMinimal(ctx: Ctx, o: RenderSlideOptions, brand: string, measurer:
     ctx.fillRect(0, 640, SLIDE_W, 200)
     ghostText(ctx, pad2(0), SLIDE_W - M + 10, 1150, 300, p.accent, 0.06, o.fontFamily)
     pillBadge(ctx, o.slide.role, M, 880, p.accent, o.fontFamily, { border: p.accent })
-    drawFittedText(ctx, o.slide.text, { x: M, y: 990, w: W, h: 260 }, { startSize: 62, minSize: 36, weight: 700, lineHeight: 1.2, color: p.ink, measure: measurer, fontFamily: o.fontFamily })
+    const tp = textBoxFor(o, 'text', { x: M, y: 990, w: W, h: 260 })
+    drawFittedText(ctx, o.slide.text, tp.box, { startSize: 62 * tp.sf, minSize: 36 * tp.sf, weight: 700, lineHeight: 1.2, color: p.ink, measure: measurer, fontFamily: o.fontFamily })
     drawBrandMark(ctx, brand, M, SLIDE_H - 60, p.ink, o.fontFamily)
     drawPageNumber(ctx, pageLabel(0, o.total), SLIDE_W - M, SLIDE_H - 60, p.accent, o.fontFamily)
     return
@@ -353,7 +386,8 @@ function renderMinimal(ctx: Ctx, o: RenderSlideOptions, brand: string, measurer:
   if (o.layout === 'text-photo') {
     ghostText(ctx, pad2(o.index), SLIDE_W - M + 10, 520, 280, p.accent, 0.055, o.fontFamily)
     pillBadge(ctx, o.slide.role, M, 120, p.accent, o.fontFamily, { border: p.accent })
-    drawFittedText(ctx, o.slide.text, { x: M, y: 260, w: W, h: 380 }, { startSize: 58, minSize: 32, weight: 600, lineHeight: 1.35, color: p.ink, measure: measurer, fontFamily: o.fontFamily })
+    const tt = textBoxFor(o, 'text', { x: M, y: 260, w: W, h: 380 })
+    drawFittedText(ctx, o.slide.text, tt.box, { startSize: 58 * tt.sf, minSize: 32 * tt.sf, weight: 600, lineHeight: 1.35, color: p.ink, measure: measurer, fontFamily: o.fontFamily })
     drawPhoto(ctx, o.imageEl ?? null, M, 700, W, 500, o.image, 48)
     fineFrame(ctx, M, 700, W, 500, -14, p.accent)
     drawBrandMark(ctx, brand, M, SLIDE_H - 70, p.ink, o.fontFamily)
@@ -365,7 +399,8 @@ function renderMinimal(ctx: Ctx, o: RenderSlideOptions, brand: string, measurer:
     ghostText(ctx, pad2(o.index), SLIDE_W - M + 10, 1250, 260, p.accent, 0.05, o.fontFamily)
     pillBadge(ctx, o.slide.role, M, 120, p.accent, o.fontFamily, { border: p.accent })
     const items = listItems(o.slide.text)
-    let y = 340
+    const y0 = listFlowTop(o, 'text', 340)
+    let y = y0
     const size = fitFontSize({ text: longestLine(o.slide.text), maxW: W - 90, maxH: 260, lineHeight: 1.3, startSize: 50, minSize: 30, weight: 600, measure: measurer })
     for (const [n, item] of items.entries()) {
       // Anillo editorial con punto en vez de punto relleno.
@@ -385,6 +420,9 @@ function renderMinimal(ctx: Ctx, o: RenderSlideOptions, brand: string, measurer:
       y += Math.max(lines.length, 1) * size * 1.3 + 56
       void n
     }
+    if (items.length > 0) {
+      o.emitTextBox?.({ id: 'text', kind: 'list-flow', rect: { x: M, y: y0 - 26, w: W, h: Math.max(24, y - 56 - (y0 - 26)) } })
+    }
     thinRule(ctx, M, SLIDE_H - 160, W, p.ink)
     drawBrandMark(ctx, brand, M, SLIDE_H - 110, p.ink, o.fontFamily)
     drawPageNumber(ctx, pageLabel(o.index, o.total), SLIDE_W - M, SLIDE_H - 110, p.accent, o.fontFamily)
@@ -401,7 +439,8 @@ function renderMinimal(ctx: Ctx, o: RenderSlideOptions, brand: string, measurer:
     dotsGrid(ctx, SLIDE_W - 220, SLIDE_H - 240, 6, 4, 34, 4, on, 0.16)
     ghostText(ctx, '“', M - 6, 420, 300, on, 0.14, o.fontFamily, 'left')
     drawKickerRaw(ctx, o.slide.role, M, 330, on, o.fontFamily)
-    drawFittedText(ctx, o.slide.text, { x: M, y: 480, w: W, h: 560 }, { startSize: 76, minSize: 40, weight: 700, lineHeight: 1.25, color: on, measure: measurer, fontFamily: o.fontFamily })
+    const tc = textBoxFor(o, 'text', { x: M, y: 480, w: W, h: 560 })
+    drawFittedText(ctx, o.slide.text, tc.box, { startSize: 76 * tc.sf, minSize: 40 * tc.sf, weight: 700, lineHeight: 1.25, color: on, measure: measurer, fontFamily: o.fontFamily })
     drawBrandMark(ctx, brand, M, SLIDE_H - 110, on, o.fontFamily)
     return
   }
@@ -409,7 +448,8 @@ function renderMinimal(ctx: Ctx, o: RenderSlideOptions, brand: string, measurer:
   // text
   ghostText(ctx, pad2(o.index), SLIDE_W - M + 10, 1080, 320, p.accent, 0.055, o.fontFamily)
   pillBadge(ctx, o.slide.role, M, 120, p.accent, o.fontFamily, { border: p.accent })
-  drawFittedText(ctx, o.slide.text, { x: M, y: 420, w: W, h: 660 }, { startSize: 72, minSize: 36, weight: 600, lineHeight: 1.3, color: p.ink, measure: measurer, fontFamily: o.fontFamily })
+  const tx = textBoxFor(o, 'text', { x: M, y: 420, w: W, h: 660 })
+  drawFittedText(ctx, o.slide.text, tx.box, { startSize: 72 * tx.sf, minSize: 36 * tx.sf, weight: 600, lineHeight: 1.3, color: p.ink, measure: measurer, fontFamily: o.fontFamily })
   thinRule(ctx, M, SLIDE_H - 160, W, p.ink)
   drawBrandMark(ctx, brand, M, SLIDE_H - 110, p.ink, o.fontFamily)
   drawPageNumber(ctx, pageLabel(o.index, o.total), SLIDE_W - M, SLIDE_H - 110, p.accent, o.fontFamily)
@@ -435,7 +475,8 @@ function renderBeauty(ctx: Ctx, o: RenderSlideOptions, brand: string, measurer: 
     drawBrandMark(ctx, brand, M, 90, '#FFFFFF', o.fontFamily)
     drawPageNumber(ctx, pageLabel(0, o.total), SLIDE_W - M, SLIDE_H - 70, '#FFFFFF', o.fontFamily)
     pillBadge(ctx, o.slide.role, M, SLIDE_H - 560, '#FFFFFF', o.fontFamily, { bg: 'rgba(10,6,8,0.35)' })
-    drawFittedText(ctx, o.slide.text, { x: M, y: SLIDE_H - 470, w: W, h: 330 }, { startSize: 88, minSize: 42, weight: 700, lineHeight: 1.15, color: '#FFFFFF', measure: measurer, fontFamily: o.fontFamily })
+    const tb2 = textBoxFor(o, 'text', { x: M, y: SLIDE_H - 470, w: W, h: 330 })
+    drawFittedText(ctx, o.slide.text, tb2.box, { startSize: 88 * tb2.sf, minSize: 42 * tb2.sf, weight: 700, lineHeight: 1.15, color: '#FFFFFF', measure: measurer, fontFamily: o.fontFamily })
     return
   }
 
@@ -445,7 +486,8 @@ function renderBeauty(ctx: Ctx, o: RenderSlideOptions, brand: string, measurer: 
     radialGlow(ctx, 60, SLIDE_H - 140, 260, p.accent, 0.12)
     thinArc(ctx, SLIDE_W - 300, 320, 190, p.accent, 0.35)
     pillBadge(ctx, o.slide.role, M, 150, p.accent, o.fontFamily, { border: p.accent })
-    drawFittedText(ctx, o.slide.text, { x: M, y: 440, w: W, h: 620 }, { startSize: 96, minSize: 46, weight: 700, lineHeight: 1.18, color: p.ink, measure: measurer, fontFamily: o.fontFamily, align: 'left' })
+    const tb3 = textBoxFor(o, 'text', { x: M, y: 440, w: W, h: 620 })
+    drawFittedText(ctx, o.slide.text, tb3.box, { startSize: 96 * tb3.sf, minSize: 46 * tb3.sf, weight: 700, lineHeight: 1.18, color: p.ink, measure: measurer, fontFamily: o.fontFamily, align: 'left' })
     drawBrandMark(ctx, brand, M, SLIDE_H - 110, p.ink, o.fontFamily)
     drawPageNumber(ctx, pageLabel(0, o.total), SLIDE_W - M, SLIDE_H - 110, p.accent, o.fontFamily)
     return
@@ -459,7 +501,8 @@ function renderBeauty(ctx: Ctx, o: RenderSlideOptions, brand: string, measurer: 
     ctx.fillStyle = g
     ctx.fillRect(0, 640, SLIDE_W, 160)
     pillBadge(ctx, o.slide.role, M, 830, p.accent, o.fontFamily, { border: p.accent })
-    drawFittedText(ctx, o.slide.text, { x: M, y: 940, w: W, h: 300 }, { startSize: 60, minSize: 32, weight: 700, lineHeight: 1.28, color: p.ink, measure: measurer, fontFamily: o.fontFamily })
+    const tb4 = textBoxFor(o, 'text', { x: M, y: 940, w: W, h: 300 })
+    drawFittedText(ctx, o.slide.text, tb4.box, { startSize: 60 * tb4.sf, minSize: 32 * tb4.sf, weight: 700, lineHeight: 1.28, color: p.ink, measure: measurer, fontFamily: o.fontFamily })
     drawBrandMark(ctx, brand, M, SLIDE_H - 60, p.ink, o.fontFamily)
     drawPageNumber(ctx, pageLabel(o.index, o.total), SLIDE_W - M, SLIDE_H - 60, p.accent, o.fontFamily)
     return
@@ -470,7 +513,8 @@ function renderBeauty(ctx: Ctx, o: RenderSlideOptions, brand: string, measurer: 
     pillBadge(ctx, o.slide.role, M, 120, p.accent, o.fontFamily, { border: p.accent })
     const items = listItems(o.slide.text)
     const size = fitFontSize({ text: longestLine(o.slide.text), maxW: W - 90, maxH: 240, lineHeight: 1.3, startSize: 48, minSize: 30, weight: 600, measure: measurer })
-    let y = 350
+    const y0 = listFlowTop(o, 'text', 350)
+    let y = y0
     for (const item of items) {
       // Check cuadrado redondeado con punto de acento (centrado a la línea de texto).
       roundedRectPath(ctx, M + 2, y - 34, 34, 34, 10)
@@ -487,6 +531,9 @@ function renderBeauty(ctx: Ctx, o: RenderSlideOptions, brand: string, measurer: 
       lines.forEach((line, i) => ctx.fillText(line, M + 64, y + i * size * 1.3))
       y += Math.max(lines.length, 1) * size * 1.3 + 60
     }
+    if (items.length > 0) {
+      o.emitTextBox?.({ id: 'text', kind: 'list-flow', rect: { x: M, y: y0 - 40, w: W, h: Math.max(24, y - 60 - (y0 - 40)) } })
+    }
     drawBrandMark(ctx, brand, M, SLIDE_H - 110, p.ink, o.fontFamily)
     drawPageNumber(ctx, pageLabel(o.index, o.total), SLIDE_W - M, SLIDE_H - 110, p.accent, o.fontFamily)
     return
@@ -499,7 +546,8 @@ function renderBeauty(ctx: Ctx, o: RenderSlideOptions, brand: string, measurer: 
     fineFrame(ctx, 40, 40, SLIDE_W - 80, SLIDE_H - 80, 0, mix(p.onAccent ?? p.bg, p.accent, 0.35), 2)
     dotsGrid(ctx, M, SLIDE_H - 260, 5, 3, 36, 4, p.onAccent ?? p.bg, 0.16)
     drawKickerRaw(ctx, o.slide.role, M, 320, p.onAccent ?? p.bg, o.fontFamily)
-    drawFittedText(ctx, o.slide.text, { x: M, y: 500, w: W, h: 560 }, { startSize: 80, minSize: 42, weight: 700, lineHeight: 1.25, color: p.onAccent ?? p.bg, measure: measurer, fontFamily: o.fontFamily })
+    const tb5 = textBoxFor(o, 'text', { x: M, y: 500, w: W, h: 560 })
+    drawFittedText(ctx, o.slide.text, tb5.box, { startSize: 80 * tb5.sf, minSize: 42 * tb5.sf, weight: 700, lineHeight: 1.25, color: p.onAccent ?? p.bg, measure: measurer, fontFamily: o.fontFamily })
     drawBrandMark(ctx, brand, M, SLIDE_H - 110, p.onAccent ?? p.bg, o.fontFamily)
     return
   }
@@ -508,7 +556,8 @@ function renderBeauty(ctx: Ctx, o: RenderSlideOptions, brand: string, measurer: 
   radialGlow(ctx, SLIDE_W - 140, 180, 340, p.accent, 0.18)
   thinArc(ctx, 240, SLIDE_H - 260, 170, p.accent, 0.3)
   pillBadge(ctx, o.slide.role, M, 120, p.accent, o.fontFamily, { border: p.accent })
-  drawFittedText(ctx, o.slide.text, { x: M, y: 420, w: W, h: 700 }, { startSize: 70, minSize: 36, weight: 600, lineHeight: 1.32, color: p.ink, measure: measurer, fontFamily: o.fontFamily })
+  const tx2 = textBoxFor(o, 'text', { x: M, y: 420, w: W, h: 700 })
+  drawFittedText(ctx, o.slide.text, tx2.box, { startSize: 70 * tx2.sf, minSize: 36 * tx2.sf, weight: 600, lineHeight: 1.32, color: p.ink, measure: measurer, fontFamily: o.fontFamily })
   drawBrandMark(ctx, brand, M, SLIDE_H - 110, p.ink, o.fontFamily)
   drawPageNumber(ctx, pageLabel(o.index, o.total), SLIDE_W - M, SLIDE_H - 110, p.accent, o.fontFamily)
 }
@@ -526,7 +575,8 @@ function renderBold(ctx: Ctx, o: RenderSlideOptions, brand: string, measurer: Me
     ctx.font = `800 150px ${o.fontFamily}`
     ctx.fillStyle = p.accent
     ctx.fillText(pad2(o.index), M, 300)
-    drawFittedText(ctx, o.slide.text, { x: M, y: 460, w: W, h: 600 }, { startSize: 116, minSize: 54, weight: 800, lineHeight: 1.1, color: p.ink, measure: measurer, fontFamily: o.fontFamily })
+    const b1 = textBoxFor(o, 'text', { x: M, y: 460, w: W, h: 600 })
+    drawFittedText(ctx, o.slide.text, b1.box, { startSize: 116 * b1.sf, minSize: 54 * b1.sf, weight: 800, lineHeight: 1.1, color: p.ink, measure: measurer, fontFamily: o.fontFamily })
     ctx.fillStyle = p.accent
     ctx.fillRect(M, SLIDE_H - 190, 200, 12)
     ctx.fillStyle = mix(p.accent, p.ink, 0.35)
@@ -543,7 +593,8 @@ function renderBold(ctx: Ctx, o: RenderSlideOptions, brand: string, measurer: Me
     ctx.font = `800 120px ${o.fontFamily}`
     ctx.fillStyle = p.accent
     ctx.fillText(pad2(o.index), M, 260)
-    drawFittedText(ctx, o.slide.text, { x: M, y: SLIDE_H - 620, w: W, h: 420 }, { startSize: 100, minSize: 50, weight: 800, lineHeight: 1.1, color: '#FFFFFF', measure: measurer, fontFamily: o.fontFamily })
+    const b2 = textBoxFor(o, 'text', { x: M, y: SLIDE_H - 620, w: W, h: 420 })
+    drawFittedText(ctx, o.slide.text, b2.box, { startSize: 100 * b2.sf, minSize: 50 * b2.sf, weight: 800, lineHeight: 1.1, color: '#FFFFFF', measure: measurer, fontFamily: o.fontFamily })
     // Banda cereza inferior con la marca.
     ctx.fillStyle = mix(p.accent, '#591427', 0.5)
     ctx.fillRect(0, SLIDE_H - 150, SLIDE_W, 150)
@@ -559,7 +610,8 @@ function renderBold(ctx: Ctx, o: RenderSlideOptions, brand: string, measurer: Me
     ctx.fillText(pageLabel(o.index, o.total), SLIDE_W - M, 200)
     ctx.textAlign = 'left'
     ghostText(ctx, pad2(o.index), SLIDE_W - M + 16, 560, 300, p.accent, 0.12, o.fontFamily)
-    drawFittedText(ctx, o.slide.text, { x: M, y: 300, w: W, h: 420 }, { startSize: 66, minSize: 34, weight: 800, lineHeight: 1.18, color: p.ink, measure: measurer, fontFamily: o.fontFamily })
+    const b3 = textBoxFor(o, 'text', { x: M, y: 300, w: W, h: 420 })
+    drawFittedText(ctx, o.slide.text, b3.box, { startSize: 66 * b3.sf, minSize: 34 * b3.sf, weight: 800, lineHeight: 1.18, color: p.ink, measure: measurer, fontFamily: o.fontFamily })
     thinRule(ctx, M, 756, W, p.accent, 0.5, 4)
     drawPhoto(ctx, o.imageEl ?? null, M, 780, W, 440, o.image, [40, 40, 40, 120])
     drawBrandMark(ctx, brand, M, 720, p.ink, o.fontFamily)
@@ -572,7 +624,8 @@ function renderBold(ctx: Ctx, o: RenderSlideOptions, brand: string, measurer: Me
     thinRule(ctx, M, 210, 180, p.accent, 0.6, 5)
     const items = listItems(o.slide.text)
     const size = fitFontSize({ text: longestLine(o.slide.text), maxW: W - 130, maxH: 220, lineHeight: 1.25, startSize: 52, minSize: 30, weight: 700, measure: measurer })
-    let y = 360
+    const y0 = listFlowTop(o, 'text', 360)
+    let y = y0
     for (const [n, item] of items.entries()) {
       ctx.font = `800 ${size + 8}px ${o.fontFamily}`
       ctx.fillStyle = p.accent
@@ -582,6 +635,9 @@ function renderBold(ctx: Ctx, o: RenderSlideOptions, brand: string, measurer: Me
       ctx.fillStyle = p.ink
       lines.forEach((line, i) => ctx.fillText(line, M + 130, y + i * size * 1.3))
       y += Math.max(lines.length, 1) * size * 1.3 + 48
+    }
+    if (items.length > 0) {
+      o.emitTextBox?.({ id: 'text', kind: 'list-flow', rect: { x: M, y: y0 - 40, w: W, h: Math.max(24, y - 48 - (y0 - 40)) } })
     }
     drawBrandMark(ctx, brand, M, SLIDE_H - 110, p.ink, o.fontFamily)
     drawPageNumber(ctx, pageLabel(o.index, o.total), SLIDE_W - M, SLIDE_H - 110, p.accent, o.fontFamily)
@@ -595,7 +651,8 @@ function renderBold(ctx: Ctx, o: RenderSlideOptions, brand: string, measurer: Me
     dotsGrid(ctx, SLIDE_W - 250, 140, 6, 3, 34, 4, p.onAccent ?? p.bg, 0.2)
     ghostText(ctx, '*', SLIDE_W - M, 380, 340, p.onAccent ?? p.bg, 0.18, o.fontFamily)
     drawKickerRaw(ctx, o.slide.role, M, 320, p.onAccent ?? p.bg, o.fontFamily)
-    drawFittedText(ctx, o.slide.text, { x: M, y: 520, w: W, h: 520 }, { startSize: 88, minSize: 44, weight: 800, lineHeight: 1.18, color: p.onAccent ?? p.bg, measure: measurer, fontFamily: o.fontFamily })
+    const b4 = textBoxFor(o, 'text', { x: M, y: 520, w: W, h: 520 })
+    drawFittedText(ctx, o.slide.text, b4.box, { startSize: 88 * b4.sf, minSize: 44 * b4.sf, weight: 800, lineHeight: 1.18, color: p.onAccent ?? p.bg, measure: measurer, fontFamily: o.fontFamily })
     drawBrandMark(ctx, brand, M, SLIDE_H - 110, p.onAccent ?? p.bg, o.fontFamily)
     return
   }
@@ -608,7 +665,8 @@ function renderBold(ctx: Ctx, o: RenderSlideOptions, brand: string, measurer: Me
   ctx.textAlign = 'left'
   ghostText(ctx, pad2(o.index), SLIDE_W - M + 16, 1060, 340, p.accent, 0.12, o.fontFamily)
   drawKickerRaw(ctx, o.slide.role, M, 170, p.ink, o.fontFamily)
-  drawFittedText(ctx, o.slide.text, { x: M, y: 420, w: W, h: 680 }, { startSize: 76, minSize: 38, weight: 800, lineHeight: 1.2, color: p.ink, measure: measurer, fontFamily: o.fontFamily })
+  const b5 = textBoxFor(o, 'text', { x: M, y: 420, w: W, h: 680 })
+  drawFittedText(ctx, o.slide.text, b5.box, { startSize: 76 * b5.sf, minSize: 38 * b5.sf, weight: 800, lineHeight: 1.2, color: p.ink, measure: measurer, fontFamily: o.fontFamily })
   ctx.fillStyle = p.accent
   ctx.fillRect(M, SLIDE_H - 178, 120, 10)
   drawBrandMark(ctx, brand, M, SLIDE_H - 110, p.ink, o.fontFamily)
@@ -713,7 +771,8 @@ function renderEditorial(ctx: Ctx, o: RenderSlideOptions, brand: string, measure
     ctx.fillStyle = E_TOKENS.ink
     ctx.fillText(sluggedHandle(brand), GEOM.cover.handle.x, GEOM.cover.handle.y)
     trySetLetterSpacing(ctx, '0px')
-    drawSerifTitleWithScript(ctx, o.slide.text, GEOM.cover.titleBox, serif, script, E_TOKENS.ink, measurer)
+    const et = textBoxFor(o, 'text', GEOM.cover.titleBox, 'serif-script')
+    drawSerifTitleWithScript(ctx, o.slide.text, et.box, serif, script, E_TOKENS.ink, measurer)
     drawSignatureItalic(ctx, brand, GEOM.cover.signature.x, GEOM.cover.signature.y, E_TOKENS.ink, sans)
     return
   }
@@ -731,7 +790,8 @@ function renderEditorial(ctx: Ctx, o: RenderSlideOptions, brand: string, measure
     if (a?.polaroid) a.polaroid.draw(ctx, GEOM.statement.polaroid.x, GEOM.statement.polaroid.y, GEOM.statement.polaroid.w, GEOM.statement.polaroid.h)
     if (a?.clip) a.clip.draw(ctx, GEOM.statement.clip.x, GEOM.statement.clip.y, GEOM.statement.clip.w, GEOM.statement.clip.h)
     // Frase centrada en negrita sobre el papel.
-    drawFittedText(ctx, o.slide.text, { x: GEOM.statement.textBox.x, y: GEOM.statement.textBox.y, w: GEOM.statement.textBox.w, h: GEOM.statement.textBox.h }, { startSize: 44, minSize: 24, weight: 700, lineHeight: 1.12, color: E_TOKENS.ink, measure: measurer, fontFamily: sans, align: 'center' })
+    const es = textBoxFor(o, 'text', GEOM.statement.textBox)
+    drawFittedText(ctx, o.slide.text, es.box, { startSize: 44 * es.sf, minSize: 24 * es.sf, weight: 700, lineHeight: 1.12, color: E_TOKENS.ink, measure: measurer, fontFamily: sans, align: 'center' })
     drawSignatureItalic(ctx, brand, GEOM.statement.signature.x, GEOM.statement.signature.y, '#000000', sans)
     return
   }
@@ -766,33 +826,38 @@ function renderEditorial(ctx: Ctx, o: RenderSlideOptions, brand: string, measure
 
   if (isCta) {
     // CTA: titular serif centrado entre tiras + cuerpo sans (si hay).
-    drawFittedText(ctx, headline, { x: 118, y: 380, w: SLIDE_W - 236, h: 420 }, { startSize: 92, minSize: 48, weight: 300, lineHeight: 1.14, color: E_TOKENS.ink, measure: measurer, fontFamily: serif })
-    if (ctaBody) drawFittedText(ctx, ctaBody, { x: 122, y: 980, w: SLIDE_W - 244, h: 180 }, { startSize: 34, minSize: 24, weight: 600, lineHeight: 1.4, color: E_TOKENS.ink, measure: measurer, fontFamily: sans })
+    const eh = textBoxFor(o, 'headline', { x: 118, y: 380, w: SLIDE_W - 236, h: 420 })
+    drawFittedText(ctx, headline, eh.box, { startSize: 92 * eh.sf, minSize: 48 * eh.sf, weight: 300, lineHeight: 1.14, color: E_TOKENS.ink, measure: measurer, fontFamily: serif })
+    if (ctaBody) {
+      const eb = textBoxFor(o, 'body', { x: 122, y: 980, w: SLIDE_W - 244, h: 180 })
+      drawFittedText(ctx, ctaBody, eb.box, { startSize: 34 * eb.sf, minSize: 24 * eb.sf, weight: 600, lineHeight: 1.4, color: E_TOKENS.ink, measure: measurer, fontFamily: sans })
+    }
   } else {
     // Headline izquierda que se funde en blanco encima de la foto.
-    const size = fitFontSize({ text: headline, maxW: G.headline.w, maxH: G.headline.h, lineHeight: 1.2, startSize: 77, minSize: 40, weight: 300, measure: measurer })
-    const lines = wrapText(headline, G.headline.w, size, 300, measurer)
+    const eh2 = textBoxFor(o, 'headline', { x: G.headline.x, y: G.headline.y, w: G.headline.w, h: G.headline.h }, 'headline-fused')
+    const size = fitFontSize({ text: headline, maxW: eh2.box.w, maxH: eh2.box.h, lineHeight: 1.2, startSize: 77, minSize: 40, weight: 300, measure: measurer })
+    const lines = wrapText(headline, eh2.box.w, size, 300, measurer)
     const lh = size * 1.2
     ctx.font = `300 ${size}px ${sans}`
     ctx.fillStyle = E_TOKENS.ink
     lines.forEach((line, i) => {
-      const y = G.headline.y + size + i * lh
+      const y = eh2.box.y + size + i * lh
       // Medidas por carácter (code point) para saber dónde cruza la foto.
       const chars = Array.from(line)
       const sizes = chars.map(ch => measurer(ch, size, 300))
-      const { blackChars, hasWhite } = splitForWhite(line, G.headline.x, sizes, G.photo.x)
+      const { blackChars, hasWhite } = splitForWhite(line, eh2.box.x, sizes, G.photo.x)
       if (!hasWhite) {
-        ctx.fillText(line, G.headline.x, y)
+        ctx.fillText(line, eh2.box.x, y)
       } else {
         // Todo en negro primero; el sufijo en blanco re-dibujado recortado a la foto.
-        ctx.fillText(line, G.headline.x, y)
+        ctx.fillText(line, eh2.box.x, y)
         ctx.save()
         ctx.beginPath()
         ctx.rect(G.photo.x, G.photo.y, G.photo.w, G.photo.h)
         ctx.clip()
         ctx.fillStyle = E_TOKENS.paper
         // Dibujar char a char para mantener posiciones exactas.
-        const x0 = G.headline.x + sizes.slice(0, blackChars).reduce((a, b) => a + b, 0)
+        const x0 = eh2.box.x + sizes.slice(0, blackChars).reduce((a, b) => a + b, 0)
         let x = x0
         for (let c = blackChars; c < chars.length; c++) {
           ctx.fillText(chars[c], x, y)
@@ -804,7 +869,8 @@ function renderEditorial(ctx: Ctx, o: RenderSlideOptions, brand: string, measure
     // Bloque CTA pequeño bajo el titular dentro de la hoja.
     const body = ctaBody || ''
     if (body) {
-      drawFittedText(ctx, body, { x: G.cta.x, y: G.cta.y, w: G.cta.w, h: G.cta.h }, { startSize: 32, minSize: 20, weight: 600, lineHeight: 1.36, color: E_TOKENS.ink, measure: measurer, fontFamily: sans })
+      const bb2 = textBoxFor(o, 'body', { x: G.cta.x, y: G.cta.y, w: G.cta.w, h: G.cta.h })
+      drawFittedText(ctx, body, bb2.box, { startSize: 32 * bb2.sf, minSize: 20 * bb2.sf, weight: 600, lineHeight: 1.36, color: E_TOKENS.ink, measure: measurer, fontFamily: sans })
     }
   }
 }

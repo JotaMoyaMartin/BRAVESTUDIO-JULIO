@@ -45,6 +45,7 @@ create table if not exists public.design_templates (
 );
 alter table public.design_templates enable row level security;
 -- Usuarias ven solo publicadas; admin escribe via service_role.
+drop policy if exists "design_templates published visibles" on public.design_templates;
 create policy "design_templates published visibles"
   on public.design_templates for select to authenticated
   using (status = 'published');
@@ -62,6 +63,7 @@ create table if not exists public.design_projects (
   created_at timestamptz not null default now()
 );
 alter table public.design_projects enable row level security;
+drop policy if exists "design_projects propios" on public.design_projects;
 create policy "design_projects propios"
   on public.design_projects for all to authenticated
   using (user_id = auth.uid()) with check (user_id = auth.uid());

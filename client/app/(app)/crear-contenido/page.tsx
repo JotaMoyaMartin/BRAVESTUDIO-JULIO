@@ -13,11 +13,13 @@ export default async function CrearContenidoPage({ searchParams }: { searchParam
   const initialService = searchParams.service || null
   const initialTema = searchParams.tema || null
   const initialContexto = searchParams.contexto || null
+  // Desde Reels virales: la idea llega escrita y se salta al paso de ganchos.
+  const autoStart = searchParams.auto === '1' && !!searchParams.tema
 
   if (!IS_CONFIGURED) {
     return (
       <PageTransition>
-        <CrearContenidoClient userId="demo" brandFull={null} initialService={initialService} initialTema={initialTema} initialContexto={initialContexto} />
+        <CrearContenidoClient userId="demo" brandFull={null} initialService={initialService} initialTema={initialTema} initialContexto={initialContexto} autoStart={autoStart} />
       </PageTransition>
     )
   }
@@ -49,6 +51,7 @@ export default async function CrearContenidoPage({ searchParams }: { searchParam
         initialService={initialService}
         initialTema={initialTema}
         initialContexto={initialContexto}
+        autoStart={autoStart}
         recentTitles={recentTitles}
       />
     </PageTransition>

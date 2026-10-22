@@ -1,14 +1,6 @@
-import FotoInspoClient from './FotoInspoClient'
-import PageTransition from '@/components/ui/PageTransition'
+import { redirect } from 'next/navigation'
 
-// Foto inspo — galería de referencias fotográficas (selfies, poses, plano de
-// café, tijeras/detalles) + cámara in-app con la referencia en PIP para
-// replicar la foto. Catálogo estático en lib/foto-inspo.ts: sin BD (MVP,
-// portadas a cargo de Jota de a una).
+// Foto inspo vive ahora dentro del Estudio de fotos (paso «Replica»).
 export default function FotoInspoPage() {
-  return (
-    <PageTransition>
-      <FotoInspoClient />
-    </PageTransition>
-  )
+  redirect('/estudio?paso=replica')
 }

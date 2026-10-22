@@ -200,7 +200,8 @@ export function getMockReel(input: ReelInput, seed?: number): ReelOutput {
   const v = REEL_VARIANTS[idx]
   const obj = baseObjective(input.objective)
   return {
-    title: v.titleFn(input.service),
+    // Si viene de una idea del plan, el título es esa idea (el texto sigue el servicio).
+    title: input.freeText?.trim() && input.freeText.trim().split(/\s+/).length > 3 ? input.freeText.trim() : v.titleFn(input.service),
     coverText: v.coverFn(input.service),
     script: {
       hook: v.hooks[obj](input.service),

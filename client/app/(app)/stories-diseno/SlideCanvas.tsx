@@ -92,6 +92,7 @@ export default function SlideCanvas({
 
   return (
     <div
+      data-preview
       style={{ width: w, height: h, position: 'relative', flexShrink: 0 }}
       ref={frameRef}
       data-slide-export="true"

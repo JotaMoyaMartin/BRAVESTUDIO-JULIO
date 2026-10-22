@@ -133,6 +133,11 @@ export default function OnboardingClient({ profile, brand, mode = 'onboarding', 
   // Persistencia incremental del borrador.
   useEffect(() => {
     if (isEdit) return
+    // Nunca escribir el estado inicial vacío: al montar (y ante los re-montajes de
+    // StrictMode en dev) el draft aún está '' y machacaba lo guardado ANTES de que
+    // corra la restauración → recarga = «¿Cómo te llamas?» borrado.
+    // Solo se persiste cuando ya hay algo real (nombre/salón/servicios).
+    if (!draft.fullName.trim() && !draft.salonName.trim() && draft.services.length === 0) return
     try { localStorage.setItem(`${DRAFT_KEY}${userId}${DRAFT_SUFFIX}`, JSON.stringify(draft)) } catch { /* ignore */ }
   }, [draft, isEdit, userId])
 

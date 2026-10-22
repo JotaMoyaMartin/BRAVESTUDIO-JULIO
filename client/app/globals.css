@@ -1,35 +1,47 @@
 @import "tailwindcss";
 
 @theme {
-  /* Brand colors */
+  /* Dirección visual BRÄVE (21-oct-2026) — ver docs/direccion-visual.html.
+     Seis tonos de marca; los antiguos (pastel-blue/green, warm-*) se
+     redirigen a tonos de la marca para que todo lo existente se alinee. */
+  --color-burdeos: #591427;
+  --color-cereza: #7A1832;
+  --color-crema: #FFF7EE;
+  --color-mantequilla: #FFF1B5;
+  --color-rosa: #F3DCE1;
+  --color-tinta: #2B1A1F;
+  --color-tinta-2: #6E555C;   /* texto secundario: contraste AA sobre crema */
+  --color-borde: #EBD9D4;
+
+  /* Nombres históricos → mismos tonos de marca */
   --color-buttermilk: #FFF1B5;
   --color-cherry: #7A1832;
   --color-cherry-dark: #591427;
   --color-cherry-light: #A04060;
-  --color-pastel-blue: #C1DBE8;
-  --color-pastel-green: #B8D8B0;
-  --color-cream: #FFFDF5;
-  --color-warm-gray: #F5F0E8;
-  --color-warm-light: #FFF8E7;
-  --color-ink: #1a1a1a;
-  --color-danger: #c0394e;
-  --color-success: #2a8a4a;
+  --color-pastel-blue: #F3DCE1;
+  --color-pastel-green: #FFF1B5;
+  --color-cream: #FFF7EE;
+  --color-warm-gray: #F6ECE8;
+  --color-warm-light: #FFF9F3;
+  --color-ink: #2B1A1F;
+  --color-danger: #B42340;
+  --color-success: #2F7A4B;
 
-  /* Font */
+  /* Font: Poppins sola (legible, sin serifas con adornos) */
   --font-sans: var(--font-poppins, 'Poppins'), system-ui, sans-serif;
 
-  /* Radii */
-  --radius-sm: 0.75rem;
+  /* Radii: pieza 16 · bloque 24 · píldora */
+  --radius-sm: 0.875rem;
   --radius-md: 1.25rem;
-  --radius-lg: 1.75rem;
-  --radius-xl: 1rem;
+  --radius-lg: 1.5rem;
+  --radius-xl: 1.5rem;
   --radius-2xl: 1.5rem;
   --radius-3xl: 2rem;
 
-  /* Shadows */
-  --shadow-soft: 0 2px 16px rgba(90, 20, 39, 0.06);
-  --shadow-medium: 0 4px 24px rgba(89, 20, 39, 0.08);
-  --shadow-strong: 0 8px 32px rgba(89, 20, 39, 0.12);
+  /* Shadows (tinte burdeos) — solo para lo que se eleva */
+  --shadow-soft: 0 1px 2px rgba(89, 20, 39, 0.04), 0 4px 16px rgba(89, 20, 39, 0.05);
+  --shadow-medium: 0 2px 4px rgba(89, 20, 39, 0.05), 0 12px 32px -8px rgba(89, 20, 39, 0.14);
+  --shadow-strong: 0 24px 48px -24px rgba(89, 20, 39, 0.45);
 }
 
 * {
@@ -95,127 +107,90 @@ body {
   .snap-x-carousel { scroll-snap-type: x mandatory; }
   .snap-item { scroll-snap-align: start; }
 
-  /* Card primitive */
+  /* Card primitive: blanco + borde de marca; la sombra solo si se eleva */
   .card {
     background: white;
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-soft);
-    border: 1px solid rgba(255, 241, 181, 0.5);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-borde);
   }
 
-  /* Buttons */
-  .btn-primary {
-    background-color: var(--color-cherry);
-    color: white;
-    padding: 0.75rem 1.5rem;
-    border-radius: var(--radius-sm);
-    font-weight: 600;
-    font-size: 0.95rem;
-    transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* Botones — 48 px de alto (pulgar), un solo .btn-primary por pantalla */
+  .btn-primary, .btn-secondary, .btn-ghost {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
+    min-height: 48px;
+    padding: 0 1.25rem;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    font-size: 0.9375rem;
+    line-height: 1.2;
     cursor: pointer;
     border: none;
+    touch-action: manipulation;
+    transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease, opacity 0.15s ease;
   }
-  .btn-primary:hover {
-    background-color: var(--color-cherry-dark);
-    transform: translateY(-2px) scale(1.02);
-    box-shadow: 0 6px 20px rgba(122, 24, 50, 0.35);
-  }
-  .btn-primary:active {
-    transform: translateY(0) scale(0.96);
-    box-shadow: 0 2px 8px rgba(122, 24, 50, 0.2);
-  }
-  .btn-primary:disabled {
-    opacity: 0.5;
+  .btn-primary { background-color: var(--color-cereza); color: white; }
+  .btn-primary:hover { background-color: var(--color-burdeos); }
+  .btn-secondary { background-color: var(--color-mantequilla); color: var(--color-burdeos); }
+  .btn-secondary:hover { background-color: #FFE88C; }
+  .btn-ghost { background: transparent; color: var(--color-cereza); font-weight: 500; box-shadow: inset 0 0 0 1.5px var(--color-borde); }
+  .btn-ghost:hover { box-shadow: inset 0 0 0 1.5px var(--color-cereza); background-color: rgba(122, 24, 50, 0.04); }
+  .btn-primary:active, .btn-secondary:active, .btn-ghost:active { transform: scale(0.97); }
+  .btn-primary:disabled, .btn-secondary:disabled, .btn-ghost:disabled {
+    opacity: 0.45;
     cursor: not-allowed;
     transform: none;
   }
 
-  .btn-secondary {
-    background-color: var(--color-buttermilk);
-    color: var(--color-cherry-dark);
-    padding: 0.75rem 1.5rem;
-    border-radius: var(--radius-sm);
-    font-weight: 600;
-    font-size: 0.95rem;
-    transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* Opción tipo píldora (servicios, filtros) */
+  .chip {
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
-    cursor: pointer;
-    border: none;
-  }
-  .btn-secondary:hover {
-    background-color: #ffe98a;
-    transform: translateY(-2px) scale(1.02);
-    box-shadow: 0 4px 16px rgba(255, 233, 145, 0.5);
-  }
-  .btn-secondary:active {
-    transform: translateY(0) scale(0.96);
-  }
-  .btn-secondary:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    transform: none;
-  }
-
-  .btn-ghost {
-    background: transparent;
-    color: var(--color-cherry);
-    padding: 0.625rem 1.25rem;
-    border-radius: var(--radius-sm);
+    gap: 0.375rem;
+    min-height: 40px;
+    padding: 0 1rem;
+    border-radius: 999px;
+    border: 1.5px solid var(--color-borde);
+    background: white;
+    color: var(--color-burdeos);
     font-weight: 500;
-    font-size: 0.9rem;
-    transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
+    font-size: 0.875rem;
     cursor: pointer;
-    border: 1.5px solid rgba(122, 24, 50, 0.2);
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
   }
-  .btn-ghost:hover {
-    background-color: rgba(122, 24, 50, 0.08);
-    border-color: var(--color-cherry);
-    transform: translateY(-1px);
-  }
-  .btn-ghost:active {
-    transform: translateY(0) scale(0.96);
-  }
-  .btn-ghost:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    transform: none;
-  }
+  .chip:hover { border-color: var(--color-cereza); }
+  .chip[aria-pressed="true"], .chip[data-active="true"] { background: var(--color-burdeos); border-color: var(--color-burdeos); color: var(--color-crema); }
 
   /* Clickable idea card */
   .idea-card {
-    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
     cursor: pointer;
   }
   .idea-card:hover {
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-strong);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-medium);
   }
   .idea-card:active {
-    transform: translateY(-1px) scale(0.98);
+    transform: scale(0.99);
   }
 
   /* Form input */
   .input-field {
     width: 100%;
-    padding: 0.625rem 0.875rem;
+    min-height: 48px;
+    padding: 0.75rem 0.875rem;
     border-radius: var(--radius-sm);
-    border: 1.5px solid rgba(122, 24, 50, 0.2);
+    border: 1.5px solid var(--color-borde);
     background: white;
     color: var(--color-ink);
-    font-size: 0.875rem;
+    font-size: 1rem; /* 16 px: iPhone no hace zoom al escribir */
     outline: none;
-    transition: border-color 0.2s;
+    transition: border-color 0.15s, box-shadow 0.15s;
   }
   .input-field:focus {
-    border-color: var(--color-cherry);
+    border-color: var(--color-cereza);
+    box-shadow: 0 0 0 3px var(--color-mantequilla);
   }
 }
 
@@ -382,3 +357,53 @@ body {
   border: 2px solid var(--color-cherry) !important;
   border-radius: 50% !important;
 }
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   BASE COMÚN DE LA APP (dirección visual 21-oct-2026)
+   Solo dentro de .app-shell (layout con menú): la landing, admin y
+   team no cambian. Las previsualizaciones de stories/carruseles llevan
+   [data-preview] y quedan fuera de estas reglas.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* Cabecera única: el título de cada sección se ve igual en toda la app */
+.app-shell main h1:not([data-preview] *) {
+  font-family: var(--font-sans) !important;
+  font-size: 1.625rem !important;
+  line-height: 1.2 !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.01em;
+  color: var(--color-burdeos) !important;
+  background: none !important;
+  -webkit-text-fill-color: currentColor !important;
+  text-wrap: balance;
+  text-align: left !important;
+}
+@media (min-width: 768px) {
+  .app-shell main h1:not([data-preview] *) { font-size: 1.875rem !important; }
+}
+.app-shell main h2:not([data-preview] *) { text-wrap: balance; }
+
+/* Cabecera sobre fondo burdeos (p. ej. entrada de Stories): texto crema */
+.app-shell main [data-tone="dark"] h1:not([data-preview] *) { color: var(--color-crema) !important; }
+
+/* Foco visible para quien navega con teclado */
+.app-shell :focus-visible {
+  outline: 3px solid var(--color-mantequilla);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 5px var(--color-cereza);
+}
+
+/* Etiquetas: nada de MAYÚSCULAS espaciadas ni letra diminuta en la interfaz */
+.app-shell .uppercase[class*="tracking-"]:not([data-preview] *) {
+  text-transform: none;
+  letter-spacing: 0;
+}
+.app-shell :is(.text-\[9px\], .text-\[10px\]):not([data-preview] *) { font-size: 12px; }
+.app-shell .text-\[11px\]:not([data-preview] *) { font-size: 12.5px; }
+
+/* Textos secundarios con transparencia: mínimo legible sobre crema */
+.app-shell :is(.opacity-50, .opacity-60):is(p, span, small):not([data-preview] *) { opacity: 0.72; }
+
+/* Toques más rápidos en móvil */
+.app-shell button, .app-shell a { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }

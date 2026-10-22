@@ -27,9 +27,10 @@ export async function GET(
     const admin = createAdminClient()
     const row = await fetchPublishedTemplate(admin, id)
     if (!row) return NextResponse.json({ error: 'Plantilla no encontrada' }, { status: 404 })
-    const template: DesignTemplateLite = toTemplateLite(
+    const template: DesignTemplateLite = await toTemplateLite(
       await templatePreviewUrls(admin, row),
       row,
+      admin,
     )
     return NextResponse.json({ template })
   } catch (err) {

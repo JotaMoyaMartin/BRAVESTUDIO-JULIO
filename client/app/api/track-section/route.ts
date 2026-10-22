@@ -15,6 +15,7 @@ const VALID_SECTIONS = [
   'foto-inspo',
   'foto-pro',
   'disenos',
+  'editar-videos',
   'transiciones-reels',
   'reto-10k',
   'mi-estrategia',

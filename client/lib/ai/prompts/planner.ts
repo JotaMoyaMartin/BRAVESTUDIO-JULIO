@@ -5,7 +5,8 @@ export interface PlannerInput {
   duration: '1week' | '1month'
   postsPerWeek: 2 | 3 | 4 | 5
   format: 'reels' | 'carrusels' | 'mixed'
-  objective: 'autoridad' | 'reservas' | 'visibilidad'
+  /** 'mezcla' = rota autoridad → reservas → visibilidad (plan variado). */
+  objective: 'autoridad' | 'reservas' | 'visibilidad' | 'mezcla'
   services: string[]
   freeText?: string
   startDate?: string
@@ -14,7 +15,7 @@ export interface PlannerInput {
 
 export interface PlannerItem {
   id: string
-  type: 'reel' | 'carrusel'
+  type: 'reel' | 'carrusel' | 'story'
   title: string
   service: string
   objective: string
@@ -22,6 +23,8 @@ export interface PlannerItem {
   suggestedDate?: string
   hookIdea: string
   format: string
+  /** Stories: secuencia lista de lib/stories/sequences.ts. */
+  sequenceId?: string
 }
 
 export interface PlannerOutput {
@@ -229,32 +232,46 @@ function shuffle<T>(arr: T[]): T[] {
   return a
 }
 
+const OBJECTIVES = ['autoridad', 'reservas', 'visibilidad'] as const
+/** Objetivo de la publicación nº i (en «mezcla» rota los tres). */
+export function objectiveAt(objective: PlannerInput['objective'], i: number): string {
+  return objective === 'mezcla' ? OBJECTIVES[i % 3] : objective
+}
+
+/** Lunes desde el que se planifica: hoy si es lunes, si no el próximo lunes. */
+export function planStartMonday(from?: string | Date): Date {
+  const d = from ? new Date(from) : new Date()
+  d.setHours(12, 0, 0, 0)
+  const dow = (d.getDay() + 6) % 7 // 0 = lunes
+  if (dow !== 0) d.setDate(d.getDate() + (7 - dow))
+  return d
+}
+
+/** Fecha local AAAA-MM-DD (sin el desfase de zona horaria de toISOString). */
+export function localISODate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 export function generateMockPlan(input: PlannerInput): PlannerOutput {
   const weeks = input.duration === '1week' ? 1 : 4
   const total = weeks * input.postsPerWeek
   const items: PlannerItem[] = []
   const days = DEFAULT_DAYS[input.postsPerWeek]
 
-  const startDate = input.startDate ? new Date(input.startDate) : new Date()
+  const startDate = planStartMonday(input.startDate)
 
   const customTopic = input.freeText?.trim()
   const topicPool = customTopic ? [customTopic] : input.services
 
   // Pick template set: custom topics use [T] templates, known services use article-based ones
-  const obj = input.objective
   const usingCustomTopic = !!(customTopic && !isKnownService(customTopic))
-  const reelPool = usingCustomTopic
-    ? (CUSTOM_REEL_TEMPLATES[obj] || CUSTOM_REEL_TEMPLATES.autoridad)
-    : (REEL_TEMPLATES[obj] || REEL_TEMPLATES.autoridad)
-  const carruselPool = usingCustomTopic
-    ? (CUSTOM_CAROUSEL_TEMPLATES[obj] || CUSTOM_CAROUSEL_TEMPLATES.autoridad)
-    : (CAROUSEL_TEMPLATES[obj] || CAROUSEL_TEMPLATES.autoridad)
+  const poolFor = (type: 'reel' | 'carrusel', obj: string) => type === 'reel'
+    ? (usingCustomTopic ? (CUSTOM_REEL_TEMPLATES[obj] || CUSTOM_REEL_TEMPLATES.autoridad) : (REEL_TEMPLATES[obj] || REEL_TEMPLATES.autoridad))
+    : (usingCustomTopic ? (CUSTOM_CAROUSEL_TEMPLATES[obj] || CUSTOM_CAROUSEL_TEMPLATES.autoridad) : (CAROUSEL_TEMPLATES[obj] || CAROUSEL_TEMPLATES.autoridad))
 
-  const queues: Record<string, string[]> = {
-    reel: shuffle(reelPool),
-    carrusel: shuffle(carruselPool),
-  }
-  const queueIdx: Record<string, number> = { reel: 0, carrusel: 0 }
+  // Una cola de plantillas por formato y objetivo (sin repetir hasta agotarla).
+  const queues: Record<string, string[]> = {}
+  const queueIdx: Record<string, number> = {}
 
   for (let i = 0; i < total; i++) {
     const service = topicPool[i % topicPool.length]
@@ -265,12 +282,13 @@ export function generateMockPlan(input: PlannerInput): PlannerOutput {
     if (input.format === 'carrusels') type = 'carrusel'
     else if (input.format === 'mixed') type = i % 2 === 0 ? 'reel' : 'carrusel'
 
-    // Reshuffle if exhausted
-    if (queueIdx[type] >= queues[type].length) {
-      queues[type] = shuffle(queues[type])
-      queueIdx[type] = 0
+    const obj = objectiveAt(input.objective, i)
+    const key = `${type}:${obj}`
+    if (!queues[key] || queueIdx[key] >= queues[key].length) {
+      queues[key] = shuffle(poolFor(type, obj))
+      queueIdx[key] = 0
     }
-    const template = queues[type][queueIdx[type]++]
+    const template = queues[key][queueIdx[key]++]
     const itemTitle = applyLabel(template, service)
 
     const itemDate = new Date(startDate)
@@ -281,10 +299,10 @@ export function generateMockPlan(input: PlannerInput): PlannerOutput {
       type,
       title: itemTitle,
       service,
-      objective: input.objective,
+      objective: obj,
       suggestedDay: day,
-      suggestedDate: itemDate.toISOString().split('T')[0],
-      hookIdea: `Hook para ${service}: enfocado en ${input.objective}`,
+      suggestedDate: localISODate(itemDate),
+      hookIdea: `Hook para ${service}: enfocado en ${obj}`,
       format: type === 'reel' ? 'Reel 40-50 segundos' : 'Carrusel 5 slides',
     })
   }
@@ -316,7 +334,7 @@ DURACIÓN: ${input.duration === '1week' ? '1 semana' : '1 mes'} (${weeks} semana
 PUBLICACIONES POR SEMANA: ${input.postsPerWeek}
 TOTAL: ${total} publicaciones
 FORMATO: ${formatLabel}
-OBJETIVO: ${input.objective}
+OBJETIVO: ${input.objective === 'mezcla' ? 'MEZCLA: alterna en orden autoridad, reservas y visibilidad (un tercio de cada) y rota también los servicios' : input.objective}
 SERVICIOS/TEMAS: ${services}
 ${input.brandContext ? `CONTEXTO DEL SALÓN: ${input.brandContext}` : ''}
 
@@ -366,7 +384,7 @@ export async function generatePlan(input: PlannerInput): Promise<PlannerOutput> 
           typeof it.format === 'string'
       )
     ) {
-      const startDate = input.startDate ? new Date(input.startDate) : new Date()
+      const startDate = planStartMonday(input.startDate)
       const items: PlannerItem[] = parsed.items.map((it, i) => {
         const weekNum = Math.floor(i / input.postsPerWeek)
         const itemDate = new Date(startDate)
@@ -375,16 +393,16 @@ export async function generatePlan(input: PlannerInput): Promise<PlannerOutput> 
         const forcedType: 'reel' | 'carrusel' =
           input.format === 'reels' ? 'reel'
           : input.format === 'carrusels' ? 'carrusel'
-          : it.type
+          : it.type === 'carrusel' ? 'carrusel' : 'reel'
         const forcedFormat = forcedType === 'reel' ? 'Reel 40-50 segundos' : 'Carrusel 5 slides'
         return {
           id: `plan-${i}`,
           type: forcedType,
           title: it.title,
           service: it.service,
-          objective: input.objective,
+          objective: objectiveAt(input.objective, i),
           suggestedDay: it.suggestedDay,
-          suggestedDate: itemDate.toISOString().split('T')[0],
+          suggestedDate: localISODate(itemDate),
           hookIdea: it.hookIdea,
           format: forcedFormat,
         }

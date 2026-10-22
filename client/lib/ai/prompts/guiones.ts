@@ -154,8 +154,21 @@ export const HOOK_TYPE_LABEL: Record<HookType, string> = {
   espejo: 'Identificación',
 }
 
+/** Para qué sirve cada gancho (21-oct-2026): sustituye a elegir objetivo antes.
+ *  La IA reparte los 5 ganchos entre estos tres; la estilista elige gancho y
+ *  con él, sin pensarlo, el objetivo. */
+export type HookGoal = 'reservas' | 'autoridad' | 'visibilidad'
+export const HOOK_GOALS: HookGoal[] = ['reservas', 'autoridad', 'visibilidad']
+export const HOOK_GOAL_LABEL: Record<HookGoal, string> = {
+  reservas: 'Para conseguir clientas',
+  autoridad: 'Para que te vean como experta',
+  visibilidad: 'Para llegar a más gente',
+}
+
 export interface HookOption {
   type: HookType
+  /** Para qué sirve: conseguir clientas, autoridad o alcance. */
+  goal: HookGoal
   /** Lo que se DICE en los primeros 3 segundos. */
   text: string
   /** Lo que se LEE en pantalla (máx. ~7 palabras). */
@@ -175,7 +188,6 @@ export interface Understanding {
 export interface HooksInput {
   service: string
   idea?: string
-  objective: ContentObjective
   brandContext?: string
   /** Ganchos ya vistos (esta sesión y anteriores) — no repetir. */
   avoid?: string[]
@@ -244,12 +256,9 @@ Los 5 ganchos deben hablar de ESTA idea (no de otro tema), cada uno desde un án
     ? `\nYA LE HAS PROPUESTO O YA TIENE ESTOS (NO repitas ni reformules parecido — ni el mismo ángulo):\n${avoid.map(a => `- ${a}`).join('\n')}\n`
     : ''
 
-  const recommended = structuresFor(input.objective)
-
   return `Eres la directora creativa de BRÄVE, experta en Reels para peluquerías y estilistas. Tu trabajo: entender bien lo que la estilista quiere contar y proponer 5 GANCHOS potentes para su Reel.
 
 SERVICIO: ${input.service}
-OBJETIVO: ${input.objective} — ${OBJECTIVE_BRIEF[input.objective]}
 ${input.brandContext ? `CONTEXTO DEL SALÓN: ${input.brandContext}\n` : ''}
 ${ideaBlock}
 ${avoidBlock}
@@ -260,7 +269,11 @@ CÓMO ES UN BUEN GANCHO (primeros 3 segundos):
 - ${HOOK_BANNED}
 
 LOS 5 GANCHOS deben ser de 5 TIPOS DISTINTOS entre: error, mito, deseo, caso, pregunta, objecion, contraintuitivo, espejo.
-A cada gancho asígnale la estructura de guion que mejor lo desarrolla, de esta lista: ${STRUCTURES.map(s => `${s.id} (${s.name})`).join(', ')}. Para este objetivo encajan especialmente: ${recommended.join(', ')}. Usa al menos 3 estructuras distintas entre los 5.
+REPARTE LOS OBJETIVOS (la estilista no elige objetivo: lo elige al escoger gancho):
+- 2 ganchos con goal "reservas" (${OBJECTIVE_BRIEF.reservas}); encajan: ${structuresFor('reservas').join(', ')}
+- 2 ganchos con goal "autoridad" (${OBJECTIVE_BRIEF.autoridad}); encajan: ${structuresFor('autoridad').join(', ')}
+- 1 gancho con goal "visibilidad" (${OBJECTIVE_BRIEF.visibilidad}); encajan: ${structuresFor('visibilidad').join(', ')}
+A cada gancho asígnale la estructura de guion que mejor lo desarrolla, de esta lista: ${STRUCTURES.map(s => `${s.id} (${s.name})`).join(', ')}. Usa al menos 3 estructuras distintas entre los 5.
 
 ${VOICE_RULES}
 
@@ -274,6 +287,7 @@ Devuelve EXACTAMENTE este JSON, sin texto adicional:
   "hooks": [
     {
       "type": "error|mito|deseo|caso|pregunta|objecion|contraintuitivo|espejo",
+      "goal": "reservas|autoridad|visibilidad",
       "text": "el gancho tal cual se dice a cámara",
       "onScreen": "texto corto en pantalla (máx 7 palabras)",
       "angle": "de qué irá el vídeo con este gancho, en una frase",
@@ -292,6 +306,7 @@ function cleanHooks(raw: unknown): HookOption[] {
     .filter((h): h is Record<string, unknown> => !!h && typeof h === 'object')
     .map(h => ({
       type: (HOOK_TYPES.includes(h.type as HookType) ? h.type : 'pregunta') as HookType,
+      goal: (HOOK_GOALS.includes(h.goal as HookGoal) ? h.goal : 'autoridad') as HookGoal,
       text: String(h.text || '').trim(),
       onScreen: String(h.onScreen || '').trim(),
       angle: String(h.angle || '').trim(),
@@ -327,11 +342,11 @@ function mockHooks(input: HooksInput): HooksOutput {
   const l = serviceLabel(input.service || 'General')
   const idea = input.idea?.trim()
   const base: HookOption[] = [
-    { type: 'error', text: `Si ${l.el} te ${l.dura} pocas semanas, el problema no es el tinte: es lo que pasa antes.`, onScreen: `El error con ${l.el}`, angle: 'El fallo previo que hace que el resultado no dure', structure: 'error' },
-    { type: 'mito', text: `"Cuanto más producto, mejor." Con ${l.el} es justo al revés.`, onScreen: 'Mito vs realidad', angle: 'Desmontar una creencia sobre el cuidado', structure: 'mito' },
-    { type: 'caso', text: `Esta clienta llegó pensando que tendría que cortarse todo. No hizo falta.`, onScreen: 'Antes de cortar, mira esto', angle: 'Una transformación real con diagnóstico', structure: 'caso' },
-    { type: 'objecion', text: `"¿Por qué ${l.un} cuesta tanto?" Te enseño lo que no se ve.`, onScreen: 'Lo que pagas de verdad', angle: 'Justificar el valor del proceso', structure: 'objecion' },
-    { type: 'deseo', text: `Si quieres ${l.un} que se vea de salón también en casa, haz estas 3 cosas.`, onScreen: '3 claves para que dure', angle: 'Tres hábitos de mantenimiento', structure: 'tres' },
+    { type: 'error', goal: 'autoridad', text: `Si ${l.el} te ${l.dura} pocas semanas, el problema no es el tinte: es lo que pasa antes.`, onScreen: `El error con ${l.el}`, angle: 'El fallo previo que hace que el resultado no dure', structure: 'error' },
+    { type: 'mito', goal: 'visibilidad', text: `"Cuanto más producto, mejor." Con ${l.el} es justo al revés.`, onScreen: 'Mito vs realidad', angle: 'Desmontar una creencia sobre el cuidado', structure: 'mito' },
+    { type: 'caso', goal: 'reservas', text: `Esta clienta llegó pensando que tendría que cortarse todo. No hizo falta.`, onScreen: 'Antes de cortar, mira esto', angle: 'Una transformación real con diagnóstico', structure: 'caso' },
+    { type: 'objecion', goal: 'reservas', text: `"¿Por qué ${l.un} cuesta tanto?" Te enseño lo que no se ve.`, onScreen: 'Lo que pagas de verdad', angle: 'Justificar el valor del proceso', structure: 'objecion' },
+    { type: 'deseo', goal: 'autoridad', text: `Si quieres ${l.un} que se vea de salón también en casa, haz estas 3 cosas.`, onScreen: '3 claves para que dure', angle: 'Tres hábitos de mantenimiento', structure: 'tres' },
   ]
   return {
     understanding: input.understanding || {

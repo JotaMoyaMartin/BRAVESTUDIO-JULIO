@@ -1,5 +1,7 @@
 'use client'
 import { useState, useMemo, useEffect } from 'react'
+import PageHeader from '@/components/ui/PageHeader'
+import EmptyState from '@/components/ui/EmptyState'
 import { Search, Filter, Check, Copy, BookOpen, X, Film, LayoutGrid, MessageSquare, Clapperboard, Trash2, ArrowRight, Wand2 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -7,7 +9,6 @@ import { createClient } from '@/lib/supabase/client'
 import { demoGetPlan } from '@/lib/demo-store'
 import { ContentItem, BrandProfile, ReelInspiration, ReelTransition } from '@/types/database'
 import ContentCard from '@/components/content/ContentCard'
-import BraviMascot from '@/components/bravi/BraviMascot'
 import BraviGuide from '@/components/bravi/BraviGuide'
 import { formatMultipleForCopy, copyToClipboard } from '@/lib/content-utils'
 
@@ -132,31 +133,18 @@ export default function BibliotecaClient({ userId, items, brandContext, savedIns
   if (effectiveItems.length === 0 && inspirations.length === 0 && transitions.length === 0) {
     return (
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold" style={{ color: '#1a1a1a' }}>Biblioteca</h1>
-          <p className="mt-1 text-sm" style={{ color: '#591427', opacity: 0.8 }}>
-            Todo tu contenido guardado en un solo lugar
-          </p>
-        </div>
+        <PageHeader title="Biblioteca" subtitle="Todo lo que guardas en BRÄVE: guiones, stories, carruseles e ideas." />
 
-        <div className="rounded-3xl p-12 text-center" style={{ background: 'white', border: '1.5px solid rgba(255,241,181,0.8)' }}>
-          <BraviMascot size={120} />
-          <p className="font-semibold text-lg mt-4" style={{ color: '#1a1a1a' }}>Aún no tienes contenido guardado</p>
-          <p className="text-sm mt-2" style={{ color: '#591427', opacity: 0.7 }}>
-            Crea algo desde Planificación, Crear Contenido o Stories BRÄVE.
-          </p>
-          <div className="flex flex-wrap gap-3 justify-center mt-6">
-            <Link href="/planificar" className="btn-primary text-sm py-2.5 px-5">
-              <BookOpen size={16} /> Ir a Planificación
+        <EmptyState
+          section="biblioteca"
+          title="Todavía no tienes nada guardado"
+          text="Lo más rápido para empezar: cuéntame una idea y te escribo tu primer guion. Lo que guardes aparecerá aquí."
+          action={
+            <Link href="/crear-contenido" className="btn-primary">
+              <Film size={16} aria-hidden="true" /> Crear mi primer guion
             </Link>
-            <Link href="/crear-contenido" className="btn-secondary text-sm py-2.5 px-5">
-              <Film size={16} /> Crear Contenido
-            </Link>
-            <Link href="/stories" className="btn-ghost text-sm py-2.5 px-5">
-              <MessageSquare size={16} /> Stories BRÄVE
-            </Link>
-          </div>
-        </div>
+          }
+        />
       </div>
     )
   }

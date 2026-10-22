@@ -4,3 +4,5 @@
 .env.local
 .playwright-mcp
 *.log
+# Fotos de Pinterest: solo referencia, sin licencia para publicar
+public/stock

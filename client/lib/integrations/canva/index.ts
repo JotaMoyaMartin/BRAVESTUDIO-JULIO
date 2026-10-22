@@ -32,6 +32,14 @@ export {
   DESIGN_UPLOADS_BUCKET,
   ensureDesignUploadsBucket,
 } from './storage'
+export {
+  asZoneStyle,
+  asAspectValue,
+  asTemplateAssetPathList,
+  isTemplateAssetPath,
+  templateAssetPage,
+  TEMPLATE_ASSET_PATH_RE,
+} from './sanitize'
 export { createUrlAssetUpload, awaitAssetId } from './assets'
 export { runDesignGeneration } from './generate'
 export type { GenerationInput, GenerationPhotoInput } from './generate'

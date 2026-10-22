@@ -19,6 +19,7 @@ const PATH_TO_SECTION: Record<string, string> = {
   '/foto-pro': 'foto-pro',
   // Diseños (9-oct-2026): galería y detalle de plantilla → misma sección.
   '/disenos': 'disenos',
+  '/editar-videos': 'editar-videos',
   '/transiciones-reels': 'transiciones-reels',
   '/reto-10k': 'reto-10k',
   '/mi-estrategia': 'mi-estrategia',

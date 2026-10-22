@@ -1,0 +1,298 @@
+<title>Dirección visual BRÄVE Studio</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: tablero de marca de una columna (máx. 1040px); cada bloque = una decisión, con muestra viva al lado.
+   Página de un solo tema a propósito: es la paleta clara de la app, tal cual se verá. */
+:root {
+  --burdeos: #591427;      /* superficies de marca, titulares */
+  --cereza: #7A1832;       /* acción principal */
+  --crema: #FFF7EE;        /* fondo de la app */
+  --mantequilla: #FFF1B5;  /* selección, acento cálido, botón secundario */
+  --rosa: #F3DCE1;         /* superficies suaves, chips */
+  --tinta: #2B1A1F;        /* texto de lectura */
+  --tinta-2: #6E555C;      /* texto secundario (contraste AA sobre crema) */
+  --borde: #EBD9D4;
+  --blanco: #FFFFFF;
+  --ok: #2F7A4B;
+  --error: #B42340;
+  --font: "Poppins", ui-rounded, "SF Pro Rounded", system-ui, sans-serif;
+  --r-pieza: 16px; --r-bloque: 24px; --r-pill: 999px;
+  color-scheme: light;
+}
+* { box-sizing: border-box }
+body { margin: 0; background: var(--crema); color: var(--tinta); font: 400 16px/1.6 var(--font);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width: 1040px; margin: 0 auto; padding-block: 40px 80px; display: grid; gap: 56px }
+h1, h2, h3 { text-wrap: balance; margin: 0; color: var(--burdeos); letter-spacing: -0.01em }
+h1 { font-size: clamp(32px, 5vw, 48px); line-height: 1.1; font-weight: 700 }
+h2 { font-size: clamp(24px, 3vw, 30px); line-height: 1.2; font-weight: 600 }
+h3 { font-size: 18px; line-height: 1.3; font-weight: 600 }
+p { margin: 0; max-width: 66ch }
+.muted { color: var(--tinta-2) }
+section { display: grid; gap: 20px }
+.lead { font-size: 18px; color: var(--tinta-2) }
+
+/* Portada: la pieza firma de la dirección, una hoja burdeos con el resultado */
+.hero { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 32px; align-items: center }
+.hero-text { display: grid; gap: 16px; min-width: 0 }
+.sheet { background: var(--burdeos); color: var(--crema); border-radius: var(--r-bloque); padding: 24px; display: grid; gap: 14px;
+  box-shadow: 0 24px 48px -24px rgba(89,20,39,.55) }
+.sheet small { color: #E9C7CF; font-size: 13px }
+.sheet .hook { font-size: 21px; line-height: 1.35; font-weight: 600; color: var(--blanco) }
+.sheet .hl { background: var(--mantequilla); color: var(--burdeos); padding: 0 6px; border-radius: 6px }
+.sheet .row { display: flex; gap: 8px; flex-wrap: wrap }
+.sheet .tag { font-size: 13px; padding: 4px 12px; border-radius: var(--r-pill); background: rgba(255,247,238,.14) }
+.sheet .acts { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px }
+
+/* Auditoría */
+.findings { display: grid; gap: 12px; padding: 0; margin: 0; list-style: none }
+.finding { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; background: var(--blanco); border: 1px solid var(--borde);
+  border-radius: var(--r-pieza); padding: 16px 18px }
+.sev { grid-row: span 2; align-self: start; font-size: 13px; font-weight: 600; padding: 3px 10px; border-radius: var(--r-pill); white-space: nowrap }
+.sev.alta { background: #F7D5DC; color: var(--error) }
+.sev.media { background: var(--mantequilla); color: #6B4E00 }
+.finding b { color: var(--burdeos) }
+.finding p { color: var(--tinta-2); font-size: 15px }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px }
+.stat { background: var(--blanco); border: 1px solid var(--borde); border-radius: var(--r-pieza); padding: 14px 16px; display: grid; gap: 2px }
+.stat strong { font-size: 28px; color: var(--burdeos); font-variant-numeric: tabular-nums; line-height: 1.1 }
+.stat span { font-size: 14px; color: var(--tinta-2) }
+
+/* Color */
+.swatches { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px }
+.sw { border-radius: var(--r-pieza); overflow: hidden; border: 1px solid var(--borde); background: var(--blanco) }
+.sw i { display: block; height: 84px }
+.sw div { padding: 12px 14px; display: grid; gap: 2px }
+.sw b { font-size: 15px; color: var(--tinta) }
+.sw code { font: 500 13px/1.4 var(--font); color: var(--tinta-2) }
+.sw span { font-size: 14px; color: var(--tinta-2) }
+.retire { display: flex; gap: 8px; flex-wrap: wrap; align-items: center }
+.retire i { width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--borde); position: relative }
+.retire i::after { content: ""; position: absolute; left: -3px; right: -3px; top: 50%; height: 2px; background: var(--error); transform: rotate(-35deg) }
+
+/* Tipografía */
+.type { background: var(--blanco); border: 1px solid var(--borde); border-radius: var(--r-bloque); padding: 8px 20px }
+.trow { display: grid; grid-template-columns: 150px 1fr; gap: 16px; align-items: baseline; padding: 14px 0; border-bottom: 1px solid var(--borde) }
+.trow:last-child { border-bottom: 0 }
+.trow .spec { font-size: 13px; color: var(--tinta-2) }
+
+/* Componentes */
+.comp { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 16px }
+.panel { background: var(--blanco); border: 1px solid var(--borde); border-radius: var(--r-bloque); padding: 20px; display: grid; gap: 14px; align-content: start; min-width: 0 }
+.panel h3 { font-size: 16px }
+.panel p { font-size: 14px; color: var(--tinta-2) }
+.btns { display: flex; gap: 10px; flex-wrap: wrap }
+.btn { font: 600 15px/1 var(--font); min-height: 48px; padding: 0 20px; border-radius: var(--r-pieza); border: 0; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 8px; transition: background-color .15s, transform .15s }
+.btn:active { transform: scale(.97) }
+.btn:focus-visible, .chip:focus-visible, .step:focus-visible { outline: 3px solid var(--mantequilla); outline-offset: 2px; box-shadow: 0 0 0 5px var(--cereza) }
+.btn-1 { background: var(--cereza); color: var(--blanco) } .btn-1:hover { background: var(--burdeos) }
+.btn-2 { background: var(--mantequilla); color: var(--burdeos) } .btn-2:hover { background: #FFE88C }
+.btn-3 { background: transparent; color: var(--cereza); box-shadow: inset 0 0 0 1.5px var(--borde) } .btn-3:hover { box-shadow: inset 0 0 0 1.5px var(--cereza) }
+.sheet .btn-2 { min-height: 44px }
+.sheet .btn-3 { color: var(--crema); box-shadow: inset 0 0 0 1.5px rgba(255,247,238,.35); min-height: 44px }
+.chips { display: flex; gap: 8px; flex-wrap: wrap }
+.chip { font: 500 14px/1 var(--font); min-height: 40px; padding: 0 16px; border-radius: var(--r-pill); border: 1.5px solid var(--borde); background: var(--blanco); color: var(--burdeos); cursor: pointer }
+.chip[aria-pressed="true"] { background: var(--burdeos); color: var(--crema); border-color: var(--burdeos) }
+.steps { display: flex; align-items: center; gap: 8px }
+.step { display: inline-flex; align-items: center; gap: 8px; font: 600 14px/1 var(--font); padding: 6px 14px 6px 6px; border-radius: var(--r-pill); background: var(--rosa); color: var(--burdeos); border: 0 }
+.step b { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--blanco); font-size: 12px }
+.step.on { background: var(--cereza); color: var(--blanco) } .step.on b { color: var(--cereza) }
+.step.done { background: var(--mantequilla) }
+.steps .line { flex: 1; height: 2px; background: var(--borde); min-width: 12px }
+.field { display: grid; gap: 6px }
+.field label { font-size: 14px; font-weight: 600; color: var(--tinta) }
+.field textarea { font: 400 16px/1.5 var(--font); border: 1.5px solid var(--borde); border-radius: var(--r-pieza); padding: 12px 14px; background: var(--crema); color: var(--tinta); resize: none }
+.field textarea:focus-visible { outline: none; border-color: var(--cereza); box-shadow: 0 0 0 3px var(--mantequilla) }
+.empty { text-align: left; display: grid; gap: 10px; background: var(--rosa); border-radius: var(--r-bloque); padding: 20px }
+.empty b { color: var(--burdeos); font-size: 16px }
+
+/* Maquetas de pantalla */
+.layouts { display: grid; grid-template-columns: 0.8fr 1.2fr; gap: 16px }
+.frame { background: var(--blanco); border: 1px solid var(--borde); border-radius: var(--r-bloque); padding: 16px; display: grid; gap: 10px; min-width: 0 }
+.frame pre { margin: 0; font: 500 12.5px/1.5 ui-monospace, "SF Mono", Menlo, monospace; color: var(--tinta-2); white-space: pre; overflow-x: auto; background: var(--crema); border-radius: 12px; padding: 12px }
+
+/* Plan */
+.plan { display: grid; gap: 10px; counter-reset: p; padding: 0; margin: 0; list-style: none }
+.plan li { counter-increment: p; display: grid; grid-template-columns: 36px 1fr; gap: 12px; align-items: start; background: var(--blanco); border: 1px solid var(--borde); border-radius: var(--r-pieza); padding: 14px 16px }
+.plan li::before { content: counter(p); width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: var(--burdeos); color: var(--crema); font-weight: 600; font-size: 14px }
+.plan p { color: var(--tinta-2); font-size: 15px }
+.choices { display: grid; gap: 10px; padding: 0; margin: 0; list-style: none }
+.choices li { background: var(--blanco); border-left: 4px solid var(--mantequilla); border-radius: 4px var(--r-pieza) var(--r-pieza) 4px; padding: 12px 16px; font-size: 15px }
+.choices b { color: var(--burdeos) }
+
+@media (max-width: 760px) {
+  .hero, .comp, .layouts { grid-template-columns: 1fr }
+  .stats { grid-template-columns: repeat(2, minmax(0,1fr)) }
+  .swatches { grid-template-columns: repeat(2, minmax(0,1fr)) }
+  .trow { grid-template-columns: 1fr; gap: 4px }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important } }
+</style>
+
+<div class="wrap">
+
+  <header class="hero">
+    <div class="hero-text">
+      <h1>Dirección visual de BRÄVE Studio</h1>
+      <p class="lead">Una sola forma de verse en todas las secciones: crema cálida y tranquila para trabajar, y una hoja burdeos cuando BRÄVE te entrega algo hecho. Esa hoja es la firma de la app.</p>
+      <p class="muted">Auditoría hecha el 21 de octubre de 2026 recorriendo las 17 secciones en móvil y ordenador, con las skills frontend-design, UI/UX Pro Max y las guías de interfaz de Vercel.</p>
+    </div>
+    <div class="sheet" aria-label="Ejemplo de hoja de resultado">
+      <small>Tu guion · Rubios · unos 40 segundos</small>
+      <p class="hook">«Si tu rubio se vuelve <span class="hl">amarillo a las 3 semanas</span>, el problema no es el tinte.»</p>
+      <div class="row"><span class="tag">Error común</span><span class="tag">Para reservas</span></div>
+      <div class="acts">
+        <button class="btn btn-2" type="button">Grabar ahora</button>
+        <button class="btn btn-3" type="button">Guardar</button>
+      </div>
+    </div>
+  </header>
+
+  <section aria-labelledby="audit">
+    <h2 id="audit">Lo que encontré</h2>
+    <p class="muted">La app funciona y tiene buen fondo, pero cada sección se diseñó por su lado. Por eso se siente plana en unas pantallas y recargada en otras.</p>
+    <div class="stats">
+      <div class="stat"><strong>105</strong><span>colores distintos escritos a mano</span></div>
+      <div class="stat"><strong>541</strong><span>textos de 9 a 11 px, difíciles de leer en el móvil</span></div>
+      <div class="stat"><strong>63</strong><span>archivos que usan emoji como iconos</span></div>
+      <div class="stat"><strong>0</strong><span>indicadores de foco para navegar con teclado</span></div>
+    </div>
+    <ul class="findings">
+      <li class="finding"><span class="sev alta">Alta</span><b>Tres estilos de título conviviendo</b><p>Carruseles usa serif centrada con etiqueta en mayúsculas, Stories Diseño negrita centrada con otra etiqueta, y el resto Poppins a la izquierda. Parecen apps distintas.</p></li>
+      <li class="finding"><span class="sev alta">Alta</span><b>Bravi aprieta los títulos en el móvil</b><p>En 15 cabeceras el bocadillo de Bravi deja el título en una columna estrecha (Mi Marca, Planificación, Calendario, Inspiración): «Encuentra / inspiración / para tu / próximo / Reel», una palabra por línea.</p></li>
+      <li class="finding"><span class="sev alta">Alta</span><b>Calendario se sale de la pantalla en el móvil</b><p>La tarjeta «Todavía no hay nada programado» y su botón quedan cortados por la derecha.</p></li>
+      <li class="finding"><span class="sev alta">Alta</span><b>Letra demasiado pequeña y gris</b><p>Muchas ayudas y etiquetas van a 9-11 px con transparencia sobre crema, por debajo del contraste mínimo para leer cómodo.</p></li>
+      <li class="finding"><span class="sev media">Media</span><b>Emoji haciendo de iconos</b><p>🗺️ en Mi Marca, 📝 y 🎥 en los botones de Stories, 🔥 en Inspiración: cada uno con su estilo y tamaño. La app ya usa iconos Lucide; mezclar ambos le quita acabado.</p></li>
+      <li class="finding"><span class="sev media">Media</span><b>Colores viejos que no son de la marca</b><p>Azul y verde pastel en tarjetas de Inicio, Análisis y avisos; degradados lila en Biblioteca. Rompen la paleta burdeos, crema y mantequilla.</p></li>
+      <li class="finding"><span class="sev media">Media</span><b>Pantallas vacías sin dirección</b><p>Academia muestra solo «Aún no hay clases». Biblioteca ofrece tres botones y uno con el nombre antiguo, «Crear Contenido».</p></li>
+      <li class="finding"><span class="sev media">Media</span><b>Nombres sin unificar</b><p>«Carousels» en inglés en el menú, «Carrusel» en Inicio y «Carruseles» en su pantalla.</p></li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="color">
+    <h2 id="color">Color: seis tonos y nada más</h2>
+    <p class="muted">Las secciones solo pueden usar estos tokens. El burdeos marca lo importante, la mantequilla lo elegido y el rosa empolvado las superficies suaves.</p>
+    <div class="swatches">
+      <div class="sw"><i style="background:#591427"></i><div><b>Burdeos</b><code>#591427</code><span>Titulares y hoja de resultado</span></div></div>
+      <div class="sw"><i style="background:#7A1832"></i><div><b>Cereza</b><code>#7A1832</code><span>Botón principal, un solo uso por pantalla</span></div></div>
+      <div class="sw"><i style="background:#FFF7EE"></i><div><b>Crema</b><code>#FFF7EE</code><span>Fondo de toda la app</span></div></div>
+      <div class="sw"><i style="background:#FFF1B5"></i><div><b>Mantequilla</b><code>#FFF1B5</code><span>Seleccionado, destacados, botón secundario</span></div></div>
+      <div class="sw"><i style="background:#F3DCE1"></i><div><b>Rosa empolvado</b><code>#F3DCE1</code><span>Superficies suaves, pasos, estados vacíos</span></div></div>
+      <div class="sw"><i style="background:#2B1A1F"></i><div><b>Tinta</b><code>#2B1A1F</code><span>Texto de lectura, cálido en vez de negro</span></div></div>
+    </div>
+    <div class="retire"><span class="muted">Se retiran:</span><i style="background:#C1DBE8"></i><i style="background:#B8D8B0"></i><i style="background:#E9D5FF"></i><i style="background:#1a1a1a"></i><span class="muted">azul y verde pastel, lila y el negro neutro.</span></div>
+  </section>
+
+  <section aria-labelledby="tipo">
+    <h2 id="tipo">Tipografía: Poppins sola, bien escalonada</h2>
+    <p class="muted">Una única familia, redonda y fácil de leer, sin serifas con adornos. La jerarquía se consigue con tamaño y peso, nunca con mayúsculas ni colores sueltos.</p>
+    <div class="type">
+      <div class="trow"><span class="spec">Título de sección<br>28 / 34 px · 600</span><span style="font-size:28px;font-weight:600;color:var(--burdeos);line-height:1.2">Crear guiones</span></div>
+      <div class="trow"><span class="spec">Subtítulo<br>20 px · 600</span><span style="font-size:20px;font-weight:600;color:var(--burdeos)">Elige cómo empieza tu Reel</span></div>
+      <div class="trow"><span class="spec">Texto<br>16 px · 400 · interlineado 1,6</span><span>Los 3 primeros segundos deciden si se quedan a verlo. Toca el que más te guste.</span></div>
+      <div class="trow"><span class="spec">Ayuda<br>14 px · 400</span><span style="font-size:14px;color:var(--tinta-2)">Escríbelo o mándame una nota de voz, como si se lo contaras a una amiga.</span></div>
+      <div class="trow"><span class="spec">Mínimo absoluto<br>13 px</span><span style="font-size:13px;color:var(--tinta-2)">Nada por debajo de este tamaño en la app.</span></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="comp">
+    <h2 id="comp">Piezas comunes</h2>
+    <p class="muted">Las mismas en todas las secciones: si una pantalla necesita algo nuevo, primero se añade aquí.</p>
+    <div class="comp">
+      <div class="panel">
+        <h3>Botones</h3>
+        <div class="btns">
+          <button class="btn btn-1" type="button">Escribir mi guion</button>
+          <button class="btn btn-2" type="button">Guardar</button>
+          <button class="btn btn-3" type="button">Otra versión</button>
+        </div>
+        <p>48 px de alto en el móvil. Un solo botón cereza por pantalla; el texto dice exactamente lo que pasa.</p>
+      </div>
+      <div class="panel">
+        <h3>Opciones</h3>
+        <div class="chips">
+          <button class="chip" type="button" aria-pressed="false">Balayage</button>
+          <button class="chip" type="button" aria-pressed="true">Rubios</button>
+          <button class="chip" type="button" aria-pressed="false">Canas</button>
+          <button class="chip" type="button" aria-pressed="false">Keratina</button>
+        </div>
+        <p>Píldoras de 40 px con icono Lucide si hace falta, nunca emoji. Elegida = burdeos.</p>
+      </div>
+      <div class="panel">
+        <h3>Pasos</h3>
+        <div class="steps">
+          <span class="step done"><b>✓</b>Tema</span><span class="line"></span>
+          <span class="step on"><b>2</b>Gancho</span><span class="line"></span>
+          <span class="step"><b>3</b>Guion</span>
+        </div>
+        <p>Solo en recorridos de verdad (Guiones, Stories, Carruseles, Editar videos). Se puede volver a un paso hecho.</p>
+      </div>
+      <div class="panel">
+        <h3>Campo de texto</h3>
+        <div class="field"><label for="ej-idea">¿Qué quieres contar?</label><textarea id="ej-idea" rows="2">Muchas clientas me piden platino en una sola sesión…</textarea></div>
+        <p>Etiqueta visible siempre, nunca solo el texto de ejemplo.</p>
+      </div>
+      <div class="panel" style="grid-column:1/-1">
+        <h3>Pantalla vacía</h3>
+        <div class="empty"><b>Todavía no tienes guiones guardados</b><span class="muted">Crea el primero en dos minutos: cuéntame una idea y te propongo cómo empezar.</span><div><button class="btn btn-1" type="button">Crear mi primer guion</button></div></div>
+        <p>Una sola acción, la siguiente que tiene sentido. Bravi solo aparece aquí y en Inicio, no en todas las cabeceras.</p>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="layout">
+    <h2 id="layout">Cómo se monta cada pantalla</h2>
+    <div class="layouts">
+      <div class="frame">
+        <h3>Móvil</h3>
+<pre>┌─────────────────────┐
+│ Título              │
+│ Para qué sirve      │
+│ ( 1 )─( 2 )─( 3 )   │
+│                     │
+│ Contenido del paso  │
+│                     │
+│                     │
+├─────────────────────┤
+│ [ Acción principal ]│  ← fija abajo
+└─────────────────────┘</pre>
+      </div>
+      <div class="frame">
+        <h3>Ordenador</h3>
+<pre>┌──────┬─────────────────────────────────────┐
+│ Menú │ Título · para qué sirve             │
+│      │ ┌───────────────┐ ┌───────────────┐ │
+│      │ │ Lo que eliges │ │ Lo que BRÄVE  │ │
+│      │ │ (formulario)  │ │ te entrega    │ │
+│      │ │               │ │ (hoja burdeos)│ │
+│      │ └───────────────┘ └───────────────┘ │
+└──────┴─────────────────────────────────────┘</pre>
+      </div>
+    </div>
+    <p class="muted">Todo alineado a la izquierda. En ordenador las herramientas pasan a dos columnas: lo que eliges a la izquierda y el resultado a la derecha, sin tener que bajar.</p>
+  </section>
+
+  <section aria-labelledby="skills">
+    <h2 id="skills">Dónde no coincidían las skills</h2>
+    <ul class="choices">
+      <li><b>Paleta:</b> UI/UX Pro Max propone rosa chicle y lavanda para belleza. Me quedo con tu burdeos: es tu marca y además se distingue de las apps de belleza genéricas.</li>
+      <li><b>Tipografía:</b> UI/UX Pro Max sugiere Playfair con Inter. Pediste letra fácil de leer y sin adornos, así que Poppins sola, con escala clara.</li>
+      <li><b>Crema con serif:</b> frontend-design avisa que crema más serif es el aspecto típico de IA. Lo evitamos con Poppins y con la hoja burdeos como único elemento llamativo.</li>
+      <li><b>Etiquetas en mayúsculas:</b> se eliminan (hay 283). Lo piden frontend-design y la legibilidad en el móvil.</li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="plan">
+    <h2 id="plan">Orden propuesto</h2>
+    <ol class="plan">
+      <li><div><h3>Base común</h3><p>Tokens de color y tipografía, botones, opciones, pasos, campos, pantalla vacía y foco visible. Cambia todas las secciones a la vez sin tocarlas una a una.</p></div></li>
+      <li><div><h3>Cabecera única</h3><p>Título, para qué sirve y, si hay recorrido, los pasos. Bravi sale de las cabeceras. Arregla de golpe las 15 pantallas apretadas.</p></div></li>
+      <li><div><h3>Arreglos urgentes</h3><p>Calendario cortado en el móvil, textos de menos de 13 px y emoji como iconos.</p></div></li>
+      <li><div><h3>Sección por sección</h3><p>Seguimos el repaso como hasta ahora (Inicio, Mi Marca, Planificación, Stories…), ya sobre la base común y con la hoja burdeos para los resultados.</p></div></li>
+    </ol>
+  </section>
+
+</div>

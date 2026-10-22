@@ -17,6 +17,31 @@ export interface SlideContent {
   text: string
 }
 
+/** Ajuste del editor sobre un bloque de texto de plantilla (fracciones). */
+export interface TextAdjust {
+  dx: number // fracción del ancho del canvas
+  dy: number // fracción del alto del canvas
+  sizeFactor: number // 1 = tamaño de plantilla
+}
+
+export type TextBoxKind =
+  | 'fitted' // bloque ajustado (fit de tamaño) — redimensionable
+  | 'list-flow' // flujo acumulativo de lista — se mueve como bloque, sin resize
+  | 'headline-fused' // titular editorial fundido en blanco sobre la foto — solo mover
+  | 'serif-script' // titular serif + inicial script (editorial cover) — solo mover
+
+export interface TextEntry {
+  id: string
+  kind: TextBoxKind
+  box: { x: number; y: number; w: number; h: number }
+}
+
+export interface EmittedTextBox {
+  id: string
+  kind: TextBoxKind
+  rect: { x: number; y: number; w: number; h: number }
+}
+
 export interface CarouselContent {
   title: string
   slides: SlideContent[]
@@ -54,6 +79,10 @@ export interface RenderSlideOptions {
   image?: SlideImage | null // pan/zoom de la foto (spec)
   imageEl?: HTMLImageElement | null // foto ya precargada por el cliente
   fontFamily: string
+  // Editor: overrides de texto por id ('text' | 'headline' | 'body') + re-portada
+  // de las cajas finales usadas (hit-test del editor). Sin adjust ⇒ bit-idéntico.
+  textAdjust?: Record<string, TextAdjust> | null
+  emitTextBox?: (e: EmittedTextBox) => void
   // Editorial: assets del diseño papel (hojas/polaroid/pin/tiras) + familias serif/script (next/font).
   editorialAssets?: EditorialAssetsSpec | null
   serifFamily?: string

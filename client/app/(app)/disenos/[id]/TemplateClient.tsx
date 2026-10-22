@@ -1,6 +1,6 @@
 'use client'
-import { useEffect, useMemo, useRef, useState } from 'react'
-import type { ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { ReactNode, PointerEvent as RPointerEvent } from 'react'
 import Link from 'next/link'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
@@ -13,11 +13,12 @@ import Badge from '@/components/ui/Badge'
 import { Input } from '@/components/ui/Input'
 import { useToast } from '@/components/ui/Toast'
 import {
-  DesignTemplate, DesignBehavior, GeneratedPage, DesignBindingZone, PageZone,
+  DesignTemplate, DesignBehavior, GeneratedPage, DesignBindingZone, PageZone, ZoneStyle,
   kindAspect, kindLabel, parseTemplate, behaviorOf, humanizeDesignError,
   fieldLabel, isTextField, maxLengthOf, visibleFields,
-  previewPages, templateHasZones, zonesOnPage,
+  previewPages, editorBgPages, templateHasZones, zonesOnPage,
 } from '@/lib/design'
+import { DEMO_TEMPLATES, DEMO_TEXTS, isDemoTemplate } from '@/lib/design-demo'
 import { TextFieldRow, ImageFieldRow, ResultPanel, UploadedPhoto } from './DesignParts'
 
 /**
@@ -68,11 +69,42 @@ export default function TemplateClient({ templateId }: Props) {
   const [openText, setOpenText] = useState<string | null>(null)
   const [moreOpen, setMoreOpen] = useState(false)
 
+  // Modificaciones de posición/tamaño de zonas (drag + resize)
+  const [zoneMods, setZoneMods] = useState<Record<string, { x?: number; y?: number; w?: number; h?: number }>>({})
+  const updateZoneMod = useCallback((field: string, mod: { x?: number; y?: number; w?: number; h?: number }) => {
+    setZoneMods(prev => ({
+      ...prev,
+      [field]: { ...prev[field], ...mod },
+    }))
+  }, [])
+
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({})
 
   // ── Carga de la plantilla ────────────────────────────────────────
+  const isDemo = isDemoTemplate(templateId)
+
   const load = async () => {
     setState('loading')
+
+    // Plantilla demo: cargar del array local, sin API
+    if (isDemo) {
+      const demo = DEMO_TEMPLATES.find(t => t.id === templateId)
+      if (!demo) { setState('notfound'); return }
+      setTemplate(demo)
+      // Pre-fill text fields with defaultText from bindings
+      const defaults: Record<string, string> = {}
+      for (const [field, binding] of Object.entries(demo.bindings ?? {})) {
+        if (binding.defaultText) defaults[field] = binding.defaultText
+      }
+      if (Object.keys(defaults).length > 0) setTexts(defaults)
+      setPageIdx(0)
+      setOpenText(null)
+      setMoreOpen(false)
+      setPages(null)
+      setState('ready')
+      return
+    }
+
     try {
       const res = await fetch(`/api/design/templates/${templateId}`)
       if (res.status === 404) {
@@ -81,13 +113,19 @@ export default function TemplateClient({ templateId }: Props) {
       }
       if (!res.ok) throw new Error(String(res.status))
       const data = await res.json()
-      // El detalle puede venir como {template} u objeto directo (tolerancia).
       const parsed = parseTemplate((data as { template?: unknown })?.template ?? data)
       if (!parsed) {
         setState('notfound')
         return
       }
       setTemplate(parsed)
+      // Pre-fill con el texto original del diseño (bindings[f].defaultText),
+      // misma tolerancia que en las demos: string no vacío.
+      const defaults: Record<string, string> = {}
+      for (const [field, binding] of Object.entries(parsed.bindings ?? {})) {
+        if (binding.defaultText) defaults[field] = binding.defaultText
+      }
+      if (Object.keys(defaults).length > 0) setTexts(defaults)
       setPageIdx(0)
       setOpenText(null)
       setMoreOpen(false)
@@ -151,6 +189,79 @@ export default function TemplateClient({ templateId }: Props) {
       toast.show('No se ha podido generar el texto. Comprueba tu conexión.', 'info')
     } finally {
       setAiBusy(null)
+    }
+  }
+
+  // ── Generar TODOS los textos IA de una vez ───────────────────────
+  const [allAiBusy, setAllAiBusy] = useState(false)
+
+  async function generateAllAiTexts() {
+    if (!template || allAiBusy) return
+    setAllAiBusy(true)
+
+    const aiFields = visibleFields(template).filter(
+      f => isTextField(template, f) && behaviorOf(template, f) === 'ai_text',
+    )
+    if (aiFields.length === 0) {
+      toast.show('No hay campos de IA en esta plantilla', 'info')
+      setAllAiBusy(false)
+      return
+    }
+
+    // Demo: usar textos de ejemplo locales, sin API
+    if (isDemo) {
+      const demoTexts = DEMO_TEXTS[template.id] || {}
+      const newTexts: Record<string, string> = {}
+      for (const f of aiFields) {
+        if (demoTexts[f]) newTexts[f] = demoTexts[f]
+      }
+      // Simular delay para que se vea el loading
+      await new Promise(r => setTimeout(r, 1_200))
+      setTexts(prev => ({ ...prev, ...newTexts }))
+      toast.show(`${Object.keys(newTexts).length} textos generados`, 'success')
+      setAllAiBusy(false)
+      return
+    }
+
+    // Real: llamar a la API para todos los campos ai_text
+    try {
+      const res = await fetch('/api/design/ai-texts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          templateId: template.id,
+          fields: aiFields.map(f => {
+            const b = template.bindings?.[f]
+            return {
+              field: f,
+              label: b?.label,
+              purpose: b?.purpose,
+              maxLength: b?.maxLength,
+              instructions: b?.instructions,
+            }
+          }),
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok || data?.error) {
+        toast.show(
+          humanizeDesignError(data?.error, 'No se han podido generar los textos.'),
+          'info',
+        )
+        return
+      }
+      const generated = data?.texts ?? {}
+      const filled: Record<string, string> = {}
+      for (const f of aiFields) {
+        const v = generated[f]
+        if (typeof v === 'string' && v.trim() !== '') filled[f] = v.trim()
+      }
+      setTexts(prev => ({ ...prev, ...filled }))
+      toast.show(`${Object.keys(filled).length} textos generados con IA`, 'success')
+    } catch {
+      toast.show('No se han podido generar los textos. Comprueba tu conexión.', 'info')
+    } finally {
+      setAllAiBusy(false)
     }
   }
 
@@ -308,7 +419,7 @@ export default function TemplateClient({ templateId }: Props) {
 
   // ── La plantilla está lista: elegir modo ─────────────────────────
   const zonesMode = templateHasZones(template)
-  const aspect = kindAspect(template.kind)
+  const aspect = kindAspect(template.kind, template)
 
   const editFields = visibleFields(template).filter(
     f => template.dataset?.[f] === 'text' || template.dataset?.[f] === 'image',
@@ -329,6 +440,7 @@ export default function TemplateClient({ templateId }: Props) {
     : null
   const panelBinding = panelField ? template.bindings?.[panelField] : undefined
   const pagePreviews = previewPages(template)
+  const editorBgs = editorBgPages(template)
 
   if (!zonesMode) {
     // ── MODO FORMULARIO: layout clásico intacto ──────────────────────
@@ -341,7 +453,7 @@ export default function TemplateClient({ templateId }: Props) {
           <ChevronLeft size={16} /> Diseños
         </Link>
 
-        <TemplateHeader template={template} />
+        <TemplateHeader template={template} onGenerateAll={generateAllAiTexts} allBusy={allAiBusy} isDemo={isDemo} />
 
         <div className="grid gap-5 md:grid-cols-[320px_minmax(0,1fr)] md:gap-8 items-start">
           {/* IZQ — preview SIEMPRE a la vista (sticky en desktop) */}
@@ -428,12 +540,12 @@ export default function TemplateClient({ templateId }: Props) {
             Toca los recuadros del diseño para cambiar textos o subir tu foto.
           </p>
 
-          {/* Lienzo interactivo — SIEMPRE a la vista (sticky en desktop) */}
-          <div className="md:sticky md:top-8">
+          {/* Lienzo interactivo */}
+          <div>
             <Card padding="none" className="overflow-hidden">
               <DesignCanvas
                 template={template}
-                pageUrl={pagePreviews[safePageIdx] ?? template.previewUrl}
+                pageUrl={editorBgs[safePageIdx] ?? pagePreviews[safePageIdx] ?? template.previewUrl}
                 pageNum={safePageIdx + 1}
                 aspect={aspect}
                 zones={pageZones}
@@ -442,6 +554,8 @@ export default function TemplateClient({ templateId }: Props) {
                 aiBusy={aiBusy}
                 uploadBusy={uploadBusy}
                 openField={openText}
+                zoneMods={zoneMods}
+                onZoneMod={updateZoneMod}
                 onOpenText={setOpenText}
                 onPickPhoto={f => fileRefs.current[f]?.click()}
                 onTapLocked={behavior => toast.show(
@@ -529,18 +643,23 @@ export default function TemplateClient({ templateId }: Props) {
             </div>
           )}
 
-          {/* Generar — botón grande pegado abajo (el preview nunca se tapa al editar) */}
-          <div className="sticky bottom-3 z-30">
+          {/* Generar — debajo del canvas (no sticky para no tapar zonas del diseño) */}
+          <div>
             <div className="rounded-[var(--radius-md)] border border-soft bg-white p-3 shadow-strong">
               <Button
                 size="lg"
                 fullWidth
                 loading={generating}
-                disabled={hasOverflow}
+                disabled={hasOverflow || isDemo}
                 onClick={handleGenerate}
               >
-                {generating ? 'Generando… hasta un minuto' : 'Generar'}
+                {isDemo ? 'Genera con tus plantillas reales' : generating ? 'Generando… hasta un minuto' : 'Crear mi diseño'}
               </Button>
+              {isDemo && (
+                <p className="mt-2 text-xs text-cherry-dark opacity-55">
+                  Esta es una plantilla de ejemplo. Cuando el equipo publique las tuyas desde Canva, podrás generar diseños finales.
+                </p>
+              )}
               {hasOverflow && (
                 <p className="mt-2 text-xs text-danger">
                   Hay textos demasiado largos (marcados en rojo). Acórtalos para continuar.
@@ -601,7 +720,17 @@ export default function TemplateClient({ templateId }: Props) {
 }
 
 // ─── Cabecera común a los dos modos ─────────────────────────────────
-function TemplateHeader({ template }: { template: DesignTemplate }) {
+function TemplateHeader({
+  template, onGenerateAll, allBusy, isDemo,
+}: {
+  template: DesignTemplate
+  onGenerateAll?: () => void
+  allBusy?: boolean
+  isDemo?: boolean
+}) {
+  const hasAiFields = visibleFields(template).some(
+    f => isTextField(template, f) && behaviorOf(template, f) === 'ai_text',
+  )
   return (
     <div>
       <h1 className="text-2xl md:text-3xl font-bold text-cherry-dark leading-tight">{template.name}</h1>
@@ -610,15 +739,29 @@ function TemplateHeader({ template }: { template: DesignTemplate }) {
         {template.pageCount > 1 && (
           <Badge tone="neutral">{template.pageCount} páginas</Badge>
         )}
+        {isDemo && <Badge tone="neutral">Ejemplo</Badge>}
       </div>
+      {hasAiFields && onGenerateAll && (
+        <div className="mt-3">
+          <Button
+            variant="secondary"
+            size="sm"
+            loading={allBusy}
+            icon={<Wand2 size={14} />}
+            onClick={onGenerateAll}
+          >
+            Generar todos los textos con IA
+          </Button>
+        </div>
+      )}
     </div>
   )
 }
 
-// ─── Lienzo: página del preview + overlays de zona ──────────────────
+// ─── Lienzo: página del preview + overlays de zona (drag + resize) ──
 function DesignCanvas({
   template, pageUrl, pageNum, aspect, zones, texts, photos, aiBusy, uploadBusy,
-  openField, onOpenText, onPickPhoto, onTapLocked,
+  openField, zoneMods, onZoneMod, onOpenText, onPickPhoto, onTapLocked,
 }: {
   template: DesignTemplate
   pageUrl: string | null
@@ -630,59 +773,267 @@ function DesignCanvas({
   aiBusy: string | null
   uploadBusy: string | null
   openField: string | null
+  zoneMods: Record<string, { x?: number; y?: number; w?: number; h?: number }>
+  onZoneMod: (field: string, mod: { x?: number; y?: number; w?: number; h?: number }) => void
   onOpenText: (field: string) => void
   onPickPhoto: (field: string) => void
   onTapLocked: (behavior: DesignBehavior) => void
 }) {
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  // Merge zone with user modifications
+  function mergedZone(z: PageZone): DesignBindingZone {
+    const mod = zoneMods[z.field]
+    if (!mod) return z.zone
+    return {
+      ...z.zone,
+      x: mod.x ?? z.zone.x,
+      y: mod.y ?? z.zone.y,
+      w: mod.w ?? z.zone.w,
+      h: mod.h ?? z.zone.h,
+    }
+  }
+
   return (
-    <div className="relative bg-cream" style={{ aspectRatio: aspect }}>
+    <div ref={containerRef} className="relative bg-cream select-none" style={{ aspectRatio: aspect, containerType: 'inline-size' }}>
       {pageUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={pageUrl}
           alt={`Vista previa · página ${pageNum} de ${template.name}`}
-          className="absolute inset-0 w-full h-full object-cover"
+          className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+          draggable={false}
         />
       ) : (
-        <div className="absolute inset-0 flex items-center justify-center">
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <LayoutTemplate size={32} className="text-cherry opacity-30" />
         </div>
       )}
 
+      {/* Photo layers: always render default photos as full-canvas overlays.
+          When user uploads, the zone shows their photo ON TOP of this layer,
+          but the frame borders remain visible around the zone edges. */}
+      {zones
+        .filter(z => z.behavior === 'user_image' && template.bindings?.[z.field]?.defaultPhotoUrl)
+        .map(z => (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            key={`layer-${z.field}`}
+            src={template.bindings[z.field].defaultPhotoUrl!}
+            alt=""
+            draggable={false}
+            className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+          />
+        ))
+      }
+
       {zones.map(z => {
         const binding = template.bindings?.[z.field]
+        const zone = mergedZone(z)
         if (z.behavior === 'user_image') {
           return (
-            <PhotoZone
+            <DraggableZone
               key={z.field}
-              zone={z.zone}
-              label={fieldLabel(z.field, binding)}
-              photo={photos[z.field] ?? null}
-              uploading={uploadBusy === z.field}
-              onPick={() => onPickPhoto(z.field)}
-            />
+              field={z.field}
+              zone={zone}
+              containerRef={containerRef}
+              onMod={onZoneMod}
+            >
+              <PhotoZoneContent
+                label={fieldLabel(z.field, binding)}
+                photo={photos[z.field] ?? null}
+                defaultPhotoUrl={binding?.defaultPhotoUrl}
+                uploading={uploadBusy === z.field}
+                onPick={() => onPickPhoto(z.field)}
+              />
+            </DraggableZone>
           )
         }
         if (z.behavior === 'user_text' || z.behavior === 'ai_text') {
           return (
-            <TextZone
+            <DraggableZone
               key={z.field}
-              zone={z.zone}
-              label={fieldLabel(z.field, binding)}
-              value={texts[z.field] ?? ''}
-              maxLength={maxLengthOf(template, z.field)}
-              busy={aiBusy === z.field}
-              active={openField === z.field}
-              onOpen={() => onOpenText(z.field)}
-            />
+              field={z.field}
+              zone={zone}
+              containerRef={containerRef}
+              onMod={onZoneMod}
+            >
+              <TextZoneContent
+                label={fieldLabel(z.field, binding)}
+                value={texts[z.field] ?? ''}
+                maxLength={maxLengthOf(template, z.field)}
+                busy={aiBusy === z.field}
+                active={openField === z.field}
+                onOpen={() => onOpenText(z.field)}
+                zoneStyle={binding?.zoneStyle}
+              />
+            </DraggableZone>
           )
         }
         return (
-          <LockedZone
+          <DraggableZone
             key={z.field}
-            zone={z.zone}
-            behavior={z.behavior}
-            onTap={() => onTapLocked(z.behavior)}
+            field={z.field}
+            zone={zone}
+            containerRef={containerRef}
+            onMod={onZoneMod}
+          >
+            <LockedZoneContent
+              behavior={z.behavior}
+              onTap={() => onTapLocked(z.behavior)}
+            />
+          </DraggableZone>
+        )
+      })}
+    </div>
+  )
+}
+
+// ─── Wrapper draggable + resizable para cualquier zona ──────────────
+type DragMode = null | 'move' | 'resize-br' | 'resize-bl' | 'resize-tr' | 'resize-tl'
+
+function DraggableZone({
+  field, zone, containerRef, onMod, children,
+}: {
+  field: string
+  zone: DesignBindingZone
+  containerRef: React.RefObject<HTMLDivElement | null>
+  onMod: (field: string, mod: { x?: number; y?: number; w?: number; h?: number }) => void
+  children: ReactNode
+}) {
+  const dragRef = useRef<{
+    mode: DragMode
+    startPx: { x: number; y: number }
+    startZone: { x: number; y: number; w: number; h: number }
+    dragging: boolean  // true once moved past threshold
+  } | null>(null)
+
+  const DRAG_THRESHOLD = 4 // px antes de considerar que es drag (no click)
+
+  const pointerIdRef = useRef<number | null>(null)
+
+  const handlePointerDown = useCallback((e: RPointerEvent, mode: DragMode) => {
+    if (!mode) return
+    if (mode !== 'move') {
+      e.preventDefault()
+      e.stopPropagation()
+      ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+    }
+    pointerIdRef.current = e.pointerId
+    dragRef.current = {
+      mode,
+      startPx: { x: e.clientX, y: e.clientY },
+      startZone: { x: zone.x, y: zone.y, w: zone.w, h: zone.h },
+      dragging: mode !== 'move',
+    }
+  }, [zone])
+
+  const handlePointerMove = useCallback((e: RPointerEvent) => {
+    const d = dragRef.current
+    if (!d || !containerRef.current) return
+
+    // Move mode: esperar threshold antes de empezar drag
+    if (!d.dragging) {
+      const dx = Math.abs(e.clientX - d.startPx.x)
+      const dy = Math.abs(e.clientY - d.startPx.y)
+      if (dx < DRAG_THRESHOLD && dy < DRAG_THRESHOLD) return
+      // Ahora sí es drag — capturar pointer y prevenir default
+      d.dragging = true
+      if (pointerIdRef.current !== null) {
+        try { (e.currentTarget as HTMLElement).setPointerCapture(pointerIdRef.current) } catch {}
+      }
+    }
+    e.preventDefault()
+
+    const rect = containerRef.current.getBoundingClientRect()
+    const dxPct = ((e.clientX - d.startPx.x) / rect.width) * 100
+    const dyPct = ((e.clientY - d.startPx.y) / rect.height) * 100
+
+    const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v))
+
+    if (d.mode === 'move') {
+      const nx = clamp(d.startZone.x + dxPct, 0, 100 - d.startZone.w)
+      const ny = clamp(d.startZone.y + dyPct, 0, 100 - d.startZone.h)
+      onMod(field, { x: nx, y: ny, w: d.startZone.w, h: d.startZone.h })
+    } else if (d.mode === 'resize-br') {
+      const nw = clamp(d.startZone.w + dxPct, 8, 100 - d.startZone.x)
+      const nh = clamp(d.startZone.h + dyPct, 5, 100 - d.startZone.y)
+      onMod(field, { w: nw, h: nh })
+    } else if (d.mode === 'resize-bl') {
+      const rawX = d.startZone.x + dxPct
+      const rawW = d.startZone.w - dxPct
+      const nw = clamp(rawW, 8, d.startZone.x + d.startZone.w)
+      const nx = d.startZone.x + d.startZone.w - nw
+      const nh = clamp(d.startZone.h + dyPct, 5, 100 - d.startZone.y)
+      onMod(field, { x: nx, w: nw, h: nh })
+    } else if (d.mode === 'resize-tr') {
+      const nw = clamp(d.startZone.w + dxPct, 8, 100 - d.startZone.x)
+      const rawH = d.startZone.h - dyPct
+      const nh = clamp(rawH, 5, d.startZone.y + d.startZone.h)
+      const ny = d.startZone.y + d.startZone.h - nh
+      onMod(field, { y: ny, w: nw, h: nh })
+    } else if (d.mode === 'resize-tl') {
+      const rawW = d.startZone.w - dxPct
+      const nw = clamp(rawW, 8, d.startZone.x + d.startZone.w)
+      const nx = d.startZone.x + d.startZone.w - nw
+      const rawH = d.startZone.h - dyPct
+      const nh = clamp(rawH, 5, d.startZone.y + d.startZone.h)
+      const ny = d.startZone.y + d.startZone.h - nh
+      onMod(field, { x: nx, y: ny, w: nw, h: nh })
+    }
+  }, [containerRef, field, onMod])
+
+  const handlePointerUp = useCallback(() => {
+    dragRef.current = null
+  }, [])
+
+  const handleSize = 10
+
+  return (
+    <div
+      className="absolute group"
+      style={{
+        left: `${zone.x}%`,
+        top: `${zone.y}%`,
+        width: `${zone.w}%`,
+        height: `${zone.h}%`,
+        touchAction: 'none',
+      }}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+    >
+      {/* Move handle: the body — pointer down for drag, clicks pass through to children */}
+      <div
+        className="absolute inset-0"
+        style={{ cursor: 'grab' }}
+        onPointerDown={e => handlePointerDown(e, 'move')}
+      >
+        {children}
+      </div>
+
+      {/* Resize handles: 4 corners */}
+      {(['tl', 'tr', 'bl', 'br'] as const).map(corner => {
+        const pos = {
+          tl: { top: -handleSize / 2, left: -handleSize / 2, cursor: 'nwse-resize' },
+          tr: { top: -handleSize / 2, right: -handleSize / 2, cursor: 'nesw-resize' },
+          bl: { bottom: -handleSize / 2, left: -handleSize / 2, cursor: 'nesw-resize' },
+          br: { bottom: -handleSize / 2, right: -handleSize / 2, cursor: 'nwse-resize' },
+        }[corner]
+        return (
+          <div
+            key={corner}
+            className="absolute z-10 opacity-0 group-hover:opacity-100 transition-opacity"
+            style={{
+              width: handleSize,
+              height: handleSize,
+              borderRadius: '50%',
+              background: 'var(--color-cherry)',
+              border: '2px solid white',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+              ...pos,
+            }}
+            onPointerDown={e => handlePointerDown(e, `resize-${corner}`)}
           />
         )
       })}
@@ -777,32 +1128,77 @@ function ZoneSpinner() {
   )
 }
 
-// ─── Zona de TEXTO (user_text / ai_text) ────────────────────────────
-function TextZone({
-  zone, label, value, maxLength, busy, active, onOpen,
+// ─── Contenido de zona de TEXTO (sin posicionamiento — DraggableZone lo maneja)
+function TextZoneContent({
+  label, value, maxLength, busy, active, onOpen, zoneStyle,
 }: {
-  zone: DesignBindingZone
   label: string
   value: string
   maxLength: number
   busy: boolean
   active: boolean
   onOpen: () => void
+  zoneStyle?: ZoneStyle
 }) {
   const over = value.length > maxLength
   const changed = value.trim() !== ''
+
+  // ── Modo estilizado: renderiza el texto real como en el diseño Canva ──
+  if (zoneStyle) {
+    return (
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={onOpen}
+        aria-label={`Editar ${label}`}
+        title={`Toca para editar: ${label}`}
+        className={`w-full h-full cursor-text overflow-hidden ${busy ? 'cursor-progress' : ''}`}
+        style={{
+          fontFamily: zoneStyle.fontFamily,
+          fontSize: zoneStyle.fontSize,
+          color: zoneStyle.color,
+          background: zoneStyle.bg ?? 'transparent',
+          fontWeight: zoneStyle.fontWeight ?? '400',
+          fontStyle: zoneStyle.fontStyle ?? 'normal',
+          textAlign: zoneStyle.textAlign ?? 'start',
+          letterSpacing: zoneStyle.letterSpacing ?? 'normal',
+          lineHeight: zoneStyle.lineHeight ?? 1.2,
+          outline: active ? '2px solid rgba(122,24,50,0.6)' : 'none',
+          outlineOffset: '2px',
+          transition: 'outline 0.15s',
+        }}
+      >
+        {/* Highlight sutil al hover */}
+        <span
+          aria-hidden
+          className="absolute inset-0 transition-opacity pointer-events-none opacity-0 group-hover:opacity-100"
+          style={{ boxShadow: 'inset 0 0 0 2px rgba(122,24,50,0.35)', borderRadius: '3px' }}
+        />
+        {/* Texto real */}
+        <span className="pointer-events-none whitespace-pre-wrap">
+          {busy ? '⏳ Generando…' : (value || label)}
+        </span>
+        {/* Badge de estado (esquina) */}
+        {!busy && changed && (
+          <span className="absolute top-0 right-0 pointer-events-none">
+            <ZoneChip tone="ok"><Check size={9} /></ZoneChip>
+          </span>
+        )}
+      </div>
+    )
+  }
+
+  // ── Modo chip: zonas sin estilo (demo genéricas) ──
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
+      onDoubleClick={onOpen}
       onClick={onOpen}
       aria-label={`Editar ${label}`}
-      title={label}
-      className={`group absolute flex items-start p-0.5 rounded-[6px] ${busy ? 'cursor-progress' : ''}`}
+      title={`${label} — arrastra para mover, esquinas para redimensionar`}
+      className={`w-full h-full flex items-start p-0.5 rounded-[6px] ${busy ? 'cursor-progress' : ''}`}
       style={{
-        left: `${zone.x}%`,
-        top: `${zone.y}%`,
-        width: `${zone.w}%`,
-        height: `${zone.h}%`,
         border: `2px dashed ${over ? 'var(--color-danger)' : 'var(--color-cherry)'}`,
       }}
     >
@@ -811,7 +1207,7 @@ function TextZone({
         className={`absolute inset-0 rounded-[6px] transition-opacity pointer-events-none ${active || busy ? 'opacity-40' : 'opacity-0 group-hover:opacity-40'}`}
         style={{ background: 'var(--color-buttermilk)' }}
       />
-      <span className="relative max-w-full">
+      <span className="relative max-w-full pointer-events-none">
         {busy ? (
           <ZoneChip tone="cream"><ZoneSpinner /> Generando…</ZoneChip>
         ) : over ? (
@@ -822,90 +1218,144 @@ function TextZone({
           <ZoneChip tone="cream">Toca para escribir</ZoneChip>
         )}
       </span>
-    </button>
+    </div>
   )
 }
 
-// ─── Zona de FOTO (user_image): tap → file picker ───────────────────
-function PhotoZone({
-  zone, label, photo, uploading, onPick,
+// ─── Contenido de zona de FOTO ─────────────────────────────────────
+function PhotoZoneContent({
+  label, photo, defaultPhotoUrl, uploading, onPick,
 }: {
-  zone: DesignBindingZone
   label: string
   photo: UploadedPhoto | null
+  defaultPhotoUrl?: string
   uploading: boolean
   onPick: () => void
 }) {
+  const hasUserPhoto = !!photo
+
+  // Foto del usuario subida → mostrarla dentro de la zona
+  if (hasUserPhoto) {
+    return (
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={onPick}
+        aria-label={`Cambiar foto de ${label}`}
+        title={`${label} — toca para cambiar la foto`}
+        className="w-full h-full cursor-pointer relative"
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={photo.signedUrl}
+          alt={label}
+          draggable={false}
+          className="w-full h-full object-cover pointer-events-none"
+        />
+        {/* Hover overlay */}
+        <span
+          aria-hidden
+          className="absolute inset-0 transition-opacity pointer-events-none opacity-0 group-hover:opacity-100 flex items-center justify-center"
+          style={{ background: 'rgba(0,0,0,0.25)', borderRadius: '3px' }}
+        >
+          <span className="bg-white/90 rounded-full px-2.5 py-1 text-[11px] font-semibold text-cherry-dark inline-flex items-center gap-1">
+            <ImageIcon size={12} /> Cambiar foto
+          </span>
+        </span>
+        {uploading && (
+          <span className="absolute top-1 right-1 pointer-events-none">
+            <ZoneChip tone="cream"><ZoneSpinner /> Subiendo…</ZoneChip>
+          </span>
+        )}
+        {!uploading && (
+          <span className="absolute top-1 right-1 pointer-events-none">
+            <ZoneChip tone="ok"><Check size={9} /></ZoneChip>
+          </span>
+        )}
+      </div>
+    )
+  }
+
+  // Foto por defecto de Canva (renderizada como capa en el canvas) → zona transparente de click
+  if (defaultPhotoUrl) {
+    return (
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={onPick}
+        aria-label={`Toca para cambiar: ${label}`}
+        title={`${label} — toca para cambiar la foto`}
+        className="w-full h-full cursor-pointer relative"
+      >
+        {/* Hover overlay sobre la foto por defecto */}
+        <span
+          aria-hidden
+          className="absolute inset-0 transition-opacity pointer-events-none opacity-0 group-hover:opacity-100 flex items-center justify-center"
+          style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '3px' }}
+        >
+          <span className="bg-white/90 rounded-full px-2.5 py-1 text-[11px] font-semibold text-cherry-dark inline-flex items-center gap-1">
+            <ImageIcon size={12} /> Cambiar foto
+          </span>
+        </span>
+        {uploading && (
+          <span className="absolute top-1 right-1 pointer-events-none">
+            <ZoneChip tone="cream"><ZoneSpinner /> Subiendo…</ZoneChip>
+          </span>
+        )}
+      </div>
+    )
+  }
+
+  // Sin foto por defecto ni subida → chip original
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onPick}
-      aria-label={photo ? `Cambiar foto de ${label}` : `Subir foto de ${label}`}
-      title={photo ? 'Cambiar foto' : 'Subir foto'}
-      disabled={uploading}
-      className="group absolute flex items-start p-0.5 rounded-[6px]"
-      style={{
-        left: `${zone.x}%`,
-        top: `${zone.y}%`,
-        width: `${zone.w}%`,
-        height: `${zone.h}%`,
-        border: '2px dashed var(--color-pastel-blue)',
-      }}
+      aria-label={`Subir foto de ${label}`}
+      title={`${label} — arrastra para mover, esquinas para redimensionar`}
+      className="w-full h-full flex items-start p-0.5 rounded-[6px]"
+      style={{ border: '2px dashed var(--color-pastel-blue)' }}
     >
       <span
         aria-hidden
         className="absolute inset-0 rounded-[6px] transition-opacity pointer-events-none opacity-0 group-hover:opacity-40"
         style={{ background: 'var(--color-buttermilk)' }}
       />
-      <span className="relative max-w-full">
+      <span className="relative max-w-full pointer-events-none">
         {uploading ? (
           <ZoneChip tone="cream"><ZoneSpinner /> Subiendo…</ZoneChip>
-        ) : photo ? (
-          <ZoneChip tone="ok">
-            {/* Miniatura del signedUrl de la foto ya subida */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={photo.signedUrl}
-              alt=""
-              className="w-3.5 h-3.5 rounded-full object-cover flex-shrink-0"
-            />
-            <Check size={11} />
-          </ZoneChip>
         ) : (
           <ZoneChip tone="cream"><ImageIcon size={10} /> Toca para foto</ZoneChip>
         )}
       </span>
-    </button>
+    </div>
   )
 }
 
-// ─── Zona bloqueada (brand_text / keep_default): candado ────────────
-function LockedZone({
-  zone, behavior, onTap,
+// ─── Contenido de zona bloqueada ───────────────────────────────────
+function LockedZoneContent({
+  behavior, onTap,
 }: {
-  zone: DesignBindingZone
   behavior: DesignBehavior
   onTap: () => void
 }) {
   const isBrand = behavior === 'brand_text'
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onTap}
       aria-label={isBrand ? 'Se llena con los datos de tu marca' : 'Elemento fijo de la plantilla'}
       title={isBrand ? 'Se llena con tus datos de marca' : 'Esta zona es fija en la plantilla'}
-      className="absolute flex items-start p-0.5"
-      style={{
-        left: `${zone.x}%`,
-        top: `${zone.y}%`,
-        width: `${zone.w}%`,
-        height: `${zone.h}%`,
-      }}
+      className="w-full h-full flex items-start p-0.5"
     >
-      <ZoneChip tone="cream">
-        <Lock size={10} /> {isBrand ? 'Tu marca' : 'Fijo'}
-      </ZoneChip>
-    </button>
+      <span className="pointer-events-none">
+        <ZoneChip tone="cream">
+          <Lock size={10} /> {isBrand ? 'Tu marca' : 'Fijo'}
+        </ZoneChip>
+      </span>
+    </div>
   )
 }
 

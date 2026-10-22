@@ -5,6 +5,7 @@
 // filas nuevas creadas desde el Panel Admin podrán traer su propia categoría.
 
 export type ReelCategory =
+  | 'clip'       // Clip único con texto (fácil de replicar)
   | 'color'      // Color & Balayage
   | 'cortes'     // Cortes y forma de rostro
   | 'clientas'   // Clientas reales (testimonial, mensajes)
@@ -15,12 +16,14 @@ export type ReelCategory =
   | 'gesto'      // Transición de un gesto
   | 'objeto'     // Transición con un objeto
   | 'camara'     // Transición con cámara fija / edición
+  | 'fotos'      // Transición: secuencia de fotos / antes-después
   | 'otros'
 
-export const INSPIRACION_CATEGORY_ORDER: ReelCategory[] = ['color', 'cortes', 'clientas', 'productos', 'salon', 'mitos', 'ventas']
-export const TRANSICION_CATEGORY_ORDER: ReelCategory[] = ['gesto', 'objeto', 'camara']
+export const INSPIRACION_CATEGORY_ORDER: ReelCategory[] = ['clip', 'color', 'cortes', 'clientas', 'productos', 'salon', 'mitos', 'ventas']
+export const TRANSICION_CATEGORY_ORDER: ReelCategory[] = ['gesto', 'objeto', 'camara', 'fotos']
 
 export const CATEGORY_LABELS: Record<ReelCategory, string> = {
+  clip: 'Clip único',
   color: 'Color & Balayage',
   cortes: 'Cortes',
   clientas: 'Clientas reales',
@@ -31,6 +34,7 @@ export const CATEGORY_LABELS: Record<ReelCategory, string> = {
   gesto: 'De un gesto',
   objeto: 'Con un objeto',
   camara: 'Cámara fija',
+  fotos: 'Secuencia de fotos',
   otros: 'Otros',
 }
 
@@ -82,6 +86,25 @@ const BY_CODE: Record<string, ReelCategory> = {
   'DR51Bz7jX_d': 'objeto',    // puerta @vickylauren
   'DUg2MZlEd6b': 'camara',    // clon @alvabeautysalon
   'DVRVWOPiL5Z': 'camara',    // clásica @celineconcept_
+  // Reels virales — 21-oct-2026
+  'DeSS5zeJRmT': 'clip', // @tayloratartistry
+  'Ded-x9HtU5h': 'clip', // @nina.theclub
+  'Ddbp7iwgQJW': 'clientas', // @rosse_tattoostudio
+  'Dd9m0oJB0yX': 'clip', // @balayage.blonde
+  'DdRvUSoTqfR': 'clip', // @aliciaramirezhair
+  'DdE3-OroCcI': 'clip', // @eeia.studio
+  'DbV0W7-k7Cg': 'color', // @abdelamranioficial
+  'DdkXattRH-s': 'cortes', // @lafleursalon
+  'DcwQce6MBj9': 'cortes', // @edurnesenosiain
+  'DbllXgWMHXx': 'cortes', // @edurnesenosiain
+  'DbHETRNTnOG': 'cortes', // @soyalexandrabaron
+  'DZLqSvPv0VK': 'cortes', // @sandranicolini
+  'DZ5b_5aCUTp': 'cortes', // @leblanchairatelier
+  'DeHlxBnOhr7': 'fotos', // @jessicas_hairsalon
+  'DR0MgxxD0hD': 'fotos', // @jara.tallerdepelo
+  'DWPYK0qsdu4': 'fotos', // @edurnesenosiain
+  'DZVYzUuMe7X': 'fotos', // @edurnesenosiain
+  'DZsj9NnsiPj': 'fotos', // @edurnesenosiain
 }
 
 /** Categoría de un reel: el campo real (`category`) si existe; si no, el mapa. */

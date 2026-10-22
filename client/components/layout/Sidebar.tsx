@@ -7,7 +7,7 @@ import {
   Home, Sparkles, Star,
   Film, LayoutGrid, BookOpen, Calendar, LogOut, Menu, X, Zap, Camera,
   Clapperboard, Wand2, Settings, Shield, Crown, GraduationCap, Users, BarChart3,
-  ChartNoAxesColumn, Palette, ImagePlus, LayoutTemplate,
+  ChartNoAxesColumn, Palette, LayoutTemplate, Scissors, Images,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -27,20 +27,23 @@ const navItems: NavItem[] = [
   // Reto 10K oculto por Jota (30 sep): simplificar — reactivar junto al tile
   // de tiles.ts. La ruta /reto-10k sigue existiendo por URL directa.
   { href: '/mi-marca', label: 'Mi Marca', icon: Star },
-  { href: '/planificar', label: 'Planificación', icon: Sparkles },
+  // MI PLAN (22-oct-2026): une Planificación + Calendario (planificar se abre desde dentro).
+  { href: '/calendario', label: 'Mi plan', icon: Calendar },
   { href: '/crear-contenido', label: 'Crear guiones', icon: Film },
-  { href: '/stories', label: 'Stories BRÄVE', icon: LayoutGrid },
+  { href: '/stories', label: 'Stories', icon: LayoutGrid },
   // STORIES DISEÑO — rework mini-Canva (galería de plantillas, 7-oct-2026).
-  { href: '/stories-diseno', label: 'Stories Diseño', icon: Palette },
-  { href: '/inspiracion-reels', label: 'Inspiración Reels', icon: Clapperboard },
+  // CARRUSELES (13-oct-2026): el editor LAB pasa a producto en /carrusel
+  // (sustituye a la herramienta antigua) y entra en el menú lateral.
+  { href: '/carrusel', label: 'Carruseles', icon: Images },
+  { href: '/inspiracion-reels', label: 'Reels virales', icon: Clapperboard },
   { href: '/banco-ganchos', label: 'Banco de Ganchos', icon: Zap },
-  { href: '/foto-inspo', label: 'Foto inspo', icon: Camera },
-  // FOTO PRO (8-oct-2026): Retoque Pro disponible · Sesión IA próximamente.
-  { href: '/foto-pro', label: 'Foto Pro', icon: ImagePlus },
+  // ESTUDIO DE FOTOS (22-oct-2026): une Foto inspo + Foto Pro.
+  { href: '/estudio', label: 'Estudio de fotos', icon: Camera },
+  // EDITAR VIDEOS (13-oct-2026): recorte de silencios guiado, todo en el navegador.
+  { href: '/editar-videos', label: 'Editar Videos', icon: Scissors },
   // DISEÑOS (9-oct-2026): galería de plantillas de marca listas para personalizar.
   { href: '/disenos', label: 'Diseños', icon: LayoutTemplate },
   { href: '/biblioteca', label: 'Biblioteca', icon: BookOpen },
-  { href: '/calendario', label: 'Calendario', icon: Calendar },
   // Análisis — Instagram conectado (6-oct-2026): datos reales de la cuenta.
   { href: '/analisis', label: 'Análisis', icon: ChartNoAxesColumn },
 ]
@@ -54,14 +57,17 @@ const premiumNavItems: NavItem[] = [
   { href: '/analisis', label: 'Análisis', icon: ChartNoAxesColumn },
   { href: '/crear-contenido', label: 'Crear guiones', icon: Film },
   { href: '/biblioteca', label: 'Biblioteca', icon: BookOpen },
-  { href: '/stories', label: 'Stories BRÄVE', icon: LayoutGrid },
+  { href: '/stories', label: 'Stories', icon: LayoutGrid },
   // STORIES DISEÑO — rework mini-Canva (galería de plantillas, 7-oct-2026).
-  { href: '/stories-diseno', label: 'Stories Diseño', icon: Palette },
-  { href: '/inspiracion-reels', label: 'Inspiración Reels', icon: Clapperboard },
+  // CARRUSELES (13-oct-2026): el editor LAB pasa a producto en /carrusel
+  // (sustituye a la herramienta antigua) y entra en el menú lateral.
+  { href: '/carrusel', label: 'Carruseles', icon: Images },
+  { href: '/inspiracion-reels', label: 'Reels virales', icon: Clapperboard },
   { href: '/banco-ganchos', label: 'Banco de Ganchos', icon: Zap },
-  { href: '/foto-inspo', label: 'Foto inspo', icon: Camera },
-  // FOTO PRO (8-oct-2026): Retoque Pro disponible · Sesión IA próximamente.
-  { href: '/foto-pro', label: 'Foto Pro', icon: ImagePlus },
+  // ESTUDIO DE FOTOS (22-oct-2026): une Foto inspo + Foto Pro.
+  { href: '/estudio', label: 'Estudio de fotos', icon: Camera },
+  // EDITAR VIDEOS (13-oct-2026): recorte de silencios guiado, todo en el navegador.
+  { href: '/editar-videos', label: 'Editar Videos', icon: Scissors },
   // DISEÑOS (9-oct-2026): galería de plantillas de marca listas para personalizar.
   { href: '/disenos', label: 'Diseños', icon: LayoutTemplate },
   { href: '/academia', label: 'Academia', icon: GraduationCap, badge: 'NUEVO', highlight: true },

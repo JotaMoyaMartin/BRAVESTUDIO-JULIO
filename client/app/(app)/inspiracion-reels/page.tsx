@@ -14,9 +14,9 @@ const IS_CONFIGURED = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').startsWith('h
 export default async function InspiracionReelsPage({
   searchParams,
 }: {
-  searchParams?: { cat?: string } | Promise<{ cat?: string }>
+  searchParams?: { cat?: string; reel?: string } | Promise<{ cat?: string; reel?: string }>
 }) {
-  const { cat } = (await searchParams) || {}
+  const { cat, reel } = (await searchParams) || {}
   const initialCat = cat === 'transiciones' ? 'transiciones' : 'inspiracion'
 
   if (!IS_CONFIGURED) {
@@ -31,6 +31,7 @@ export default async function InspiracionReelsPage({
           savedIds={[]}
           savedTransitionIds={[]}
           initialCat={initialCat}
+          initialReelId={reel || null}
         />
       </PageTransition>
     )
@@ -72,6 +73,7 @@ export default async function InspiracionReelsPage({
         savedIds={savedIds}
         savedTransitionIds={savedTransitionIds}
         initialCat={initialCat}
+          initialReelId={reel || null}
       />
     </PageTransition>
   )

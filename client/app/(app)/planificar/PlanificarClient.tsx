@@ -1,53 +1,70 @@
 'use client'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { demoSavePlan } from '@/lib/demo-store'
 import { generatePlan, PlannerItem } from '@/lib/ai/prompts/planner'
 import { generateReel, ReelOutput } from '@/lib/ai/prompts/reels'
 import { generateCarousel, CarouselOutput } from '@/lib/ai/prompts/carousels'
+import type { SingleStory } from '@/lib/ai/prompts/stories'
+import { READY_SEQUENCES, readyToStories } from '@/lib/stories/sequences'
+import { addWeeklyStories } from '@/lib/plan/stories-in-plan'
 import { buildBrandFullContext, hasBrandContext, BrandFullContextInput } from '@/lib/ai/brand-context'
 import UsarMiMarcaToggle from '@/components/ui/UsarMiMarcaToggle'
-import BraviGuide from '@/components/bravi/BraviGuide'
+import PageHeader from '@/components/ui/PageHeader'
 import { ContentItem } from '@/types/database'
 import { useSessionState, clearSectionState } from '@/lib/session-store'
+import { useToast } from '@/components/ui/Toast'
 import {
   Sparkles, RefreshCw, Trash2, Calendar, ChevronDown, ChevronUp,
-  Film, LayoutGrid, Copy, Check, BookOpen,
+  Film, LayoutGrid, Copy, Check, BookOpen, ArrowLeft, CircleDot,
 } from 'lucide-react'
 import Link from 'next/link'
 
 const SERVICES_OPTIONS = ['Balayage', 'Rubios', 'Canas', 'Alisados', 'Tratamientos', 'Corte', 'Color', 'General']
 
 type Objective = 'autoridad' | 'reservas' | 'visibilidad'
-type Guion = ReelOutput | CarouselOutput
+type PlanObjective = Objective | 'mezcla'
+/** Stories del plan: secuencia lista (texto de cada story). */
+interface StoryGuion { title: string; stories: SingleStory[]; captionWithHashtags: string; visualIdea: string; sequenceId: string }
+type Guion = ReelOutput | CarouselOutput | StoryGuion
 
-async function genGuion(type: 'reel' | 'carrusel', service: string, objective: Objective, brandContext?: string): Promise<Guion> {
-  return type === 'reel'
-    ? await generateReel({ service, objective, brandContext })
-    : await generateCarousel({ service, objective, slideCount: 5, brandContext })
+const asObjective = (o: string, fallback: PlanObjective): Objective =>
+  o === 'autoridad' || o === 'reservas' || o === 'visibilidad' ? o : fallback === 'mezcla' ? 'autoridad' : fallback
+
+/** Guion de una idea del plan: se escribe SOBRE su título para que encaje. */
+async function genGuion(item: Pick<PlannerItem, 'type' | 'service' | 'title' | 'hookIdea' | 'objective' | 'sequenceId'>, planObjective: PlanObjective, brandContext?: string): Promise<Guion> {
+  if (item.type === 'story') {
+    const seq = READY_SEQUENCES.find(s => s.id === item.sequenceId) ?? READY_SEQUENCES[0]
+    return { title: seq.title, stories: readyToStories(seq), captionWithHashtags: '', visualIdea: seq.stories.map(st => st.visual).join(' · '), sequenceId: seq.id }
+  }
+  // En un plan «mezcla» cada publicación lleva su propio objetivo.
+  const objective = asObjective(item.objective, planObjective)
+  // El título ES el tema: así el guion habla exactamente de lo que promete.
+  const freeText = item.title || undefined
+  return item.type === 'reel'
+    ? await generateReel({ service: item.service, objective, brandContext, freeText })
+    : await generateCarousel({ service: item.service, objective, slideCount: 5, brandContext, freeText })
 }
 
 export default function PlanificarClient({ userId, brand, initialItems, initialTab = 'crear' }: { userId: string; brand: BrandFullContextInput | null; initialItems: ContentItem[]; initialTab?: 'crear' | 'ver' }) {
   const isDemoMode = userId === 'demo'
+  // El plan en curso vive en el navegador: se pinta tras montar (sin error de hidratación).
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-4">
-          <BraviGuide section="planificar" size={64} />
-          <div>
-            <h1 className="text-2xl font-bold" style={{ color: '#1a1a1a' }}>Planificación</h1>
-          <p className="mt-1 text-sm" style={{ color: '#591427', opacity: 0.8 }}>
-            Genera, organiza y guarda todo tu contenido en un solo lugar
-          </p>
-          </div>
-        </div>
-        <Link href="/biblioteca" className="btn-ghost text-sm py-2 px-4">
-          <BookOpen size={15} /> Ir a Biblioteca →
+      <div className="space-y-3">
+        <Link href="/calendario" className="inline-flex items-center gap-1 text-[14px] font-semibold text-cereza hover:underline">
+          <ArrowLeft size={15} aria-hidden /> Mi plan
         </Link>
+        <PageHeader
+          title="Planifica tu mes"
+          subtitle="Elige cuánto y de qué quieres hablar. Te propongo las publicaciones y van directas a tu plan."
+        />
       </div>
 
-      <CrearTab userId={userId} brand={brand} isDemoMode={isDemoMode} onSaved={() => {}} />
+      {mounted ? <CrearTab userId={userId} brand={brand} isDemoMode={isDemoMode} onSaved={() => {}} /> : <div className="h-64 rounded-[var(--radius-lg)] bg-white/60 animate-pulse" aria-busy="true" />}
     </div>
   )
 }
@@ -65,13 +82,18 @@ function CrearTab({ userId, brand, isDemoMode, onSaved }: { userId: string; bran
   const [duration, setDuration] = useSessionState<'1week' | '1month'>(`u:${userId}:planificar:duration`, '1month')
   const [postsPerWeek, setPostsPerWeek] = useSessionState<2 | 3 | 4 | 5>(`u:${userId}:planificar:postsPerWeek`, 3)
   const [format, setFormat] = useSessionState<'reels' | 'carrusels' | 'mixed'>(`u:${userId}:planificar:format`, 'mixed')
-  const [objective, setObjective] = useSessionState<Objective>(`u:${userId}:planificar:objective`, 'autoridad')
+  const [objective, setObjective] = useSessionState<PlanObjective>(`u:${userId}:planificar:objective`, 'mezcla')
+  const [includeStories, setIncludeStories] = useSessionState<boolean>(`u:${userId}:planificar:stories`, true)
+  const [showOptions, setShowOptions] = useState(false)
   const [services, setServices] = useSessionState<string[]>(`u:${userId}:planificar:services`, [])
   const [freeText, setFreeText] = useSessionState<string>(`u:${userId}:planificar:freeText`, '')
   const [generating, setGenerating] = useState(false)
   const [plan, setPlan] = useSessionState<PlannerItem[] | null>(`u:${userId}:planificar:plan`, null)
   const [savedIds, setSavedIds] = useSessionState<string[]>(`u:${userId}:planificar:savedIds`, [])
   const [refreshCounters, setRefreshCounters] = useSessionState<Record<string, number>>(`u:${userId}:planificar:refreshCounters`, {})
+  // Guion de cada idea: se genera UNA vez y es el mismo que se ve y se guarda.
+  const [guiones, setGuiones] = useSessionState<Record<string, Guion>>(`u:${userId}:planificar:guiones`, {})
+  const toast = useToast()
 
   const canGenerate = services.length > 0 || freeText.trim().length > 0
 
@@ -79,17 +101,32 @@ function CrearTab({ userId, brand, isDemoMode, onSaved }: { userId: string; bran
     setServices(prev => prev.includes(s) ? prev.filter(x => x !== s) : prev.length < 3 ? [...prev, s] : prev)
   }
 
-  async function generate() {
-    if (!canGenerate) return
+  /** Servicios por defecto: los de Mi Marca (si existen) o los más pedidos. */
+  const defaultServices = useMemo(() => {
+    const fromBrand = (brand?.main_services || []).map(x => SERVICES_OPTIONS.find(o => o.toLowerCase() === x.trim().toLowerCase())).filter(Boolean) as string[]
+    return fromBrand.length ? fromBrand.slice(0, 4) : ['Rubios', 'Balayage', 'Color', 'Tratamientos']
+  }, [brand])
+
+  /** «Planifícame el mes»: un toque, con valores sensatos y variedad. */
+  async function quickPlan() {
+    setDuration('1month'); setPostsPerWeek(3); setFormat('mixed'); setObjective('mezcla'); setIncludeStories(true)
+    setServices(defaultServices.slice(0, 3)); setFreeText('')
+    await generate({ duration: '1month', postsPerWeek: 3, format: 'mixed', objective: 'mezcla', services: defaultServices, freeText: '', includeStories: true })
+  }
+
+  async function generate(o?: { duration: '1week' | '1month'; postsPerWeek: 2 | 3 | 4 | 5; format: 'reels' | 'carrusels' | 'mixed'; objective: PlanObjective; services: string[]; freeText: string; includeStories: boolean }) {
+    const opts = o ?? { duration, postsPerWeek, format, objective, services: services.length ? services : ['General'], freeText, includeStories }
+    if (!o && !canGenerate) return
     setGenerating(true)
     const result = await generatePlan({
-      duration, postsPerWeek, format, objective,
-      services: services.length ? services : ['General'],
-      freeText,
+      duration: opts.duration, postsPerWeek: opts.postsPerWeek, format: opts.format, objective: opts.objective,
+      services: opts.services,
+      freeText: opts.freeText,
       brandContext,
     })
-    setPlan(result.items)
+    setPlan(opts.includeStories ? addWeeklyStories(result.items, opts.services) : result.items)
     setSavedIds([])
+    setGuiones({})
     setGenerating(false)
   }
 
@@ -97,11 +134,25 @@ function CrearTab({ userId, brand, isDemoMode, onSaved }: { userId: string; bran
     if (!plan) return
     const item = plan.find(p => p.id === id)
     if (!item) return
-    const g = await genGuion(item.type, item.service, objective, brandContext)
+    if (item.type === 'story') {
+      // Otra secuencia lista del mismo servicio (o cualquiera que no esté ya en el plan).
+      const inPlan = new Set(plan.map(p => p.sequenceId).filter(Boolean))
+      const next = READY_SEQUENCES.find(sq => sq.service === item.service && !inPlan.has(sq.id)) ?? READY_SEQUENCES.find(sq => !inPlan.has(sq.id))
+      if (!next) return
+      const g = await genGuion({ ...item, sequenceId: next.id }, objective)
+      setPlan(prev => prev!.map(p => p.id === id ? { ...p, title: next.title, service: next.service, sequenceId: next.id, hookIdea: next.stories[0]?.text ?? '' } : p))
+      setGuiones(prev => ({ ...prev, [id]: g }))
+      setRefreshCounters(prev => ({ ...prev, [id]: (prev[id] || 0) + 1 }))
+      return
+    }
+    // Nueva idea sobre el mismo servicio: el guion nuevo manda (título incluido).
+    // Sin título: idea nueva del mismo servicio y objetivo.
+    const g = await genGuion({ ...item, title: '', hookIdea: '' }, objective, brandContext)
     const hookIdea = item.type === 'reel'
       ? (g as ReelOutput).script.hook
       : (g as CarouselOutput).slides[0]?.text || ''
     setPlan(prev => prev!.map(p => p.id === id ? { ...p, title: g.title, hookIdea } : p))
+    setGuiones(prev => ({ ...prev, [id]: g }))
     setRefreshCounters(prev => ({ ...prev, [id]: (prev[id] || 0) + 1 }))
   }
 
@@ -109,7 +160,22 @@ function CrearTab({ userId, brand, isDemoMode, onSaved }: { userId: string; bran
     setPlan(prev => prev!.filter(p => p.id !== id))
   }
 
-  function saveItem(item: PlannerItem, guion: Guion, scheduledDate: string | null) {
+  /** Guarda una idea; devuelve false (y avisa) si la base de datos falla. */
+  async function persist(payload: Record<string, unknown>): Promise<boolean> {
+    if (isDemoMode) {
+      demoSavePlan(payload as Parameters<typeof demoSavePlan>[0])
+      return true
+    }
+    const supabase = createClient()
+    const { error } = await supabase.from('content_items').insert({ user_id: userId, ...payload })
+    if (error) {
+      console.warn('[planificar] guardar', error)
+      return false
+    }
+    return true
+  }
+
+  async function saveItem(item: PlannerItem, guion: Guion, scheduledDate: string | null) {
     const payload = {
       type: item.type,
       title: item.title,
@@ -122,11 +188,9 @@ function CrearTab({ userId, brand, isDemoMode, onSaved }: { userId: string; bran
       scheduled_date: scheduledDate,
       status: scheduledDate ? 'scheduled' : 'library',
     }
-    if (isDemoMode) {
-      demoSavePlan(payload)
-    } else {
-      const supabase = createClient()
-      supabase.from('content_items').insert({ user_id: userId, ...payload }).then(() => {})
+    if (!(await persist(payload))) {
+      toast.show('No se ha podido guardar. Revisa tu conexión e inténtalo de nuevo.', 'info')
+      return
     }
     setSavedIds(prev => [...prev, item.id])
     onSaved()
@@ -138,8 +202,10 @@ function CrearTab({ userId, brand, isDemoMode, onSaved }: { userId: string; bran
     if (!plan) return
     setSavingAll(true)
     const unsaved = plan.filter(item => !savedIds.includes(item.id))
+    const ok: string[] = []
     for (const item of unsaved) {
-      const guion = await genGuion(item.type, item.service, objective, brandContext)
+      const guion = guiones[item.id] ?? await genGuion(item, objective, brandContext)
+      if (!guiones[item.id]) setGuiones(prev => ({ ...prev, [item.id]: guion }))
       const payload = {
         type: item.type,
         title: item.title,
@@ -152,19 +218,16 @@ function CrearTab({ userId, brand, isDemoMode, onSaved }: { userId: string; bran
         scheduled_date: item.suggestedDate || null,
         status: item.suggestedDate ? 'scheduled' : 'library',
       }
-      if (isDemoMode) {
-        demoSavePlan(payload)
-      } else {
-        const supabase = createClient()
-        await supabase.from('content_items').insert({ user_id: userId, ...payload })
-      }
+      if (await persist(payload)) ok.push(item.id)
     }
-    setSavedIds(plan.map(i => i.id))
+    setSavedIds(prev => [...prev, ...ok])
+    if (ok.length < unsaved.length) toast.show(`No se han podido guardar ${unsaved.length - ok.length} ideas. Pulsa otra vez «Guardar».`, 'info')
     onSaved()
     setSavingAll(false)
   }
 
-  const objectiveDescriptions: Record<Objective, string> = {
+  const objectiveDescriptions: Record<PlanObjective, string> = {
+    mezcla: 'Un poco de todo: enseñar, conseguir citas y llegar a más gente. El feed no se repite.',
     autoridad: 'Errores frecuentes, diagnósticos, mitos y verdades. Posiciónate como experta.',
     reservas: 'Transformaciones, casos reales, objeciones. Provoca conversaciones y citas.',
     visibilidad: 'Listas, tendencias, contenido guardable. Más alcance y seguidores.',
@@ -178,7 +241,7 @@ function CrearTab({ userId, brand, isDemoMode, onSaved }: { userId: string; bran
       <div className="space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="font-bold text-lg" style={{ color: '#1a1a1a' }}>Tu planificación está lista ✨</h2>
+            <h2 className="font-bold text-lg" style={{ color: '#1a1a1a' }}>Tu planificación está lista</h2>
             <p className="text-sm" style={{ color: '#591427', opacity: 0.7 }}>
               {plan.length} ideas — {savedCount > 0 ? `${savedCount} guardadas` : 'guarda las que quieras o todas de golpe'}
             </p>
@@ -206,7 +269,7 @@ function CrearTab({ userId, brand, isDemoMode, onSaved }: { userId: string; bran
             )}
             {allSaved && (
               <Link href="/calendario" className="btn-secondary text-sm py-2 px-4">
-                <Calendar size={15} /> Ver en calendario →
+                <Calendar size={15} /> Ver en Mi plan →
               </Link>
             )}
           </div>
@@ -221,6 +284,9 @@ function CrearTab({ userId, brand, isDemoMode, onSaved }: { userId: string; bran
               isSaved={savedIds.includes(item.id)}
               onRegenerate={() => regenerateItem(item.id)}
               onRemove={() => removeItem(item.id)}
+              guion={guiones[item.id] ?? null}
+              onGuion={g => setGuiones(prev => ({ ...prev, [item.id]: g }))}
+              brandContext={brandContext}
               onSave={(guion, date) => saveItem(item, guion, date)}
             />
           ))}
@@ -231,6 +297,28 @@ function CrearTab({ userId, brand, isDemoMode, onSaved }: { userId: string; bran
 
   return (
     <div className="space-y-5">
+      {/* Un toque: mes variado con Mi Marca (lo que hará casi siempre) */}
+      <div className="rounded-[var(--radius-lg)] bg-burdeos text-crema p-5 sm:p-6 space-y-4" data-tone="dark">
+        <div className="space-y-1.5">
+          <p className="text-xl font-semibold">Planifícame el mes</p>
+          <p className="text-[15px] text-crema/80 max-w-xl">
+            12 publicaciones (reels y carruseles) + stories cada viernes. Varío los temas{defaultServices.length ? ` (${defaultServices.join(', ')})` : ''} y los enfoques: enseñar, conseguir citas y llegar a más gente.
+          </p>
+        </div>
+        <button onClick={quickPlan} disabled={generating} className="btn-primary w-full sm:w-auto justify-center !bg-mantequilla !text-burdeos text-base py-3.5 px-6">
+          <Sparkles size={18} aria-hidden /> {generating ? 'Preparando tu mes…' : 'Planifícame el mes'}
+        </button>
+      </div>
+
+      <button onClick={() => setShowOptions(v => !v)} aria-expanded={showOptions} className="w-full flex items-center justify-between gap-3 rounded-2xl border border-borde bg-white px-4 py-3.5 text-left">
+        <span>
+          <span className="block text-[15px] font-semibold text-ink">Prefiero ajustarlo yo</span>
+          <span className="block text-[13px] text-tinta-2">Duración, cuántas por semana, formato, objetivo y servicios</span>
+        </span>
+        {showOptions ? <ChevronUp size={18} className="text-cereza" /> : <ChevronDown size={18} className="text-cereza" />}
+      </button>
+
+      {showOptions && <>
       <OptionGroup label="¿Cuánto tiempo quieres planificar?">
         <div className="flex gap-3">
           {([['1week', '1 semana'], ['1month', '1 mes']] as const).map(([val, lbl]) => (
@@ -262,10 +350,10 @@ function CrearTab({ userId, brand, isDemoMode, onSaved }: { userId: string; bran
 
       <OptionGroup label="¿Qué objetivo principal quieres?">
         <div className="space-y-2">
-          {(['autoridad', 'reservas', 'visibilidad'] as const).map(obj => (
+          {(['mezcla', 'autoridad', 'reservas', 'visibilidad'] as const).map(obj => (
             <button key={obj} onClick={() => setObjective(obj)} className="w-full text-left p-4 rounded-xl transition-all"
               style={{ background: objective === obj ? '#7A1832' : '#F5F0E8', color: objective === obj ? 'white' : '#591427' }}>
-              <p className="font-semibold capitalize">{obj}</p>
+              <p className="font-semibold capitalize">{obj === 'mezcla' ? 'Mezcla (recomendado)' : obj}</p>
               <p className="text-xs mt-0.5 opacity-80">{objectiveDescriptions[obj]}</p>
             </button>
           ))}
@@ -292,6 +380,14 @@ function CrearTab({ userId, brand, isDemoMode, onSaved }: { userId: string; bran
         </p>
       </OptionGroup>
 
+      <label className="flex items-center gap-3 rounded-2xl bg-white border border-borde px-4 py-3.5">
+        <input type="checkbox" checked={includeStories} onChange={e => setIncludeStories(e.target.checked)} className="w-5 h-5 accent-[var(--color-cereza)]" />
+        <span>
+          <span className="block text-[15px] font-semibold text-ink">Incluir stories cada viernes</span>
+          <span className="block text-[13px] text-tinta-2">Una secuencia lista de 3 stories por semana</span>
+        </span>
+      </label>
+
       <UsarMiMarcaToggle
         enabled={useMiMarca}
         onChange={setUseMiMarca}
@@ -299,7 +395,7 @@ function CrearTab({ userId, brand, isDemoMode, onSaved }: { userId: string; bran
         hasBrand={hasBrand}
       />
 
-      <button onClick={generate} disabled={generating || !canGenerate} className="btn-primary w-full justify-center text-base py-4"
+      <button onClick={() => generate()} disabled={generating || !canGenerate} className="btn-primary w-full justify-center text-base py-4"
         style={{ opacity: !canGenerate ? 0.5 : 1 }}>
         <Sparkles size={20} />
         {generating ? 'Generando tu planificación...' : '✨ Generar planificación'}
@@ -307,20 +403,23 @@ function CrearTab({ userId, brand, isDemoMode, onSaved }: { userId: string; bran
       {!canGenerate && (
         <p className="text-center text-sm" style={{ color: '#7A1832', opacity: 0.6 }}>Selecciona un servicio o escribe un tema para continuar</p>
       )}
+      </>}
     </div>
   )
 }
 
-function PlanDraftCard({ item, objective, isSaved, onRegenerate, onRemove, onSave }: {
+function PlanDraftCard({ item, objective, isSaved, onRegenerate, onRemove, onSave, guion, onGuion, brandContext }: {
   item: PlannerItem
-  objective: Objective
+  objective: PlanObjective
   isSaved: boolean
+  guion: Guion | null
+  onGuion: (g: Guion) => void
+  brandContext?: string
   onRegenerate: () => void
   onRemove: () => void
   onSave: (guion: Guion, date: string | null) => void
 }) {
   const [expanded, setExpanded] = useState(false)
-  const [guion, setGuion] = useState<Guion | null>(null)
   const [copied, setCopied] = useState<string | null>(null)
   const [editingDate, setEditingDate] = useState(false)
   const [date, setDate] = useState(item.suggestedDate || '')
@@ -329,8 +428,8 @@ function PlanDraftCard({ item, objective, isSaved, onRegenerate, onRemove, onSav
   function ensureGuion(): Guion | Promise<Guion> {
     if (guion) return guion
     setLoadingGuion(true)
-    return genGuion(item.type, item.service, objective).then(g => {
-      setGuion(g)
+    return genGuion(item, objective, brandContext).then(g => {
+      onGuion(g)
       setLoadingGuion(false)
       return g
     })
@@ -357,13 +456,13 @@ function PlanDraftCard({ item, objective, isSaved, onRegenerate, onRemove, onSav
     <div className="rounded-2xl overflow-hidden" style={{ background: 'white', border: '1.5px solid rgba(255,241,181,0.8)', boxShadow: '0 2px 8px rgba(90,20,39,0.05)' }}>
       <button onClick={handleExpand} className="w-full p-4 text-left flex items-start justify-between gap-3">
         <div className="flex items-start gap-3 flex-1">
-          {item.type === 'reel' ? <Film size={18} style={{ color: '#7A1832', marginTop: 2 }} /> : <LayoutGrid size={18} style={{ color: '#7A1832', marginTop: 2 }} />}
+          {item.type === 'reel' ? <Film size={18} style={{ color: '#7A1832', marginTop: 2 }} /> : item.type === 'story' ? <CircleDot size={18} style={{ color: '#8A5A12', marginTop: 2 }} /> : <LayoutGrid size={18} style={{ color: '#7A1832', marginTop: 2 }} />}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap mb-1">
               <span className="text-xs font-bold uppercase px-2 py-0.5 rounded-full" style={{ background: '#7A1832', color: 'white' }}>{item.type}</span>
               <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: '#FFF1B5', color: '#591427' }}>{item.service}</span>
               <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: '#F5F0E8', color: '#591427' }}>{item.objective}</span>
-              {item.suggestedDate && <span className="text-xs" style={{ color: '#591427', opacity: 0.6 }}>{item.suggestedDay} · {item.suggestedDate}</span>}
+              {(date || item.suggestedDate) && <span className="text-xs" style={{ color: '#591427', opacity: 0.6 }}>{humanDate(date || item.suggestedDate!)}</span>}
               {isSaved && <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: '#C1DBE8', color: '#2a5a6a' }}>✓ En planificación</span>}
             </div>
             <p className="font-semibold text-sm" style={{ color: '#1a1a1a' }}>{item.title}</p>
@@ -406,12 +505,37 @@ function PlanDraftCard({ item, objective, isSaved, onRegenerate, onRemove, onSav
 
 /* ---------------- shared ---------------- */
 
+/** «mié 28 oct» a partir de AAAA-MM-DD (fecha local, sin desfase). */
+function humanDate(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number)
+  if (!y || !m || !d) return iso
+  return new Date(y, m - 1, d).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' }).replace(/\./g, '')
+}
+
 function GuionView({ item, guion, copied, onCopy }: {
   item: PlannerItem
   guion: Guion
   copied: string | null
   onCopy: (text: string, key: string) => void
 }) {
+  if (item.type === 'story') {
+    const st = guion as StoryGuion
+    const full = st.stories.map(x => `Story ${x.number} (${x.role}): ${x.text}`).join('\n\n')
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-bold uppercase tracking-wider" style={{ color: '#7A1832', opacity: 0.6 }}>SECUENCIA DE STORIES</p>
+          <CopyChip text={full} id="guion" copied={copied} onCopy={onCopy} label="Copiar las 3" />
+        </div>
+        {st.stories.map(x => (
+          <div key={x.number} className="p-3 rounded-xl" style={{ background: '#FFFDF5', border: '1px solid rgba(255,241,181,0.8)' }}>
+            <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#7A1832' }}>Story {x.number} · {x.role}</span>
+            <p className="text-sm mt-1 leading-relaxed" style={{ color: '#1a1a1a' }}>{x.text}</p>
+          </div>
+        ))}
+      </div>
+    )
+  }
   if (item.type === 'reel') {
     const r = guion as ReelOutput
     const full = `GANCHO:\n${r.script.hook}\n\nCONTEXTO:\n${r.script.context}\n\nSOLUCIÓN:\n${r.script.solution}\n\nCTA:\n${r.script.cta}`

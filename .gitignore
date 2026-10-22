@@ -5,6 +5,12 @@
 # dependencies
 node_modules/
 
+# builds QA (dist dir separado para no corromper .next de un dev server vivo)
+client/.next-qa/
+# basura de sesión/herramientas
+client/Users/
+client/supabase/.temp/
+
 # next.js (client)
 .next/
 out/
@@ -40,3 +46,9 @@ npm-debug.log*
 .env.preview.local
 scripts/envs/*.env
 !scripts/envs/*.env.example
+
+# Fotos de Pinterest: solo referencia, sin licencia (no se suben)
+client/public/stock/
+# builds paralelos y caches
+client/.next-*/
+*.tsbuildinfo

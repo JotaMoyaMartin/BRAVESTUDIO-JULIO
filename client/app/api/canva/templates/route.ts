@@ -7,6 +7,9 @@ import {
   CanvaDataset,
   CanvaError,
   DESIGN_EXPORTS_BUCKET,
+  asAspectValue,
+  asTemplateAssetPathList,
+  asZoneStyle,
   awaitExportUrls,
   createPngExport,
   ensureDesignExportsBucket,
@@ -14,6 +17,7 @@ import {
   fetchExportPng,
   getDesign,
   getDesignDataset,
+  isTemplateAssetPath,
   parseDesignRef,
 } from '@/lib/integrations/canva'
 
@@ -39,7 +43,11 @@ function asBindings(value: unknown): CanvaBindingMap {
   if (typeof value !== 'object' || !value) return out
   for (const [field, raw] of Object.entries(value as Record<string, unknown>)) {
     if (typeof raw !== 'object' || !raw) continue
-    const b = raw as { behavior?: string; label?: string; purpose?: string; maxLength?: number; instructions?: string; zone?: unknown }
+    const b = raw as {
+      behavior?: string; label?: string; purpose?: string; maxLength?: number
+      instructions?: string; zone?: unknown; zoneStyle?: unknown
+      defaultText?: unknown; defaultPhotoPath?: unknown
+    }
     if (
       b.behavior === 'user_text' || b.behavior === 'ai_text' || b.behavior === 'brand_text' ||
       b.behavior === 'user_image' || b.behavior === 'keep_default'
@@ -51,6 +59,19 @@ function asBindings(value: unknown): CanvaBindingMap {
       if (b.instructions) out[field].instructions = b.instructions.slice(0, 500)
       const zone = asBindingZone(b.zone)
       if (zone) out[field].zone = zone
+      // Calibración del editor de la clienta (allowlist, nunca verbatim).
+      const zoneStyle = asZoneStyle(b.zoneStyle)
+      if (zoneStyle) out[field].zoneStyle = zoneStyle
+      if (typeof b.defaultText === 'string' && b.defaultText.trim() !== '') {
+        out[field].defaultText = b.defaultText.slice(0, 300)
+      }
+      // El PNG default solo tiene sentido en campos de foto subidos por el admin.
+      if (
+        b.behavior === 'user_image' && typeof b.defaultPhotoPath === 'string' &&
+        isTemplateAssetPath(b.defaultPhotoPath)
+      ) {
+        out[field].defaultPhotoPath = b.defaultPhotoPath
+      }
     }
   }
   return out
@@ -111,17 +132,32 @@ export async function GET() {
   // preview_url = página 1, por compatibilidad con la UI existente.
   await Promise.all(rows.map(async row => {
     const paths = previewPathsOf(row)
-    if (paths.length === 0) return
-    const signed = await Promise.all(paths.map(async p => {
+    if (paths.length > 0) {
+      const signed = await Promise.all(paths.map(async p => {
+        const { data: url } = await admin.storage
+          .from(DESIGN_EXPORTS_BUCKET)
+          .createSignedUrl(p, 86_400)
+        return url?.signedUrl ?? null
+      }))
+      const urls = signed.filter((u): u is string => u !== null)
+      const mutable = row as unknown as { preview_url?: string | null; preview_urls?: string[] }
+      mutable.preview_url = urls[0] ?? null
+      mutable.preview_urls = urls
+    }
+    // Fotos default (binding.defaultPhotoPath) firmadas 24h para el editor
+    // de zonas. source.bg_paths viaja igualmente en la fila (select *).
+    const photoUrls: Record<string, string> = {}
+    for (const [field, binding] of Object.entries(row.bindings ?? {})) {
+      const p = binding?.defaultPhotoPath
+      if (typeof p !== 'string' || !isTemplateAssetPath(p)) continue
       const { data: url } = await admin.storage
         .from(DESIGN_EXPORTS_BUCKET)
         .createSignedUrl(p, 86_400)
-      return url?.signedUrl ?? null
-    }))
-    const urls = signed.filter((u): u is string => u !== null)
-    const mutable = row as unknown as { preview_url?: string | null; preview_urls?: string[] }
-    mutable.preview_url = urls[0] ?? null
-    mutable.preview_urls = urls
+      if (url?.signedUrl) photoUrls[field] = url.signedUrl
+    }
+    if (Object.keys(photoUrls).length > 0) {
+      (row as unknown as { photo_urls?: Record<string, string> }).photo_urls = photoUrls
+    }
   }))
   return NextResponse.json({ templates: rows })
 }
@@ -138,13 +174,20 @@ export async function POST(request: NextRequest) {
   const auth = await requireAdmin()
   if (!auth.ok) return NextResponse.json({ error: auth.msg }, { status: auth.status })
   const body = (await request.json().catch(() => null)) as
-    | { designRef?: string; name?: string; category?: string; kind?: string; publish?: boolean; bindings?: unknown }
+    | { designRef?: string; name?: string; category?: string; kind?: string; publish?: boolean; bindings?: unknown; aspect?: unknown }
     | null
   if (!body) return NextResponse.json({ error: 'Body inválido' }, { status: 400 })
   const designId = parseDesignRef(body.designRef ?? '')
   if (!designId) return NextResponse.json({ error: 'Design ID/URL inválido' }, { status: 400 })
   const name = (body.name ?? '').trim()
   if (!name) return NextResponse.json({ error: 'Falta el nombre de la plantilla' }, { status: 400 })
+  // Aspecto opcional ('4 / 5' | '4:5' → normalizado a source.aspect). Vacío
+  // o ausente no toca nada; inválido → 400 (misma gramática que PATCH).
+  const aspectInput = typeof body.aspect === 'string' ? body.aspect.trim() : undefined
+  const aspect = aspectInput ? asAspectValue(aspectInput) : null
+  if (aspectInput && !aspect) {
+    return NextResponse.json({ error: 'Aspecto inválido — usa "4 / 5" o "4:5"' }, { status: 400 })
+  }
 
   try {
     const { accessToken } = await ensureFreshToken(auth.userId)
@@ -177,7 +220,7 @@ export async function POST(request: NextRequest) {
 
     const { data: existing } = await admin
       .from('design_templates')
-      .select('id')
+      .select('id, source')
       .eq('provider', 'canva')
       .eq('provider_design_id', designId)
       .maybeSingle()
@@ -185,8 +228,17 @@ export async function POST(request: NextRequest) {
     let templateId: string
     let updated: boolean
     if (existing) {
-      // Al actualizar: bindings solo si llegaron (guardar sin bindings no
-      // reescribe el mapper, y despublicar no debe borrarlo).
+      // Al actualizar se CONSERVA el source previo (aspect y bg_paths de la
+      // calibración): solo se refrescan los datos vivos de Canva. Y bindings
+      // solo si llegaron (guardar sin bindings no reescribe el mapper, y
+      // despublicar no debe borrarlo).
+      const sourceRow = {
+        ...((existing as { source?: Record<string, unknown> | null }).source ?? {}),
+        canva_edit_url: design.canvaEditUrl,
+        canva_updated_at: design.updatedAt,
+        ...(aspect ? { aspect } : {}),
+      }
+      ;(baseRow as { source?: unknown }).source = sourceRow
       const withBindings = bindingsRow === undefined ? baseRow : { ...baseRow, bindings: bindingsRow }
       const { data: up, error } = await admin
         .from('design_templates')
@@ -198,6 +250,12 @@ export async function POST(request: NextRequest) {
       templateId = (up as { id: string }).id
       updated = true
     } else {
+      const insertSource: Record<string, unknown> = {
+        canva_edit_url: design.canvaEditUrl,
+        canva_updated_at: design.updatedAt,
+        ...(aspect ? { aspect } : {}),
+      }
+      ;(baseRow as { source?: unknown }).source = insertSource
       const { data: inserted, error } = await admin
         .from('design_templates')
         .insert({ ...baseRow, bindings: bindingsRow ?? {} })
@@ -293,7 +351,7 @@ export async function PATCH(request: NextRequest) {
   const auth = await requireAdmin()
   if (!auth.ok) return NextResponse.json({ error: auth.msg }, { status: auth.status })
   const body = (await request.json().catch(() => null)) as
-    | { id?: string; status?: string; name?: string; category?: string; bindings?: unknown }
+    | { id?: string; status?: string; name?: string; category?: string; bindings?: unknown; aspect?: unknown; bg_paths?: unknown }
     | null
   if (!body?.id) return NextResponse.json({ error: 'Falta id' }, { status: 400 })
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() }
@@ -302,7 +360,60 @@ export async function PATCH(request: NextRequest) {
   if (body.category !== undefined) patch.category = body.category.trim() || null
   // Bindings COMPLETOS (mapa entero con zonas) — el PATCH reemplaza la columna.
   if (body.bindings !== undefined) patch.bindings = asBindings(body.bindings)
+
   const admin = createAdminClient()
+  // ── source: aspect + bg_paths (calibración manual del admin) ──────────
+  // Se lee la fila primero y se MERGEA: el PATCH nunca machaca el resto
+  // del source (preview_paths, canva_edit_url...).
+  if (body.aspect !== undefined || body.bg_paths !== undefined) {
+    const { data: row } = await admin
+      .from('design_templates')
+      .select('source, provider_design_id, page_count')
+      .eq('id', body.id)
+      .maybeSingle()
+    const current = (row as
+      | { source?: Record<string, unknown>; provider_design_id?: string; page_count?: number }
+      | null) ?? null
+    if (!current?.provider_design_id) {
+      return NextResponse.json({ error: 'Plantilla no encontrada' }, { status: 404 })
+    }
+    const source: Record<string, unknown> = { ...(current.source ?? {}) }
+    if (body.aspect !== undefined) {
+      if (typeof body.aspect === 'string' && body.aspect.trim() === '') {
+        delete source.aspect // '' = limpiar el campo
+      } else {
+        const aspect = asAspectValue(body.aspect)
+        if (!aspect) return NextResponse.json({ error: 'Aspecto inválido — usa "4 / 5" o "4:5"' }, { status: 400 })
+        source.aspect = aspect
+      }
+    }
+    if (body.bg_paths !== undefined) {
+      if (!Array.isArray(body.bg_paths) || body.bg_paths.length === 0) {
+        delete source.bg_paths // [] = limpiar todos los fondos
+      } else {
+        const paths = asTemplateAssetPathList(body.bg_paths)
+        const prefix = `templates/${current.provider_design_id}/`
+        const pageCount = typeof current.page_count === 'number' && current.page_count > 0
+          ? Math.round(current.page_count)
+          : null
+        // Array posicional por página (índice i = página i+1, '' = hueco):
+        // solo de ESTA plantilla y cubriendo al menos sus páginas.
+        if (
+          !paths ||
+          (pageCount !== null && paths.length < pageCount) ||
+          paths.some(p => p !== '' && !p.startsWith(prefix))
+        ) {
+          return NextResponse.json(
+            { error: 'bg_paths inválido — array posicional de paths templates/{designId}/...' },
+            { status: 400 },
+          )
+        }
+        source.bg_paths = paths
+      }
+    }
+    patch.source = source
+  }
+
   const { error } = await admin.from('design_templates').update(patch).eq('id', body.id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })

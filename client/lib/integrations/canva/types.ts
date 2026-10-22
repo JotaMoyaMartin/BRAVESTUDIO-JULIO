@@ -59,6 +59,11 @@ export interface CanvaBinding {
   maxLength?: number     // máximo de caracteres para textos
   instructions?: string  // instrucciones IA opcionales
   zone?: CanvaBindingZone // zona tap-editable por la clienta (opcional)
+  // ── Calibración del editor de la clienta (saneada en asBindings) ──
+  zoneStyle?: Record<string, unknown> // estilo visual de la zona (texto real sobre el PNG)
+  defaultText?: string    // texto original del diseño (prefill del editor)
+  defaultPhotoPath?: string // PNG default en design-exports (subida manual del admin)
+  defaultPhotoUrl?: string // SOLO server→clienta: defaultPhotoPath firmada (se deriva, no se guarda)
 }
 
 /** Mapa campo → comportamiento, el source of truth de bindings en BRÄVE. */

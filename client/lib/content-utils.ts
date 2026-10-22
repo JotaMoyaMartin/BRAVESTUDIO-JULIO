@@ -106,13 +106,14 @@ export async function saveToLibrary(
   userId: string,
   payload: Record<string, unknown>,
   isDemoMode: boolean
-): Promise<void> {
+): Promise<boolean> {
   if (isDemoMode) {
     demoSavePlan({ ...payload, status: 'library' })
-    return
+    return true
   }
   const supabase = createClient()
-  await supabase.from('content_items').insert({ user_id: userId, ...payload, status: 'library' })
+  const { error } = await supabase.from('content_items').insert({ user_id: userId, ...payload, status: 'library' })
+  return !error
 }
 
 export async function scheduleItem(

@@ -73,6 +73,7 @@ export default function CanvaTestPage() {
   const [result, setResult] = useState<{ generatedDesignId: string; pages: { page: number; url: string; path: string }[]; usesRemaining: number | null; durationMs: number } | null>(null)
   const [tplName, setTplName] = useState('')
   const [tplCategory, setTplCategory] = useState('')
+  const [tplAspect, setTplAspect] = useState('')
   const [tplStatus, setTplStatus] = useState<'draft' | 'published'>('draft')
   const [saving, setSaving] = useState(false)
   const [publishing, setPublishing] = useState(false)
@@ -145,12 +146,12 @@ export default function CanvaTestPage() {
     setDesign(null)
     setDataset([])
     setBindings({})
+    setAiConfig({})
     setTextValues({})
     setPhotos({})
     setResult(null)
     setTplSaved(null)
     setTplPreview(null)
-    setTplCategory('')
     setTplStatus('draft')
     try {
       const res = await fetch(`/api/canva/design?ref=${encodeURIComponent(target)}`)
@@ -164,8 +165,29 @@ export default function CanvaTestPage() {
         .map(([name, type]) => ({ name, type }))
       rows.sort((a, b) => a.name.localeCompare(b.name, 'es', { numeric: true }))
       setDataset(rows)
-      setBindings(Object.fromEntries(rows.map(r => [r.name, defaultBehavior(r.name, r.type)])))
+      // "Cargar" de una plantilla ya guardada: el mapper arranca con sus
+      // bindings persistidos (no se resetea la calibración de behavior/IA).
+      const saved = savedTemplates?.find(t => t.provider_design_id === target)
+      setBindings(Object.fromEntries(rows.map(r => {
+        const savedBehavior = saved?.bindings?.[r.name]?.behavior
+        const allowed = BEHAVIOR_OPTIONS.filter(o => o.types.includes(r.type)).map(o => o.value)
+        const start = savedBehavior && (allowed as string[]).includes(savedBehavior)
+          ? savedBehavior
+          : defaultBehavior(r.name, r.type)
+        return [r.name, start]
+      })))
+      setAiConfig(Object.fromEntries(
+        rows
+          .filter(r => saved?.bindings?.[r.name]?.behavior === 'ai_text')
+          .map(r => {
+            const b = saved?.bindings?.[r.name]
+            return [r.name, { purpose: b?.purpose ?? 'desarrollo', maxLength: b?.maxLength ? String(b.maxLength) : '' }]
+          }),
+      ))
       setTplName(json.design.title)
+      setTplCategory(saved?.category ?? '')
+      const savedAspect = saved?.source?.aspect
+      setTplAspect(typeof savedAspect === 'string' ? savedAspect : '')
     } finally {
       setImporting(false)
     }
@@ -190,26 +212,37 @@ export default function CanvaTestPage() {
   }
 
   function templatePayload(publish?: boolean): string {
-    const bindingsPayload = Object.fromEntries(
-      dataset.map(row => {
-        const behavior = bindings[row.name]
-        const base: Record<string, unknown> = { behavior }
-        if (behavior === 'ai_text') {
-          const extra = aiConfig[row.name]
-          if (extra?.maxLength) base.maxLength = Number(extra.maxLength)
-          base.purpose = extra?.purpose || 'desarrollo'
-        }
-        return [row.name, base]
-      }),
-    )
+    // Merge con las bindings YA guardadas de la fila: el mapper solo dicta
+    // behavior/purpose/maxLength — el resto (zone, zoneStyle, defaultText,
+    // defaultPhotoPath calibrados en el editor de zonas) viaja intacto.
+    // Re-guardar así no machaca la calibración de la clienta.
+    const designRef = (design?.id ?? ref).trim()
+    const savedRow = savedTemplates?.find(t => t.provider_design_id === designRef)
+    const savedBindings = savedRow?.bindings ?? {}
+    const merged: Record<string, unknown> = {}
+    for (const [field, b] of Object.entries(savedBindings)) merged[field] = { ...b } as unknown
+    for (const row of dataset) {
+      const behavior = bindings[row.name]
+      const saved = merged[row.name] as Record<string, unknown> | undefined
+      const base: Record<string, unknown> = { ...saved, behavior }
+      if (behavior === 'ai_text') {
+        const extra = aiConfig[row.name]
+        base.purpose = extra?.purpose || (typeof saved?.purpose === 'string' && saved.purpose ? saved.purpose : 'desarrollo')
+        if (extra?.maxLength) base.maxLength = Number(extra.maxLength)
+        else if (typeof saved?.maxLength === 'number') base.maxLength = saved.maxLength
+      }
+      merged[row.name] = base
+    }
     // publish solo se envía desde el toggle; el "Guardar" simple no lo toca
     // (el servidor conserva el status actual y las plantillas publicadas no
     // se despublican al re-guardarse).
+    const aspect = tplAspect.trim()
     return JSON.stringify({
-      designRef: design?.id ?? ref,
+      designRef: designRef || undefined,
       name: tplName || design?.title,
       category: tplCategory.trim() || undefined,
-      bindings: bindingsPayload,
+      bindings: merged,
+      ...(aspect ? { aspect } : {}),
       ...(publish === undefined ? {} : { publish }),
     })
   }
@@ -476,13 +509,24 @@ export default function CanvaTestPage() {
                     )}
                   </div>
                 ))}
-                <div className="max-w-xs">
-                  <Input
-                    label="Categoría"
-                    placeholder="balayage, cuidado-capilar, cortes…"
-                    value={tplCategory}
-                    onChange={e => setTplCategory(e.target.value)}
-                  />
+                <div className="flex flex-wrap gap-3">
+                  <div className="max-w-xs flex-1">
+                    <Input
+                      label="Categoría"
+                      placeholder="balayage, cuidado-capilar, cortes…"
+                      value={tplCategory}
+                      onChange={e => setTplCategory(e.target.value)}
+                    />
+                  </div>
+                  <div className="max-w-[180px]">
+                    <Input
+                      label="Aspecto (CSS)"
+                      placeholder="4 / 5"
+                      value={tplAspect}
+                      onChange={e => setTplAspect(e.target.value)}
+                      hint='Opcional — "4 / 5", "9:16"…'
+                    />
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <Button size="sm" variant="secondary" loading={saving} onClick={saveTemplate}>Guardar plantilla</Button>

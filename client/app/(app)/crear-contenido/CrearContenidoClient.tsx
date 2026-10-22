@@ -4,9 +4,10 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { saveToLibrary } from '@/lib/content-utils'
+import AddToPlanButton from '@/components/plan/AddToPlanButton'
 import { ContentObjective } from '@/lib/ai/prompts/reels'
 import {
-  OBJECTIVES, STRUCTURES, HOOK_TYPE_LABEL, structuresFor,
+  STRUCTURES, HOOK_TYPE_LABEL, HOOK_GOAL_LABEL, structuresFor,
   generateHooks, generateGuion, guionToText, guionSpoken,
   HookOption, Understanding, GuionOutput, StructureId,
 } from '@/lib/ai/prompts/guiones'
@@ -63,6 +64,7 @@ export default function CrearContenidoClient({
   initialService,
   initialTema,
   initialContexto,
+  autoStart = false,
   recentTitles = [],
 }: {
   userId: string
@@ -70,6 +72,8 @@ export default function CrearContenidoClient({
   initialService?: string | null
   initialTema?: string | null
   initialContexto?: string | null
+  /** Viene de Reels virales con la idea escrita: salta directo a los ganchos. */
+  autoStart?: boolean
   recentTitles?: string[]
 }) {
   const isDemoMode = userId === 'demo'
@@ -87,7 +91,6 @@ export default function CrearContenidoClient({
   const [step, setStep] = useSessionState<Step>(`${k}:step`, 'topic')
   const [service, setService] = useSessionState<string>(`${k}:service`, initialService || '')
   const [idea, setIdea] = useSessionState<string>(`${k}:idea`, [initialTema, initialContexto].filter(Boolean).join('. '))
-  const [objective, setObjective] = useSessionState<ContentObjective>(`${k}:objective`, 'autoridad')
   const [understanding, setUnderstanding] = useSessionState<Understanding | null>(`${k}:understanding`, null)
   const [hooks, setHooks] = useSessionState<HookOption[]>(`${k}:hooks`, [])
   const [hooksMock, setHooksMock] = useSessionState<boolean>(`${k}:hooksMock`, false)
@@ -111,10 +114,19 @@ export default function CrearContenidoClient({
   // se empieza limpio en el paso 1 con ese tema.
   useEffect(() => {
     if (initialService || initialTema) {
+      const incoming = [initialTema, initialContexto].filter(Boolean).join('. ')
+      setIdea(incoming)
+      setService(initialService || '')
       setStep('topic')
       setHooks([])
       setCurrent(null)
       setPickedHook(null)
+      if (autoStart && incoming) loadHooks(false, incoming)
+    } else if (step === 'hooks' && hooks.length === 0) {
+      // Se salió mientras se generaban los ganchos: vuelve al tema, no a un paso vacío.
+      setStep('topic')
+    } else if (step === 'script' && !current) {
+      setStep(hooks.length ? 'hooks' : 'topic')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -159,14 +171,14 @@ export default function CrearContenidoClient({
   }
 
   // ── Ganchos ──
-  async function loadHooks(more: boolean) {
+  async function loadHooks(more: boolean, ideaOverride?: string) {
+    const ideaText = (ideaOverride ?? idea).trim()
     setHooksLoading(true)
     setStep('hooks')
     if (!more) { setPickedHook(null); setHooks([]) }
     const res = await generateHooks({
       service: topicLabel,
-      idea: idea.trim() || undefined,
-      objective,
+      idea: ideaText || undefined,
       brandContext,
       avoid: [...shownHooks, ...(more ? hooks.map(h => h.text) : [])],
       recentTitles,
@@ -186,7 +198,7 @@ export default function CrearContenidoClient({
     setStep('script')
     const { guion, mock } = await generateGuion({
       service: topicLabel,
-      objective,
+      objective: hook.goal ?? 'autoridad',
       hook,
       structure,
       idea: idea.trim() || undefined,
@@ -216,7 +228,7 @@ export default function CrearContenidoClient({
       type: 'reel',
       title: g.title,
       service: topicLabel,
-      objective,
+      objective: current.hook.goal ?? 'autoridad',
       content_json: g as unknown as Record<string, unknown>,
       caption_with_hashtags: g.captionWithHashtags || null,
       visual_idea: g.visualIdea || null,
@@ -356,29 +368,6 @@ export default function CrearContenidoClient({
               </div>
             </section>
 
-            {/* Objetivo */}
-            <section className="space-y-2.5">
-              <h2 className="text-lg text-ink" style={{ ...TITLE, fontWeight: 600 }}>¿Qué quieres conseguir?</h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {OBJECTIVES.map(o => {
-                  const on = objective === o.id
-                  return (
-                    <button
-                      key={o.id}
-                      onClick={() => setObjective(o.id)}
-                      aria-pressed={on}
-                      className={`text-left px-3.5 py-3 rounded-2xl transition-all border-[1.5px] ${on ? 'bg-buttermilk border-cherry text-cherry-dark shadow-sm' : 'bg-white border-buttermilk text-cherry-dark hover:border-cherry/30'}`}
-                    >
-                      <span className="flex items-center gap-1.5 text-sm font-bold">
-                        {on && <Check size={14} className="text-cherry" />}{o.label}
-                      </span>
-                      <span className="block text-xs mt-0.5 opacity-70 leading-snug">{o.desc}</span>
-                    </button>
-                  )
-                })}
-              </div>
-            </section>
-
             <UsarMiMarcaToggle enabled={useMiMarca} onChange={setUseMiMarca} disabled={hooksLoading} hasBrand={hasBrand} />
 
             <StickyBar>
@@ -447,7 +436,8 @@ export default function CrearContenidoClient({
                         </span>
                         <div className="flex-1 min-w-0">
                           <div className="flex flex-wrap items-center gap-1.5">
-                            <span className="text-[11px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-buttermilk text-cherry-dark">{HOOK_TYPE_LABEL[h.type]}</span>
+                            <span className="text-[12px] font-semibold px-2.5 py-0.5 rounded-full bg-burdeos text-crema">{HOOK_GOAL_LABEL[h.goal] ?? HOOK_GOAL_LABEL.autoridad}</span>
+                            <span className="text-[12px] font-semibold px-2.5 py-0.5 rounded-full bg-buttermilk text-cherry-dark">{HOOK_TYPE_LABEL[h.type]}</span>
                           </div>
                           <p className="mt-2 text-[17px] leading-snug text-ink" style={{ ...TITLE, fontWeight: 500 }}>«{h.text}»</p>
                           {h.angle && <p className="mt-1.5 text-sm text-cherry-dark/70">{h.angle}</p>}
@@ -498,12 +488,24 @@ export default function CrearContenidoClient({
                 />
 
                 <div className="grid grid-cols-2 gap-2">
-                  <button onClick={() => writeScript(current.hook, otherStructure(objective, current.guion.structure))} className="btn-ghost justify-center text-sm">
+                  <button onClick={() => writeScript(current.hook, otherStructure(current.hook.goal ?? 'autoridad', current.guion.structure))} className="btn-ghost justify-center text-sm">
                     <RefreshCw size={14} /> Otra versión
                   </button>
                   <button onClick={() => setStep('hooks')} className="btn-ghost justify-center text-sm">
                     <ChevronLeft size={14} /> Otro gancho
                   </button>
+                  <AddToPlanButton
+                    userId={userId}
+                    status="idea"
+                    className="btn-ghost justify-center text-sm col-span-2"
+                    label="Añadir a mi plan (elige el día)"
+                    getPayload={() => ({
+                      type: 'reel', title: current.guion.title, service: topicLabel,
+                      content_json: current.guion as unknown as Record<string, unknown>,
+                      caption_with_hashtags: current.guion.captionWithHashtags || null,
+                      visual_idea: current.guion.visualIdea || null, format: 'reel',
+                    })}
+                  />
                   <button onClick={reset} className="btn-ghost justify-center text-sm col-span-2">
                     <RotateCcw size={14} /> Empezar un guion nuevo
                   </button>

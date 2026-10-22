@@ -3,6 +3,7 @@ import Script from 'next/script'
 import {
   Poppins, Fraunces, Yellowtail, Montserrat,
   Bebas_Neue, DM_Serif_Display, Archivo_Black, Space_Grotesk,
+  Instrument_Serif, Pinyon_Script, Archivo,
 } from 'next/font/google'
 import './globals.css'
 
@@ -40,11 +41,22 @@ const montserrat = Montserrat({
 const bebas = Bebas_Neue({ subsets: ['latin'], weight: '400', variable: '--font-bebas', display: 'swap' })
 const dmserif = DM_Serif_Display({ subsets: ['latin'], weight: '400', variable: '--font-dmserif', display: 'swap' })
 const archivo = Archivo_Black({ subsets: ['latin'], weight: '400', variable: '--font-archivo', display: 'swap' })
+// Carruseles: «Silencio» (serif estrecha + manuscrita fina) y «Póster» (palo seco ancha).
+const instrument = Instrument_Serif({ subsets: ['latin', 'latin-ext'], weight: '400', style: ['normal', 'italic'], variable: '--font-instrument', display: 'swap' })
+const pinyon = Pinyon_Script({ subsets: ['latin'], weight: '400', variable: '--font-pinyon', display: 'swap' })
+const archivoWide = Archivo({ subsets: ['latin', 'latin-ext'], axes: ['wdth'], variable: '--font-archivo-wide', display: 'swap' })
 const grotesk = Space_Grotesk({ subsets: ['latin', 'latin-ext'], weight: ['400', '500', '700'], variable: '--font-grotesk', display: 'swap' })
 
 export const metadata: Metadata = {
   title: 'BRÄVE Studio',
   description: 'Tu herramienta de contenido para salones de belleza',
+  openGraph: {
+    title: 'BRÄVE Studio',
+    description: 'Tu directora de marketing para el salón: ideas, guiones y calendario listos para publicar en Instagram.',
+    type: 'website',
+    locale: 'es_ES',
+  },
+  twitter: { card: 'summary' },
   manifest: '/manifest.webmanifest',
   appleWebApp: {
     capable: true,
@@ -70,7 +82,7 @@ export const viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className={`${poppins.variable} ${fraunces.variable} ${yellowtail.variable} ${montserrat.variable} ${bebas.variable} ${dmserif.variable} ${archivo.variable} ${grotesk.variable}`}>
+    <html lang="es" className={`${poppins.variable} ${fraunces.variable} ${yellowtail.variable} ${montserrat.variable} ${bebas.variable} ${dmserif.variable} ${archivo.variable} ${grotesk.variable} ${instrument.variable} ${pinyon.variable} ${archivoWide.variable}`}>
       <body>
         {/* Meta Pixel (bravestudio-web) — ID público; PageView en todas las páginas. */}
         <Script id="meta-pixel" strategy="afterInteractive">

@@ -4,10 +4,11 @@ import PageTransition from '@/components/ui/PageTransition'
 import AnalisisClient from './AnalisisClient'
 import { IS_DEMO } from '@/lib/demo'
 import { getConnectInfo, getConnectionCounts, isSocialProviderReady } from '@/lib/social/repo'
+import { getSavedReport } from '@/lib/social/analysis'
 
 /**
- * Análisis (Fase 1): estado de la conexión de Instagram y datos traídos.
- * El motor de diagnóstico es Fase 3 — aquí solo se muestra el placeholder.
+ * Análisis: conexión de Instagram + Análisis de perfil (informe con IA,
+ * 22-oct-2026). El informe guardado llega ya en el primer render.
  */
 export default async function AnalisisPage() {
   // Modo demo (sin credenciales): estado de conexión falso para enseñar la UI.
@@ -25,6 +26,7 @@ export default async function AnalisisPage() {
 
   const state = await getConnectInfo(user.id, 'instagram')
   const counts = await getConnectionCounts(user.id, 'instagram')
+  const report = state.connected ? await getSavedReport(user.id).catch(() => null) : null
 
   return (
     <PageTransition>
@@ -33,6 +35,8 @@ export default async function AnalisisPage() {
         info={state.info}
         needsReauth={state.needsReauth}
         counts={counts}
+        userId={user.id}
+        initialReport={report}
       />
     </PageTransition>
   )

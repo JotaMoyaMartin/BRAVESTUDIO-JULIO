@@ -1,4 +1,6 @@
 'use client'
+import InstagramHomeCard from '@/components/home/InstagramHomeCard'
+import type { InstagramCardProps } from '@/lib/social/card-state'
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { demoGetBrand, demoSaveBrand } from '@/lib/demo-store'
@@ -114,7 +116,7 @@ const PHRASE_BLOCKS: { title: string; icon: typeof Store; phrases: GuidePhrase[]
 
 // ── Component ───────────────────────────────────────────────────────
 
-export default function MiMarcaClient({ userId, brand }: { userId: string; brand: BrandProfile | null }) {
+export default function MiMarcaClient({ userId, brand, instagram }: { userId: string; brand: BrandProfile | null; instagram?: InstagramCardProps }) {
   const isDemoMode = userId === 'demo'
   const [text, setText] = useSessionState<string>(`u:${userId}:marca:text`, brand?.raw_input || '')
   const [saving, setSaving] = useState(false)
@@ -332,6 +334,9 @@ export default function MiMarcaClient({ userId, brand }: { userId: string; brand
         </div>
       </div>
 
+      {/* Tu Instagram (22-oct-2026): conectar / estado / resumen del análisis */}
+      {instagram && <InstagramHomeCard {...instagram} />}
+
       {/* ── Hoja de Ruta BRÄVE (parte alta, lo más atractivo) ── */}
       <div ref={roadmapRef} className="space-y-4">
         {roadmap && roadmap.phases.length > 0 ? (
@@ -345,7 +350,7 @@ export default function MiMarcaClient({ userId, brand }: { userId: string; brand
             className="rounded-[var(--radius-lg)] p-8 text-center bg-white shadow-soft"
             style={{ border: '1.5px solid var(--color-buttermilk)' }}
           >
-            <div className="text-4xl mb-3 float-soft inline-block">🗺️</div>
+            <div className="w-14 h-14 mb-3 mx-auto rounded-2xl bg-mantequilla text-burdeos flex items-center justify-center"><MapIcon size={26} aria-hidden="true" /></div>
             <h3 className="text-xl font-bold text-cherry-dark mb-2">Mi Hoja de Ruta BRÄVE</h3>
             <p className="text-sm text-cherry-dark opacity-70 max-w-md mx-auto mb-5">
               Cuando tengas tu estrategia lista, Bravi diseñará un camino visual personalizado de fases

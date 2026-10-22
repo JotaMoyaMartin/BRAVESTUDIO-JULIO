@@ -73,6 +73,18 @@ export interface SocialProfile {
   followers: number | null
 }
 
+/** Perfil ampliado (Análisis de perfil): nombre y bio cuando Meta los da. */
+export interface SocialProfileDetails extends SocialProfile {
+  name: string | null
+  /** null si la cuenta no tiene bio o Meta no la da (ver bioAvailable). */
+  biography: string | null
+  /** false = Meta no deja leer la bio con este permiso. */
+  bioAvailable: boolean
+  website: string | null
+  mediaCount: number | null
+  follows: number | null
+}
+
 /** Resultado de exchangeCode: token long-lived + identidad de la cuenta. */
 export interface SocialExchangeResult {
   accessToken: string

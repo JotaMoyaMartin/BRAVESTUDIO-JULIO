@@ -17,6 +17,8 @@ export interface ChecklistInput {
   storiesCount: number
   weekCreated: number
   weekPublished: number
+  /** Instagram conectado (activo) — completa el paso de medir. */
+  instagramConnected?: boolean
 }
 
 /**
@@ -77,10 +79,11 @@ export function buildBraviChecklist(input: ChecklistInput): BraviStep[] {
       },
       {
         id: 'publicar',
-        label: 'Publica y mide',
-        desc: 'Mira qué funciona y repite lo que trae clientas',
-        href: '/calendario',
-        done: input.weekPublished > 0,
+        // 22-oct-2026: «medir» = conectar Instagram y ver el Análisis de perfil.
+        label: 'Conecta Instagram y mide',
+        desc: 'Te decimos qué te funciona y cómo mejorar tu perfil',
+        href: '/analisis',
+        done: !!input.instagramConnected || input.weekPublished > 0,
       },
     )
   }

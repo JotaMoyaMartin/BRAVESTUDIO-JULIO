@@ -1,17 +1,21 @@
 'use client'
 // ANÁLISIS — la casa de "Instagram conectado". Estados:
 //   no configurado → en preparación · sin conectar → hero de conexión ·
-//   caducado → reconectar · activa → cabecera + acciones + historial.
-// Fase 3 añadirá aquí el Diagnóstico BRÄVE (placeholder ya integrado).
+//   caducado → reconectar · activa → cuenta + Análisis de perfil (informe IA).
+// Demo: informe de EJEMPLO calculado con el motor real (lib/social/demo-analysis).
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChartNoAxesColumn, Lock, RefreshCw, Trash2 } from 'lucide-react'
+import { ChartNoAxesColumn, Check, Lock, RefreshCw, Sparkles, Trash2 } from 'lucide-react'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
 import SectionTitle from '@/components/ui/SectionTitle'
 import { useToast } from '@/components/ui/Toast'
+import ProfileReportView from '@/components/social/ProfileReportView'
+import InstagramGlyph, { IG_GRADIENT } from '@/components/social/InstagramGlyph'
+import { buildDemoReport } from '@/lib/social/demo-analysis'
+import type { ProfileReport } from '@/lib/social/analysis'
 import type { SocialConnectInfo } from '@/lib/social/types'
 
 interface Props {
@@ -20,6 +24,8 @@ interface Props {
   info?: SocialConnectInfo | null
   needsReauth?: boolean
   counts?: { media: number; dailyDays: number }
+  userId?: string
+  initialReport?: ProfileReport | null
 }
 
 /** Bloqueo de actualización manual: 1 h desde la última sync (server limita a 3/h). */
@@ -29,8 +35,14 @@ const ERROR_MESSAGES: Record<string, string> = {
   not_configured: 'La conexión con Instagram está en preparación — necesitamos la aprobación de Meta.',
   denied: 'No se completó la conexión con Instagram — puedes intentarlo cuando quieras.',
   state_mismatch: 'La sesión de conexión caducó — prueba otra vez desde aquí.',
-  meta_error: 'Instagram rechazó la conexión — inténtalo de nuevo en unos minutos.',
+  meta_error: 'Instagram rechazó la conexión. Comprueba que tu cuenta es profesional (de empresa o de creadora) e inténtalo de nuevo.',
 }
+
+const BENEFITS = [
+  'Un informe de tu perfil: qué formato te funciona y cuándo publicar',
+  'Tu bio y tu nombre reescritos para que te encuentren',
+  'Ideas que pasan a Mi plan con un toque',
+]
 
 export default function AnalisisClient({
   demo = false,
@@ -38,12 +50,16 @@ export default function AnalisisClient({
   info = null,
   needsReauth = false,
   counts = { media: 0, dailyDays: 0 },
+  userId = 'demo',
+  initialReport = null,
 }: Props) {
   const router = useRouter()
   const toast = useToast()
 
   const [connecting, setConnecting] = useState(false)
   const [syncing, setSyncing] = useState(false)
+  const [analyzing, setAnalyzing] = useState(false)
+  const [report, setReport] = useState<ProfileReport | null>(initialReport)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [disconnected, setDisconnected] = useState(false)
   const [reauth, setReauth] = useState(needsReauth)
@@ -51,26 +67,26 @@ export default function AnalisisClient({
     info?.lastSyncAt ? new Date(info.lastSyncAt).getTime() : null,
   )
   const [, setTick] = useState(0)
+  const demoReport = useMemo(() => (demo ? buildDemoReport() : null), [demo])
+
+  const connected = !!info && !demo && !disconnected
+  const caducada = connected && reauth
+  const activa = connected && !caducada
 
   // ── Flash de ?error= / ?connected=1 (post-mount: sin Suspense necesario) ──
   useEffect(() => {
     if (demo) return
     const params = new URLSearchParams(window.location.search)
     const error = params.get('error')
-    const connectedParam = params.get('connected')
-    const flash: { tone: 'success' | 'info'; message: string } | null =
-      error && ERROR_MESSAGES[error]
-        ? { tone: 'info', message: ERROR_MESSAGES[error] }
-        : connectedParam
-          ? {
-              tone: 'success',
-              message: 'Instagram conectado — tu primer volcado de datos llega ahora mismo.',
-            }
-          : null
-    if (flash) {
-      toast.show(flash.message, flash.tone)
-      // Limpiar la query para que el feedback no reaparezca al recargar.
-      window.history.replaceState(null, '', '/analisis')
+    const justConnected = params.get('connected')
+    if (error && ERROR_MESSAGES[error]) toast.show(ERROR_MESSAGES[error], 'info')
+    if (error || justConnected) window.history.replaceState(null, '', '/analisis')
+    // Recién conectada: el primer análisis (que trae sus datos) arranca solo.
+    if (justConnected && activa && !initialReport) {
+      toast.show('Instagram conectado. Estamos analizando tu perfil…', 'success')
+      void handleAnalyze()
+    } else if (justConnected) {
+      toast.show('Instagram conectado.', 'success')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [demo])
@@ -80,10 +96,6 @@ export default function AnalisisClient({
     const id = setInterval(() => setTick(t => t + 1), 30_000)
     return () => clearInterval(id)
   }, [])
-
-  const connected = !!info && !demo && !disconnected
-  const caducada = connected && reauth
-  const activa = connected && !caducada
 
   const remainingMs = lastSyncMs ? Math.max(0, lastSyncMs + HOUR_MS - Date.now()) : 0
   const canSync = activa && !syncing && remainingMs === 0
@@ -95,19 +107,43 @@ export default function AnalisisClient({
     window.location.href = '/api/social/oauth/authorize'
   }
 
+  async function handleAnalyze(bio?: string) {
+    setAnalyzing(true)
+    try {
+      const res = await fetch('/api/social/analysis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bio ? { bio } : {}),
+      })
+      const data = (await res.json().catch(() => ({}))) as { report?: ProfileReport; message?: string }
+      if (res.ok && data.report) {
+        setReport(data.report)
+        toast.show('Tu análisis está listo.', 'success')
+        router.refresh()
+      } else if (res.status === 409) {
+        setReauth(true)
+        toast.show('El acceso de Instagram caducó — reconecta tu cuenta.', 'info')
+      } else {
+        toast.show(data.message || 'No se pudo analizar ahora — inténtalo de nuevo en unos minutos.', 'info')
+      }
+    } catch {
+      toast.show('Sin conexión con el servidor — inténtalo de nuevo.', 'info')
+    } finally {
+      setAnalyzing(false)
+    }
+  }
+
   async function handleSync() {
     if (!canSync) return
     setSyncing(true)
     try {
       const res = await fetch('/api/social/sync', { method: 'POST' })
       if (res.ok) {
-        const data = (await res.json()) as {
-          daily: number; media: number; stories: number; errors: string[]
-        }
+        const data = (await res.json()) as { daily: number; media: number; stories: number; errors: string[] }
         setLastSyncMs(Date.now())
         const piezas = data.media + data.stories
         toast.show(
-          `Datos actualizados — ${piezas} ${piezas === 1 ? 'contenido' : 'contenidos'}, ${data.daily} ${data.daily === 1 ? 'día' : 'días'}.`,
+          `Datos actualizados — ${piezas} ${piezas === 1 ? 'publicación' : 'publicaciones'}. Pulsa «Analizar de nuevo» para ver el informe al día.`,
           'success',
         )
         router.refresh()
@@ -137,6 +173,7 @@ export default function AnalisisClient({
       if (res.ok) {
         setDisconnected(true)
         setConfirmingDelete(false)
+        setReport(null)
         toast.show('Conexión y datos sociales borrados.', 'info')
         router.refresh()
       } else {
@@ -150,207 +187,143 @@ export default function AnalisisClient({
   const fechaFmt = (iso: string | null): string => {
     if (!iso) return ''
     try {
-      return new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })
+      return new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
     } catch {
       return iso.slice(0, 10)
     }
   }
 
-  const horaFmt = (iso: string | null): string => {
-    if (!iso) return ''
-    try {
-      return new Date(iso).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
-    } catch {
-      return ''
-    }
-  }
+  const connectHero = (opts: { disabled?: boolean; note?: string }) => (
+    <Card padding="lg" className="mb-4">
+      <div className="sm:flex sm:items-center sm:gap-8">
+        <div className="flex-1">
+          <span className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl text-white" style={{ background: IG_GRADIENT }}>
+            <InstagramGlyph size={24} />
+          </span>
+          <h3 className="text-xl sm:text-2xl font-bold text-ink mb-2">Conecta tu Instagram y te decimos qué mejorar</h3>
+          <ul className="space-y-2 my-4">
+            {BENEFITS.map(b => (
+              <li key={b} className="flex gap-2 text-[15px] text-ink">
+                <Check size={18} className="text-[#2A7A4A] flex-shrink-0 mt-0.5" aria-hidden /> {b}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="sm:w-72 space-y-3">
+          <Button size="lg" fullWidth loading={connecting} disabled={opts.disabled} onClick={handleConnect} icon={<InstagramGlyph size={16} />}>
+            Conectar Instagram
+          </Button>
+          {opts.note && <p className="text-[13px] text-tinta-2 text-center">{opts.note}</p>}
+          <p className="text-[12.5px] text-tinta-2 leading-snug">
+            Es seguro: nunca te pedimos la contraseña, autorizas desde Instagram. Necesitas una cuenta
+            <b> profesional</b> (de empresa o de creadora). Si la tuya es personal, cámbiala gratis en
+            Instagram › Configuración › Tipo de cuenta.
+          </p>
+        </div>
+      </div>
+    </Card>
+  )
 
   return (
     <div>
       <SectionTitle
         title="Análisis"
-        subtitle={demo ? 'Vista previa demo' : 'Qué está funcionando en tu Instagram'}
+        subtitle={demo ? 'Vista previa demo' : 'Qué está funcionando en tu Instagram y qué mejorar'}
         icon={<ChartNoAxesColumn size={22} />}
         className="mb-6"
       />
 
-      {/* ── Estado demo: vista previa con la conexión deshabilitada ──── */}
+      {/* ── Demo: hero deshabilitado + informe de ejemplo ────────────── */}
       {demo && (
-        <div
-          className="rounded-[var(--radius-lg)] p-6 sm:p-8 text-center mb-4"
-          style={{
-            background: 'var(--color-buttermilk)',
-            border: '2px solid var(--color-cherry)',
-            boxShadow: '0 10px 30px -18px rgba(122,24,50,0.35)',
-          }}
-        >
-          <h3 className="text-xl sm:text-2xl font-bold text-ink">Conecta Instagram para que BRÄVE analice qué está funcionando</h3>
-          <p className="text-sm text-cherry-dark opacity-75 mt-2">
-            estás en modo demo — la conexión con la cuenta real se activa al crear tu cuenta.
-          </p>
-          <div className="mt-4 flex items-center justify-center gap-2 flex-wrap">
-            <Badge tone="neutral">Demo</Badge>
-          </div>
-        </div>
+        <>
+          {connectHero({ disabled: true, note: 'Estás en modo demo: la conexión se activa con tu cuenta real. Abajo tienes un ejemplo del informe.' })}
+          {demoReport && <ProfileReportView report={demoReport} userId="demo" />}
+        </>
       )}
 
-      {/* ── Estado 2: listo y sin conectar → hero de conexión ────────── */}
-      {!demo && ready && !connected && (
-        <Card padding="lg" className="mb-4 text-center">
-          <span
-            className="mx-auto mb-4 inline-flex h-14 w-14 items-center justify-center rounded-full"
-            style={{ background: 'rgba(122,24,50,0.08)' }}
-          >
-            <ChartNoAxesColumn size={26} className="text-cherry" />
-          </span>
-          <h3 className="text-xl sm:text-2xl font-bold text-ink mb-2">Conecta Instagram</h3>
-          <p className="text-sm text-cherry-dark opacity-80 max-w-md mx-auto">
-            Así BRÄVE ve cada día qué funciona en tu cuenta: qué alcanza, qué guardan tus
-            clientas y qué contenido merece repetirse.
-          </p>
-          <p className="text-xs text-cherry-dark opacity-60 max-w-md mx-auto mt-2 mb-5">
-            Conectar es seguro: nunca pedimos tu contraseña — autorizas en la app de Instagram.
-          </p>
-          <Button
-            size="lg"
-            loading={connecting}
-            onClick={handleConnect}
-            icon={<ChartNoAxesColumn size={16} />}
-          >
-            Conectar Instagram
-          </Button>
-        </Card>
-      )}
+      {/* ── Sin conectar ─────────────────────────────────────────────── */}
+      {!demo && ready && !connected && connectHero({})}
 
-      {/* ── Estado 3: conexión caducada → reconectar ────────────────── */}
+      {/* ── Conexión caducada → reconectar ──────────────────────────── */}
       {caducada && (
         <Card padding="md" className="mb-4">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <span
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full"
-                style={{ background: 'rgba(122,24,50,0.08)' }}
-              >
+              <span className="inline-flex h-10 w-10 items-center justify-center rounded-full" style={{ background: 'rgba(122,24,50,0.08)' }}>
                 <RefreshCw size={18} className="text-cherry" />
               </span>
               <div>
-                <p className="text-sm font-bold text-cherry-dark">Conexión caducada</p>
+                <p className="text-sm font-bold text-cherry-dark">Tu conexión con Instagram ha caducado</p>
                 <p className="text-xs text-cherry-dark opacity-70">
-                  El acceso de Instagram venció{info?.username ? ` para @${info.username}` : ''} — basta con autorizar otra vez.
+                  Pasa cada cierto tiempo{info?.username ? ` (@${info.username})` : ''}: basta con autorizar otra vez. No pierdes nada.
                 </p>
               </div>
             </div>
-            <Button onClick={handleConnect} icon={<RefreshCw size={16} />}>Reconectar</Button>
+            <Button onClick={handleConnect} loading={connecting} icon={<RefreshCw size={16} />}>Reconectar</Button>
           </div>
         </Card>
       )}
 
-      {/* ── Estado 1bis: en preparación (cuando ready=false y no demo) ── */}
+      {/* ── En preparación (sin credenciales de Meta en el servidor) ─── */}
       {!ready && !demo && (
         <div
           className="rounded-[var(--radius-lg)] p-6 sm:p-8 text-center mb-4"
-          style={{
-            background: 'var(--color-buttermilk)',
-            border: '2px solid var(--color-cherry)',
-            boxShadow: '0 10px 30px -18px rgba(122,24,50,0.35)',
-          }}
+          style={{ background: 'var(--color-buttermilk)', border: '2px solid var(--color-cherry)', boxShadow: '0 10px 30px -18px rgba(122,24,50,0.35)' }}
         >
-          <span
-            className="mx-auto mb-4 inline-flex h-14 w-14 items-center justify-center rounded-full"
-            style={{ background: 'var(--color-cherry)' }}
-          >
+          <span className="mx-auto mb-4 inline-flex h-14 w-14 items-center justify-center rounded-full" style={{ background: 'var(--color-cherry)' }}>
             <Lock size={24} className="text-white" />
           </span>
           <h3 className="text-xl sm:text-2xl font-bold text-ink">La conexión con Instagram está en preparación</h3>
           <p className="text-sm text-cherry-dark opacity-80 max-w-md mx-auto mt-2">
-            Necesitamos la aprobación de Meta para leer los datos de tu cuenta — tan pronto
-            esté lista, la activamos.
+            Necesitamos la aprobación de Meta para leer los datos de tu cuenta — tan pronto esté lista, la activamos.
           </p>
           <div className="mt-3"><Badge tone="neutral">En preparación</Badge></div>
         </div>
       )}
 
-      {/* ── Estado 4: conexión activa ───────────────────────────────── */}
+      {/* ── Conexión activa: cuenta ─────────────────────────────────── */}
       {activa && info && (
         <Card padding="none" className="mb-4 overflow-hidden">
-          <div className="p-6">
-            <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="p-4 sm:p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
-                <span
-                  className="inline-flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full font-bold"
-                  style={{ background: 'var(--color-cherry)', color: 'white' }}
-                  title={info.username || 'cuenta de Instagram'}
-                >
-                  {(info.username || 'I').slice(0, 1).toUpperCase()}
+                <span className="inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-white" style={{ background: IG_GRADIENT }}>
+                  <InstagramGlyph size={18} />
                 </span>
                 <div className="min-w-0">
-                  <p className="text-sm font-bold text-cherry-dark truncate">
-                    @{info.username || 'instagram'}
+                  <p className="text-sm font-bold text-cherry-dark truncate flex items-center gap-2">
+                    @{info.username || 'instagram'} <Badge tone="cherry">Conectado</Badge>
                   </p>
                   <p className="text-xs text-cherry-dark opacity-60">
-                    Conectado el {fechaFmt(info.connectedAt)}
-                    {info.lastSyncAt
-                      ? ` · Últ. actualización ${fechaFmt(info.lastSyncAt)} ${horaFmt(info.lastSyncAt)}`
-                      : ''}
+                    {counts.media} {counts.media === 1 ? 'publicación leída' : 'publicaciones leídas'}
+                    {info.lastSyncAt ? ` · datos del ${fechaFmt(info.lastSyncAt)}` : ''}
                   </p>
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <Button
-                  size="sm"
-                  loading={syncing}
-                  disabled={!canSync}
-                  onClick={handleSync}
-                  icon={<RefreshCw size={14} />}
-                >
+                <Button size="sm" variant="secondary" loading={syncing} disabled={!canSync} onClick={handleSync} icon={<RefreshCw size={14} />}>
                   Actualizar datos
                 </Button>
-                <Button
-                  size="sm"
-                  variant="danger"
-                  onClick={() => setConfirmingDelete(true)}
-                  disabled={confirmingDelete}
-                  icon={<Trash2 size={14} />}
-                >
+                <Button size="sm" variant="ghost" onClick={() => setConfirmingDelete(true)} disabled={confirmingDelete} icon={<Trash2 size={14} />}>
                   Desconectar
                 </Button>
               </div>
             </div>
-
             {!canSync && remainingMs > 0 && (
-              <p className="text-[11px] text-cherry-dark opacity-50 mt-3">
-                Puedes actualizar una vez por hora — siguiente intento en{' '}
-                {Math.max(1, Math.round(remainingMs / 60_000))} min.
+              <p className="text-[11px] text-cherry-dark opacity-50 mt-2">
+                Puedes actualizar una vez por hora — siguiente intento en {Math.max(1, Math.round(remainingMs / 60_000))} min.
               </p>
             )}
-
-            <div
-              className="mt-4 flex flex-wrap items-center gap-2 border-t pt-4"
-              style={{ borderColor: 'rgba(122,24,50,0.08)' }}
-            >
-              <Badge tone="cherry">
-                {counts.media} {counts.media === 1 ? 'pieza' : 'piezas'}
-              </Badge>
-              <Badge tone="neutral">
-                {counts.dailyDays} {counts.dailyDays === 1 ? 'día' : 'días'} de historial
-              </Badge>
-            </div>
           </div>
 
           {/* Confirmación textual inline (2 clicks, sin window.confirm) */}
           {confirmingDelete && (
             <div className="p-4 border-t" style={{ background: 'var(--color-warm-light)' }}>
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="text-xs font-semibold text-cherry-dark">
-                  ¿Seguro? Se borrarán tus datos sociales de BRÄVE.
-                </p>
+                <p className="text-xs font-semibold text-cherry-dark">¿Seguro? Se borrarán tus datos de Instagram y tu informe en BRÄVE.</p>
                 <div className="flex items-center gap-2">
-                  <Button size="sm" variant="ghost" onClick={() => setConfirmingDelete(false)}>
-                    Cancelar
-                  </Button>
-                  <Button size="sm" variant="danger" onClick={handleDisconnect}>
-                    Sí, borrar todo
-                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setConfirmingDelete(false)}>Cancelar</Button>
+                  <Button size="sm" variant="danger" onClick={handleDisconnect}>Sí, borrar todo</Button>
                 </div>
               </div>
             </div>
@@ -358,50 +331,28 @@ export default function AnalisisClient({
         </Card>
       )}
 
-      {/* ── Nota: aún sin piezas traídas ─────────────────────────────── */}
-      {activa && counts.media === 0 && (
-        <p className="text-sm text-cherry-dark opacity-75 text-center mb-4">
-          Estamos empezando a conocer tu cuenta — los datos aparecerán tras la siguiente
-          sincronización diaria.
-        </p>
+      {/* ── Análisis de perfil ──────────────────────────────────────── */}
+      {activa && report && (
+        <ProfileReportView report={report} userId={userId} onRegenerate={bio => handleAnalyze(bio)} regenerating={analyzing} />
       )}
-
-      {/* ── Estado 6: placeholder del Diagnóstico BRÄVE (Fase 3) ────── */}
-      {activa && counts.media > 0 && (
-        <div
-          className="rounded-[var(--radius-md)] p-6 mb-4"
-          style={{
-            background: 'var(--color-buttermilk)',
-            border: '1.5px solid rgba(122,24,50,0.25)',
-          }}
-        >
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <p className="text-sm font-bold text-cherry-dark">
-                El Diagnóstico BRÄVE aparecerá aquí cuando tengas suficientes datos
-              </p>
-              <p className="text-xs text-cherry-dark opacity-70 mt-1 max-w-md">
-                BRÄVE aprenderá qué funciona en tu cuenta y qué hacer con ello — mientras
-                tanto, tu historial va entrando.
-              </p>
-            </div>
-            <Button
-              size="sm"
-              variant="secondary"
-              loading={syncing}
-              disabled={!canSync}
-              onClick={handleSync}
-              icon={<RefreshCw size={14} />}
-            >
-              Actualizar datos
-            </Button>
+      {activa && !report && (
+        <div className="rounded-[var(--radius-lg)] bg-mantequilla p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
+          <div>
+            <p className="text-lg font-semibold text-burdeos">{analyzing ? 'Analizando tu perfil…' : 'Tu análisis de perfil'}</p>
+            <p className="text-[14px] text-tinta-2 mt-1 max-w-md">
+              {analyzing
+                ? 'Leemos tu bio y tus últimas publicaciones. Tarda alrededor de un minuto.'
+                : 'Leemos tu bio y tus últimas 30 publicaciones y te decimos qué mejorar: bio, nombre, formatos, días y horas, e ideas.'}
+            </p>
           </div>
+          <Button size="lg" loading={analyzing} onClick={() => handleAnalyze()} icon={<Sparkles size={16} />}>
+            Analizar mi perfil
+          </Button>
         </div>
       )}
 
-      <p className="text-[11px] text-cherry-dark opacity-40 mt-6">
-        Conectamos en modo lectura: BRÄVE mira tus métricas y nunca toca tus publicaciones
-        ni tus mensajes.
+      <p className="text-[12px] text-tinta-2 mt-6">
+        BRÄVE solo lee tus datos: nunca publica, borra ni toca tus mensajes.
       </p>
     </div>
   )

@@ -33,7 +33,7 @@ describe('buildBraviChecklist — nueva usuaria', () => {
       '/crear-contenido',
       '/stories',
       '/planificar',
-      '/calendario',
+      '/analisis',
     ])
     expect(steps.every(s => !s.done)).toBe(true)
     expect(steps[0].label).toBe('Introduce la información de tu marca')
@@ -83,10 +83,10 @@ describe('buildBraviChecklist — semana con contenido', () => {
 
     const semana = buildBraviChecklist({ ...base, totalItems: 4, storiesCount: 2, weekCreated: 3 })
     expect(semana.find(s => s.href === '/planificar')?.done).toBe(true)
-    expect(semana.find(s => s.href === '/calendario')?.done).toBe(false)
+    expect(semana.find(s => s.href === '/analisis')?.done).toBe(false)
 
     const publicada = buildBraviChecklist({ ...base, totalItems: 4, storiesCount: 2, weekCreated: 3, weekPublished: 1 })
-    expect(publicada.find(s => s.href === '/calendario')?.done).toBe(true)
+    expect(publicada.find(s => s.href === '/analisis')?.done).toBe(true)
   })
 })
 
@@ -184,7 +184,7 @@ describe('bravi-chat — prompt y mock', () => {
       'algo totalmente distinto',
     ]
     const hrefsValidos = new Set([
-      '/mi-marca', '/crear-contenido', '/stories', '/planificar', '/calendario',
+      '/mi-marca', '/crear-contenido', '/stories', '/planificar', '/calendario', '/analisis',
       '/biblioteca', '/banco-ganchos', '/foto-inspo', '/carrusel', '/teleprompter',
     ])
     const resultados: BraviStep[] = []

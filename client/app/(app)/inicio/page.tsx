@@ -7,6 +7,7 @@ import { Reto10kProgress, Reto10kConfig } from '@/types/reto10k'
 import { computeCurrentDay } from '@/lib/reto-plan'
 import { TodayInput, localISODate, getWeekKey, pickLastPendingItem, pickRetoTodayStatus } from '@/lib/home-today'
 import { DEMO_REAL_INSPIRATIONS, DEMO_REAL_TRANSITIONS } from '../inspiracion-reels/demo-data'
+import { getInstagramCardState } from '@/lib/social/card-state'
 
 const IS_CONFIGURED = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').startsWith('http')
 
@@ -34,6 +35,7 @@ export default async function InicioPage() {
         isPremium={false}
         inspirations={DEMO_REAL_INSPIRATIONS}
         transitions={DEMO_REAL_TRANSITIONS as unknown as ReelTransition[]}
+        instagram={{ state: 'demo' }}
       />
     )
   }
@@ -121,6 +123,9 @@ export default async function InicioPage() {
 
   const brandSummary = brandRow?.optimized_summary ?? null
 
+  // Instagram (22-oct-2026): conexión + lo esencial del Análisis de perfil.
+  const instagram = await getInstagramCardState(user!.id)
+
   return (
     <InicioClient
       profile={profile as Profile | null}
@@ -129,6 +134,7 @@ export default async function InicioPage() {
       brandSummary={brandSummary}
       inspirations={(inspirations as ReelInspiration[] | null) ?? []}
       transitions={(transitions as ReelTransition[] | null) ?? []}
+      instagram={instagram}
     />
   )
 }

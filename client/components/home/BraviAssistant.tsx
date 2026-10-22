@@ -310,7 +310,9 @@ export default function BraviAssistant({
           </div>
         )}
 
-        {/* Re-consulta rápida: una fila scrolleable encima del input, siempre */}
+        {/* Re-consulta rápida: fila scrolleable encima del input, solo cuando ya
+            hay conversación (antes duplicaba las «Preguntas frecuentes» de arriba). */}
+        {(messages.length > 0 || busy) && (
         <div className="mt-2.5 flex gap-1.5 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
           {BRAVI_FAQ.map(f => (
             <button
@@ -328,6 +330,7 @@ export default function BraviAssistant({
             </button>
           ))}
         </div>
+        )}
 
         {/* Input */}
         <div className="mt-2 flex items-end gap-2">

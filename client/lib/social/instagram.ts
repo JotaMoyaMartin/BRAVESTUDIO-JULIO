@@ -5,6 +5,7 @@ import type {
   SocialMediaMetrics,
   SocialMediaSnapshot,
   SocialProfile,
+  SocialProfileDetails,
   SocialRefreshResult,
 } from './types'
 
@@ -37,6 +38,17 @@ const TOKEN_EXCHANGE_HOST = 'https://api.instagram.com'
 
 const AUTH_BASE = 'https://www.instagram.com/oauth/authorize'
 const SCOPES = ['instagram_business_basic', 'instagram_business_manage_insights']
+/** Permiso para PUBLICAR. Solo se pide con INSTAGRAM_PUBLISH_ENABLED=1 (tras App Review). */
+export const PUBLISH_SCOPE = 'instagram_business_content_publish'
+
+export function isInstagramPublishEnabled(): boolean {
+  return process.env.INSTAGRAM_PUBLISH_ENABLED === '1'
+}
+
+/** Permisos que se piden al conectar: lectura siempre; publicar solo si está activado. */
+export function requestedScopes(): string[] {
+  return isInstagramPublishEnabled() ? [...SCOPES, PUBLISH_SCOPE] : [...SCOPES]
+}
 
 const TIMEOUT_MS = 20_000
 const RETRY_DELAY_MS = 800
@@ -282,7 +294,7 @@ export class InstagramProviderClient implements SocialProviderClient {
       client_id: appId,
       redirect_uri: redirectUri,
       response_type: 'code',
-      scope: SCOPES.join(','),
+      scope: requestedScopes().join(','),
       state,
     })
     return `${AUTH_BASE}?${params.toString()}`
@@ -301,7 +313,7 @@ export class InstagramProviderClient implements SocialProviderClient {
     const appId = process.env.INSTAGRAM_APP_ID as string
     const appSecret = process.env.INSTAGRAM_APP_SECRET as string
 
-    const short = (await fetchJson(`${TOKEN_EXCHANGE_HOST}/oauth/access_token`, {
+    const shortRaw = (await fetchJson(`${TOKEN_EXCHANGE_HOST}/oauth/access_token`, {
       method: 'POST',
       body: new URLSearchParams({
         client_id: appId,
@@ -311,8 +323,17 @@ export class InstagramProviderClient implements SocialProviderClient {
         code,
       }),
     })) as Row
+    // La docs muestra {data:[{access_token,user_id,permissions}]}; en la práctica
+    // llega plano. Se aceptan las dos formas.
+    const short: Row = Array.isArray(shortRaw.data) ? ((shortRaw.data as Row[])[0] ?? {}) : shortRaw
     const shortToken = str(short.access_token)
     if (!shortToken) throw new GraphApiError('Instagram no devolvió access_token.', 0, 502)
+    // Permisos REALMENTE concedidos (la usuaria puede desmarcar alguno).
+    const granted = Array.isArray(short.permissions)
+      ? (short.permissions as unknown[]).filter((p): p is string => typeof p === 'string')
+      : typeof short.permissions === 'string'
+        ? short.permissions.split(',').map(p => p.trim()).filter(Boolean)
+        : null
 
     const longUrl =
       `${GRAPH_HOST}/access_token?grant_type=ig_exchange_token` +
@@ -334,7 +355,7 @@ export class InstagramProviderClient implements SocialProviderClient {
       accessToken,
       providerAccountId: str(short.user_id) ?? '',
       expiresInSeconds,
-      scopes: SCOPES,
+      scopes: granted && granted.length ? granted : requestedScopes(),
     }
   }
 
@@ -350,6 +371,40 @@ export class InstagramProviderClient implements SocialProviderClient {
       accountType: str(raw.account_type),
       avatarUrl: str(raw.profile_picture_url),
       followers: num(raw.followers_count),
+    }
+  }
+
+  /**
+   * Perfil ampliado para el Análisis de perfil: añade nombre y bio. Meta no
+   * garantiza `biography`/`website` con Instagram Login en todas las
+   * versiones → si los rechaza (code 100), se piden sin ellos y la UI dice
+   * que la bio no está disponible (nunca se inventa).
+   */
+  async getProfileDetails(token: string): Promise<SocialProfileDetails> {
+    const base = 'id,username,name,account_type,followers_count,follows_count,media_count,profile_picture_url'
+    const read = async (fields: string) =>
+      (await fetchJson(`${GRAPH_HOST}/${GRAPH_VERSION}/me?fields=${q(fields)}&access_token=${q(token)}`)) as Row
+    let raw: Row
+    let bioAvailable = true
+    try {
+      raw = await read(`${base},biography,website`)
+    } catch (err) {
+      if (!(err instanceof GraphApiError) || err.code !== 100) throw err
+      bioAvailable = false
+      raw = await read(base)
+    }
+    return {
+      providerAccountId: str(raw.id) ?? '',
+      username: str(raw.username),
+      accountType: str(raw.account_type),
+      avatarUrl: str(raw.profile_picture_url),
+      followers: num(raw.followers_count),
+      name: str(raw.name),
+      biography: bioAvailable ? (typeof raw.biography === 'string' ? raw.biography : null) : null,
+      bioAvailable,
+      website: str(raw.website),
+      mediaCount: num(raw.media_count),
+      follows: num(raw.follows_count),
     }
   }
 

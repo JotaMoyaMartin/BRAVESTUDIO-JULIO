@@ -19,8 +19,8 @@ import BraviAssistant from '@/components/home/BraviAssistant'
 import { buildBraviChecklist } from '@/lib/home-bravi'
 import AppTile, { AppTileLive, AppTileProps } from '@/components/home/AppTile'
 import { TILES_NORMAL, TILES_PREMIUM } from '@/components/home/tiles'
-import InspirationPreview from '@/components/home/InspirationPreview'
-import TransitionsPreview from '@/components/home/TransitionsPreview'
+import ReelsViralesHero from '@/components/home/ReelsViralesHero'
+import InstagramHomeCard, { type InstagramHomeState, type InstagramHomeSummary } from '@/components/home/InstagramHomeCard'
 import type { ReelInspiration, ReelTransition } from '@/types/database'
 import { reelCategory, categoryLabel } from '@/lib/reel-categories'
 
@@ -67,10 +67,10 @@ function ToolsSection({
   return (
     <section className="space-y-4">
       <h2 className="text-lg font-bold text-ink" style={{ letterSpacing: '-0.3px' }}>Todas tus herramientas</h2>
-      <InspirationPreview inspirations={inspirations} />
-      <TransitionsPreview transitions={transitions} />
+      {/* REELS VIRALES (21-oct-2026): un solo bloque que sustituye a Inspiración + Transiciones */}
+      <ReelsViralesHero inspirations={inspirations} transitions={transitions} />
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
-        {tiles.map(t => {
+        {tiles.filter(t => t.href !== '/inspiracion-reels').map(t => {
           const live: AppTileLive | undefined =
             t.href === '/inspiracion-reels' && liveDeck && t.liveCaption
               ? { ...liveDeck, caption: t.liveCaption, noun: t.liveNoun ?? 'ideas' }
@@ -93,6 +93,7 @@ export default function InicioClient({
   brandSummary = null,
   inspirations = [],
   transitions = [],
+  instagram = { state: 'preparing' },
 }: {
   profile: Profile | null
   todayInput: TodayInput | null
@@ -100,6 +101,7 @@ export default function InicioClient({
   brandSummary?: string | null
   inspirations?: ReelInspiration[]
   transitions?: ReelTransition[]
+  instagram?: { state: InstagramHomeState; username?: string | null; summary?: InstagramHomeSummary | null }
 }) {
   const [demoPlan, setDemoPlan] = useState<Partial<ContentItem>[]>([])
   const [demoBrand, setDemoBrand] = useState<Record<string, unknown> | null>(null)
@@ -173,6 +175,7 @@ export default function InicioClient({
     storiesCount: effectiveInput?.storiesCount ?? 0,
     weekCreated: effectiveInput?.weekCreated ?? 0,
     weekPublished: effectiveInput?.weekPublished ?? 0,
+    instagramConnected: instagram.state === 'connected',
   })
   const brandContext = brandSummary ?? (isDemo ? ((demoBrand?.optimized_summary as string | undefined) ?? null) : null)
 
@@ -194,6 +197,8 @@ export default function InicioClient({
           suggestionHref={plan.primary.ctaHref}
           brandContext={brandContext}
         />
+
+        <InstagramHomeCard {...instagram} />
 
         <ToolsSection tiles={TILES_NORMAL} inspirations={inspirations} transitions={transitions} />
       </div>
@@ -262,6 +267,9 @@ export default function InicioClient({
           </ul>
         </div>
       )}
+
+      {/* 5b. Tu Instagram — conexión + lo esencial del Análisis de perfil */}
+      <InstagramHomeCard {...instagram} />
 
       {/* 6. Progreso — una sola señal */}
       {progressLine && (

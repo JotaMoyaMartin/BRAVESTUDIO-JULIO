@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { resolveActor, canManageStrategy, findClientSupabaseId, buildBrandContextForUser } from '@/lib/team/api-helpers'
 import { generateIdeas } from '@/lib/ai/prompts/ideas'
+import { AI_UNAVAILABLE_MESSAGE } from '@/lib/ai/client'
 
 /**
  * POST /team/api/estrategia/ideas/generate
@@ -53,6 +54,11 @@ export async function POST(req: NextRequest) {
     completedTitles,
     confirmedTitles,
   })
+
+  // IA caída: no guardamos ideas de plantilla en el plan de la clienta.
+  if (mock) {
+    return NextResponse.json({ error: AI_UNAVAILABLE_MESSAGE }, { status: 503 })
+  }
 
   // Traer el order_idx máximo para añadir al final
   const { data: maxRow } = await admin

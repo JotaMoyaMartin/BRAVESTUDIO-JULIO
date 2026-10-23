@@ -1,465 +1,189 @@
 'use client'
+/**
+ * MI MARCA (23-oct-2026): «Tu marca en 5 minutos».
+ * 1) Preguntas, una por pantalla (casi todo con un toque).
+ * 2) Tu estrategia en 5 tarjetas (IA, o versión sin IA si no responde).
+ * 3) Tu camino BRÄVE: hoja de ruta visual de 5 etapas.
+ * Guarda también el documento completo que usan Bravi y los generadores.
+ */
+import { useEffect, useMemo, useState } from 'react'
+import { ArrowRight, AtSign, Clock, Pencil, RefreshCw, Sparkles } from 'lucide-react'
+import Link from 'next/link'
 import InstagramHomeCard from '@/components/home/InstagramHomeCard'
 import type { InstagramCardProps } from '@/lib/social/card-state'
-import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { demoGetBrand, demoSaveBrand } from '@/lib/demo-store'
-import { BrandProfile } from '@/types/database'
+import type { BrandProfile } from '@/types/database'
 import { generateAIContent, extractJSON } from '@/lib/ai/client'
-import { STRATEGY_PROMPT, ROADMAP_PROMPT } from '@/lib/ai/prompts/strategy'
-import { buildProfile } from '@/lib/brand-extract'
-import { StrategyDocument, EMPTY_STRATEGY, normalizeStrategy } from '@/lib/strategy-types'
-import { Roadmap, EMPTY_ROADMAP, RoadmapPhase, normalizeRoadmap } from '@/lib/roadmap-types'
-import { useSessionState, clearSectionState } from '@/lib/session-store'
-import VoiceButton from '@/components/VoiceButton'
-import { StrategyDisplay } from '@/components/mi-marca/StrategyDisplay'
-import { RoadmapDisplay } from '@/components/mi-marca/RoadmapDisplay'
-import BraviGuide from '@/components/bravi/BraviGuide'
-import BraviTip from '@/components/bravi/BraviTip'
-import {
-  Sparkles, Store, Scissors, Heart, Target, MessageCircle,
-  Eye, Clock, Palette, RefreshCw, Map as MapIcon,
-} from 'lucide-react'
+import { normalizeStrategy, type StrategyDocument } from '@/lib/strategy-types'
+import { useSessionState } from '@/lib/session-store'
+import { useToast } from '@/components/ui/Toast'
+import PageHeader from '@/components/ui/PageHeader'
+import Bravi from '@/components/bravi/Bravi'
+import Questionnaire from '@/components/marca/Questionnaire'
+import StrategyCards from '@/components/marca/StrategyCards'
+import CaminoPath from '@/components/marca/CaminoPath'
+import { QUESTIONS, answersToText, asList, asText, type Answers } from '@/lib/marca/questions'
+import { buildBrave5Prompt, mockBrave5, isBrave5, brave5ToStrategy, strategyToBrave5, type Brave5 } from '@/lib/marca/brave5'
 
-// ── 8 bloques, frases para completar (petición Jota 5-oct: nada de preguntas —
-// frases en 1ª persona tipo "Mi nombre es...", con ejemplos para facilitar) ──
-
-interface GuidePhrase {
-  stem: string
-  examples: string
-}
-
-const PHRASE_BLOCKS: { title: string; icon: typeof Store; phrases: GuidePhrase[] }[] = [
-  {
-    title: 'Sobre tu salón',
-    icon: Store,
-    phrases: [
-      { stem: 'Mi salón se llama...', examples: 'ej. Aura Hair Studio · Estética Raíz' },
-      { stem: 'Trabajo en la ciudad de...', examples: 'ej. Madrid · un barrio pequeño de Sevilla' },
-      { stem: 'Llevo...', examples: 'ej. 12 años en el sector · recién empezando' },
-      { stem: 'En mi día a día trabajando soy...', examples: 'ej. de autónoma · somos 2 en el equipo' },
-    ],
-  },
-  {
-    title: 'Servicios',
-    icon: Scissors,
-    phrases: [
-      { stem: 'Los servicios que realizo son...', examples: 'ej. color, corte, tratamientos, peinados' },
-      { stem: 'Mis 3 servicios principales son...', examples: 'ej. balayage, keratina y corte de mujer' },
-      { stem: 'El servicio que más quiero potenciar es...', examples: 'ej. las canas · el balayage' },
-      { stem: 'El servicio que más beneficio me deja es...', examples: 'ej. los tratamientos · el color' },
-    ],
-  },
-  {
-    title: 'Clienta ideal',
-    icon: Heart,
-    phrases: [
-      { stem: 'La clienta que quiero atraer es...', examples: 'ej. mujeres que cuidan su pelo de verdad · clientas fieles' },
-      { stem: 'Mi clienta ideal tiene...', examples: 'ej. entre 30 y 45 años · cualquier edad' },
-      { stem: 'A mi clienta le suele pasar que...', examples: 'ej. su rubio acaba amarillo · su pelo se apaga' },
-      { stem: 'Cuando reserva conmigo quiere conseguir...', examples: 'ej. despreocuparse del pelo · cambiar de look con seguridad' },
-      { stem: 'Las dudas que más me preguntan son...', examples: 'ej. "cuánto dura un balayage" · "qué tratamiento me va mejor"' },
-    ],
-  },
-  {
-    title: 'Contenido y objetivos',
-    icon: Target,
-    phrases: [
-      { stem: 'Mi objetivo ahora mismo es...', examples: 'ej. llenar las tardes libres · más reservas de color' },
-      { stem: 'Los temas sobre los que me gusta crear contenido son...', examples: 'ej. rutinas de cuidado · transformaciones reales' },
-      { stem: 'Lo que me hace distinta de otros salones es...', examples: 'ej. análisis del pelo antes de tocar nada · mi trato cercano' },
-    ],
-  },
-  {
-    title: 'Estilo y comunicación',
-    icon: MessageCircle,
-    phrases: [
-      { stem: 'Mi forma de comunicar es...', examples: 'ej. cercana y con humor · profesional y elegante' },
-      { stem: 'En mis vídeos yo...', examples: 'ej. salgo hablando a cámara · solo se ve mi trabajo' },
-      { stem: 'El tono que prefiero es...', examples: 'ej. cercano · elegante · divertido' },
-      { stem: 'Los valores que quiero transmitir son...', examples: 'ej. honestidad · cuidado del pelo · confianza' },
-    ],
-  },
-  {
-    title: 'Competencia',
-    icon: Eye,
-    phrases: [
-      { stem: 'Salones o estilistas que admiro en Instagram son...', examples: 'ej. escriba 3 cuentas que sigas y admire' },
-      { stem: 'Cosas que hacen ellos y yo todavía no: ...', examples: 'ej. colaboraciones · reels todos los días' },
-      { stem: 'Lo que yo hago mejor que ellos es...', examples: 'ej. mi técnica de color · el cariño con la clienta' },
-    ],
-  },
-  {
-    title: 'Recursos y tiempo',
-    icon: Clock,
-    phrases: [
-      { stem: 'Cada semana dedico al contenido...', examples: 'ej. 3-4 horas · solo los fines de semana' },
-      { stem: 'Las fotos y vídeos los hace...', examples: 'ej. yo con mi móvil · una amiga que me ayuda' },
-      { stem: 'Mi presupuesto para publicidad es de...', examples: 'ej. 50 € al mes · por ahora nada' },
-      { stem: 'Para editar uso...', examples: 'ej. CapCut · las herramientas de Instagram' },
-    ],
-  },
-  {
-    title: 'Imagen y estética',
-    icon: Palette,
-    phrases: [
-      { stem: 'Los colores de mi salón son...', examples: 'ej. blancos y madera · rosa y negro' },
-      { stem: 'La decoración de mi salón es...', examples: 'ej. minimalista · cálida y acogedora' },
-      { stem: 'Mi estilo visual es...', examples: 'ej. limpio y elegante · colorido y alegre' },
-      { stem: 'Sobre mi logo y colores corporativos: ...', examples: 'ej. no tengo logo · logo floral en verde' },
-      { stem: 'Cuando una clienta me visita quiero que se sienta...', examples: 'ej. cuidada · como en casa · confiando en mí' },
-    ],
-  },
-]
-
-
-
-// ── Component ───────────────────────────────────────────────────────
+type Mode = 'intro' | 'preguntas' | 'resultado'
 
 export default function MiMarcaClient({ userId, brand, instagram }: { userId: string; brand: BrandProfile | null; instagram?: InstagramCardProps }) {
   const isDemoMode = userId === 'demo'
-  const [text, setText] = useSessionState<string>(`u:${userId}:marca:text`, brand?.raw_input || '')
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
-  const [strategy, setStrategy] = useSessionState<StrategyDocument | null>(`u:${userId}:marca:strategy`,
-    brand?.strategy_json ? normalizeStrategy(brand.strategy_json) : null
-  )
-  const [roadmap, setRoadmap] = useSessionState<Roadmap | null>(`u:${userId}:marca:roadmap`,
-    brand?.roadmap_json ? normalizeRoadmap(brand.roadmap_json) : null
-  )
-  const [justGenerated, setJustGenerated] = useState(false)
-  const [generatingRoadmap, setGeneratingRoadmap] = useState(false)
-  const [roadmapError, setRoadmapError] = useState('')
-  const strategyRef = useRef<HTMLDivElement>(null)
-  const roadmapRef = useRef<HTMLDivElement>(null)
-  const textRef = useRef<HTMLTextAreaElement>(null)
+  const toast = useToast()
+  const [mounted, setMounted] = useState(false)
+  const [brandRow, setBrandRow] = useState<Record<string, unknown> | null>(brand as unknown as Record<string, unknown> | null)
 
-  /** Toca una frase → se añade al cuadro (en línea nueva) y el cursor va a completarla. */
-  function addPhrase(stem: string) {
-    setText(prev => (prev && prev.trim() ? `${prev.trimEnd()}\n${stem} ` : `${stem} `))
-    requestAnimationFrame(() => {
-      textRef.current?.focus()
-      textRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    })
-  }
-
+  // En demo, la marca vive en el navegador.
   useEffect(() => {
-    if (isDemoMode) {
-      const stored = demoGetBrand() as Record<string, unknown> | null
-      if (stored) {
-        // Only hydrate from demo store if session is empty (first load ever)
-        const sessionText = typeof window !== 'undefined' ? localStorage.getItem('brave_session_u:demo:marca:text') : null
-        if (!sessionText || sessionText === 'null' || sessionText === '""') {
-          setText((stored.raw_input as string) || '')
-        }
-        if (stored.strategy_json && !strategy) {
-          setStrategy(normalizeStrategy(stored.strategy_json))
-        } else if (stored.optimized_summary && !strategy) {
-          setStrategy({ ...EMPTY_STRATEGY, resumen_para_ia: stored.optimized_summary as string })
-        }
-        if (stored.roadmap_json && !roadmap) {
-          setRoadmap(normalizeRoadmap(stored.roadmap_json))
-        }
-      }
-    }
-    // Defensively normalize whatever was loaded from the session (DB row or
-    // stale localStorage). Older sessions may have partial shapes that crash
-    // the display components on the very first render.
-    setStrategy(prev => (prev ? normalizeStrategy(prev) : prev))
-    setRoadmap(prev => (prev ? normalizeRoadmap(prev) : prev))
+    if (isDemoMode) setBrandRow((demoGetBrand() as Record<string, unknown> | null) ?? null)
+    setMounted(true)
+  }, [isDemoMode])
+
+  const stored = brandRow?.strategy_json as (StrategyDocument & { brave5?: Brave5; respuestas?: Answers }) | undefined
+  const strategy = useMemo(() => (stored && (stored.brave5 || stored.perfil_brave) ? normalizeStrategy(stored) as StrategyDocument & { brave5?: Brave5 } : null), [stored])
+  const b5 = useMemo(() => (strategy ? strategyToBrave5({ ...strategy, brave5: stored?.brave5 }) : null), [strategy, stored])
+
+  const [answers, setAnswers] = useSessionState<Answers>(`u:${userId}:marca:answers`, {})
+  const [step, setStep] = useSessionState<number>(`u:${userId}:marca:step`, 0)
+  const [mode, setMode] = useState<Mode>('intro')
+  const [busy, setBusy] = useState(false)
+  const manual = ((brandRow?.roadmap_json as { camino?: Record<string, boolean> } | null)?.camino) ?? {}
+
+  // Al cargar: con estrategia → resultado; si ya había empezado → preguntas.
+  useEffect(() => {
+    if (!mounted) return
+    if (strategy) setMode('resultado')
+    else if (Object.keys(answers).length) setMode('preguntas')
+    // Las respuestas guardadas en la cuenta rellenan el cuestionario para editarlo.
+    if (!Object.keys(answers).length && stored?.respuestas) setAnswers(stored.respuestas)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [mounted])
 
-  async function generateStrategy() {
-    if (!text.trim()) return
-    setSaving(true)
-    setError('')
-
-    const local = buildProfile(text)
-
-    try {
-      const raw = await generateAIContent(STRATEGY_PROMPT(text))
-      const parsed = extractJSON<StrategyDocument>(raw)
-
-      if (parsed && parsed.perfil_brave) {
-        // Merge with local extraction for the DB fields
-        const payload = {
-          user_id: userId,
-          raw_input: text,
-          salon_name: parsed.perfil_brave.match(/([^,.]+)/)?.[0]?.trim() || local.salon_name || null,
-          city: local.city,
-          main_services: local.main_services,
-          service_to_promote: local.service_to_promote,
-          content_topics: local.content_topics,
-          optimized_summary: parsed.resumen_para_ia || parsed.perfil_brave,
-          strategy_json: parsed as unknown as Record<string, unknown>,
-          completion_status: 'complete' as const,
-          updated_at: new Date().toISOString(),
-        }
-
-        if (isDemoMode) {
-          demoSaveBrand(payload)
-        } else {
-          const supabase = createClient()
-          if (brand?.id) {
-            await supabase.from('brand_profiles').update(payload).eq('id', brand.id)
-          } else {
-            await supabase.from('brand_profiles').insert(payload as unknown as BrandProfile)
-          }
-        }
-
-        setStrategy(normalizeStrategy(parsed))
-        setJustGenerated(true)
-        // Lleva a la usuaria al principio de la página para que vea la estrategia nueva
-        requestAnimationFrame(() => {
-          window.scrollTo({ top: 0, behavior: 'smooth' })
-        })
-      } else {
-        throw new Error('Respuesta de IA incompleta')
-      }
-    } catch {
-      setError('No se pudo generar la estrategia. Inténtalo de nuevo.')
-    }
-    setSaving(false)
-  }
-
-  // Apaga la bandera de "recién generado" después de la animación de palpitado
-  useEffect(() => {
-    if (!justGenerated) return
-    const t = setTimeout(() => setJustGenerated(false), 2600)
-    return () => clearTimeout(t)
-  }, [justGenerated])
-
-  // ── Hoja de Ruta BRÄVE ──
-
-  function recomputeStatus(phase: RoadmapPhase): RoadmapPhase['status'] {
-    const total = phase.tasks.length
-    const done = phase.tasks.filter(t => t.done).length
-    if (total > 0 && done === total) return 'completed'
-    if (done > 0) return 'in_progress'
-    return phase.status === 'completed' ? 'in_progress' : 'pending'
-  }
-
-  async function persistRoadmap(next: Roadmap) {
+  async function save(patch: Record<string, unknown>) {
+    const row = { ...(brandRow ?? {}), ...patch, user_id: userId, updated_at: new Date().toISOString() }
     if (isDemoMode) {
-      const stored = (demoGetBrand() as Record<string, unknown> | null) || {}
-      demoSaveBrand({ ...stored, roadmap_json: next as unknown as Record<string, unknown> })
+      demoSaveBrand(row)
+      setBrandRow(row)
+      return true
+    }
+    const supabase = createClient()
+    const res = brandRow?.id
+      ? await supabase.from('brand_profiles').update({ ...patch, updated_at: row.updated_at }).eq('id', brandRow.id as string).select('*').single()
+      : await supabase.from('brand_profiles').insert({ ...patch, user_id: userId } as never).select('*').single()
+    if (res.error) return false
+    setBrandRow(res.data as Record<string, unknown>)
+    return true
+  }
+
+  async function createStrategy() {
+    setBusy(true)
+    let b: Brave5 | null = null
+    try {
+      const raw = await generateAIContent(buildBrave5Prompt(answers))
+      const parsed = extractJSON<Brave5>(raw)
+      if (isBrave5(parsed)) b = parsed
+    } catch { /* sin IA: versión hecha con sus respuestas */ }
+    if (!b) b = mockBrave5(answers)
+    const doc = brave5ToStrategy(b, answers)
+    const ok = await save({
+      raw_input: answersToText(answers),
+      salon_name: asText(answers.salon) || null,
+      city: asText(answers.ciudad) || null,
+      main_services: asList(answers.servicios),
+      service_to_promote: asText(answers.estrella) || null,
+      content_topics: b.pilares.map(p => p.nombre),
+      optimized_summary: doc.resumen_para_ia,
+      strategy_json: doc,
+      completion_status: 'complete',
+    })
+    setBusy(false)
+    if (!ok) {
+      toast.show('No se ha podido guardar tu estrategia. Revisa la conexión e inténtalo de nuevo.', 'info')
       return
     }
-    try {
-      const supabase = createClient()
-      const payload = { roadmap_json: next as unknown as Record<string, unknown>, updated_at: new Date().toISOString() }
-      if (brand?.id) {
-        await supabase.from('brand_profiles').update(payload).eq('id', brand.id)
-      } else {
-        // Si no existe brand, lo creamos con los datos mínimos + roadmap
-        await supabase.from('brand_profiles').insert({
-          user_id: userId,
-          raw_input: text,
-          roadmap_json: next as unknown as Record<string, unknown>,
-          completion_status: 'partial',
-        } as unknown as BrandProfile)
-      }
-    } catch {
-      // No bloqueamos la UI por fallos de persistencia silenciosos
-    }
+    setMode('resultado')
+    toast.show('¡Tu estrategia está lista!', 'success')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+    document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  async function generateRoadmap() {
-    if (!strategy || !strategy.perfil_brave) return
-    setGeneratingRoadmap(true)
-    setRoadmapError('')
-    try {
-      const raw = await generateAIContent(
-        ROADMAP_PROMPT(JSON.stringify(strategy), text)
-      )
-      const parsed = extractJSON<Roadmap>(raw)
-      if (!parsed || !Array.isArray(parsed.phases) || parsed.phases.length < 3) {
-        throw new Error('Respuesta de IA incompleta')
-      }
-      const next: Roadmap = {
-        phases: parsed.phases.map((p, i) => ({
-          number: p.number ?? i + 1,
-          name: p.name,
-          description: p.description,
-          goal: p.goal,
-          icon: p.icon || '✨',
-          color: p.color || 'cherry',
-          status: p.status || 'pending',
-          tasks: (p.tasks || []).map((t, j) => ({
-            id: t.id || `t${j + 1}`,
-            label: t.label,
-            done: !!t.done,
-          })),
-          bravi_message: p.bravi_message,
-        })),
-        generated_at: new Date().toISOString(),
-      }
-      setRoadmap(normalizeRoadmap(next) ?? next)
-      await persistRoadmap(next)
-      // Scroll suave a la hoja de ruta
-      requestAnimationFrame(() => {
-        roadmapRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      })
-    } catch {
-      setRoadmapError('No se pudo generar la hoja de ruta. Inténtalo de nuevo.')
-    }
-    setGeneratingRoadmap(false)
+  async function setManual(id: string, done: boolean) {
+    const prev = (brandRow?.roadmap_json as Record<string, unknown> | null) ?? {}
+    const camino = { ...manual, [id]: done }
+    const ok = await save({ roadmap_json: { ...prev, camino } })
+    if (!ok) toast.show('No se ha podido guardar. Inténtalo de nuevo.', 'info')
+    else if (done) toast.show('¡Paso hecho! 💪', 'success')
   }
 
-  async function toggleRoadmapTask(phaseIndex: number, taskId: string) {
-    if (!roadmap) return
-    const next: Roadmap = {
-      ...roadmap,
-      phases: roadmap.phases.map((p, i) => {
-        if (i !== phaseIndex) return p
-        const tasks = p.tasks.map(t => (t.id === taskId ? { ...t, done: !t.done } : t))
-        return { ...p, tasks, status: recomputeStatus({ ...p, tasks }) }
-      }),
-    }
-    setRoadmap(next)
-    await persistRoadmap(next)
-  }
+  if (!mounted) return <div className="h-64 rounded-[var(--radius-lg)] bg-white/60 animate-pulse" aria-busy="true" />
 
-  // ── Hoja de Ruta arriba para sentir progreso; estrategia debajo ──
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <BraviGuide section="mi-marca" size={64} />
-        <div>
-          <h1 className="text-2xl font-bold title-shine">Mi Marca BRÄVE</h1>
-          <p className="mt-1 text-sm text-cherry-dark opacity-80">
-            Tu documento estratégico completo. La IA analiza tu salón y construye un plan profesional.
-          </p>
-        </div>
-      </div>
-
-      {/* Tu Instagram (22-oct-2026): conectar / estado / resumen del análisis */}
-      {instagram && <InstagramHomeCard {...instagram} />}
-
-      {/* ── Hoja de Ruta BRÄVE (parte alta, lo más atractivo) ── */}
-      <div ref={roadmapRef} className="space-y-4">
-        {roadmap && roadmap.phases.length > 0 ? (
-          <RoadmapDisplay
-            roadmap={roadmap}
-            onRegenerate={() => setRoadmap(null)}
-            onTaskToggle={toggleRoadmapTask}
-          />
-        ) : (
-          <div
-            className="rounded-[var(--radius-lg)] p-8 text-center bg-white shadow-soft"
-            style={{ border: '1.5px solid var(--color-buttermilk)' }}
-          >
-            <div className="w-14 h-14 mb-3 mx-auto rounded-2xl bg-mantequilla text-burdeos flex items-center justify-center"><MapIcon size={26} aria-hidden="true" /></div>
-            <h3 className="text-xl font-bold text-cherry-dark mb-2">Mi Hoja de Ruta BRÄVE</h3>
-            <p className="text-sm text-cherry-dark opacity-70 max-w-md mx-auto mb-5">
-              Cuando tengas tu estrategia lista, Bravi diseñará un camino visual personalizado de fases
-              para que veas exactamente dónde estás y cuáles son tus siguientes pasos.
-            </p>
-            <button
-              onClick={generateRoadmap}
-              disabled={!strategy || generatingRoadmap}
-              className={`btn-primary inline-flex items-center gap-2 px-6 py-3 ${strategy && !generatingRoadmap ? 'glow-ready' : ''}`}
-              style={{ opacity: !strategy ? 0.5 : 1 }}
-            >
-              <MapIcon size={18} className={generatingRoadmap ? 'animate-spin' : ''} />
-              {generatingRoadmap
-                ? 'Diseñando tu hoja de ruta...'
-                : strategy
-                ? '✨ Crear mi Hoja de Ruta BRÄVE'
-                : 'Primero genera tu estrategia'}
-            </button>
-            {!strategy && (
-              <p className="text-xs text-cherry-dark opacity-50 mt-3">
-                Genera tu estrategia BRÄVE más abajo para poder crear tu hoja de ruta.
-              </p>
-            )}
-            {roadmapError && (
-              <p className="text-xs text-danger mt-3">{roadmapError}</p>
-            )}
+  // ── 1. Bienvenida ──
+  if (mode === 'intro') {
+    return (
+      <div className="max-w-2xl mx-auto space-y-6">
+        <section className="relative overflow-hidden rounded-[var(--radius-lg)] bg-burdeos text-crema p-6 sm:p-8 space-y-5" data-tone="dark">
+          <div aria-hidden className="pointer-events-none absolute -top-20 -right-16 w-64 h-64 rounded-full opacity-40 blur-3xl" style={{ background: '#B8324F' }} />
+          <Bravi size={64} showMessage={false} />
+          <div className="relative space-y-2">
+            <p className="text-[13px] font-semibold uppercase tracking-[0.08em] text-mantequilla">Mi Marca</p>
+            <h1 className="!text-crema text-[30px] sm:text-[38px] leading-tight font-semibold">Tu marca en 5 minutos</h1>
+            <p className="text-[16px] text-crema/85 max-w-md">Contesta {QUESTIONS.length} preguntas cortas (casi todas con un toque) y te preparo tu estrategia y tu camino paso a paso.</p>
           </div>
-        )}
+          <ul className="relative grid gap-2 text-[15px]">
+            {['Tu marca en una frase y tu bio de Instagram', 'Tu clienta ideal y tu servicio estrella', 'Qué publicar y cuánto, según tu tiempo'].map(t => (
+              <li key={t} className="flex gap-2"><Sparkles size={17} className="text-mantequilla flex-shrink-0 mt-0.5" aria-hidden />{t}</li>
+            ))}
+          </ul>
+          <button onClick={() => setMode('preguntas')} className="relative btn-primary w-full sm:w-auto justify-center !bg-mantequilla !text-burdeos text-base py-3.5 px-7">
+            {Object.keys(answers).length ? 'Seguir donde lo dejé' : 'Empezar'}
+          </button>
+          <p className="relative text-[13px] text-crema/70 flex items-center gap-1.5"><Clock size={14} aria-hidden /> Se guarda solo: puedes parar y seguir luego.</p>
+        </section>
+        {instagram && <InstagramHomeCard {...instagram} />}
       </div>
+    )
+  }
 
-      {/* Strategy display (debajo de la hoja de ruta) */}
-      {strategy && strategy.perfil_brave && (
-        <div ref={strategyRef} id="estrategia-generada">
-          <StrategyDisplay
-            strategy={strategy}
-            onRegenerate={() => setStrategy(null)}
-            justGenerated={justGenerated}
-          />
-        </div>
+  // ── 2. Preguntas ──
+  if (mode === 'preguntas') {
+    return (
+      <div className="space-y-4">
+        <Questionnaire answers={answers} onChange={setAnswers} step={step} onStep={setStep} onFinish={createStrategy} busy={busy} />
+        {strategy && <p className="text-center"><button onClick={() => setMode('resultado')} className="text-[14px] font-semibold text-cereza hover:underline">Volver a mi estrategia sin cambios</button></p>}
+      </div>
+    )
+  }
+
+  // ── 3. Resultado: camino + estrategia ──
+  return (
+    <div className="max-w-5xl space-y-6">
+      <PageHeader
+        title="Mi Marca"
+        subtitle="Tu camino paso a paso y tu estrategia en 5 tarjetas."
+        actions={
+          <>
+            <button onClick={() => { setStep(0); setMode('preguntas') }} className="btn-ghost"><Pencil size={15} aria-hidden /> Editar respuestas</button>
+            <button onClick={createStrategy} disabled={busy} className="btn-ghost"><RefreshCw size={15} className={busy ? 'animate-spin' : ''} aria-hidden /> Rehacer</button>
+          </>
+        }
+      />
+      <Link href="/mi-marca/perfil" className="group flex items-center gap-4 rounded-[var(--radius-lg)] bg-rosa/60 p-4 sm:p-5 hover:bg-rosa transition-colors">
+        <span className="w-12 h-12 rounded-2xl bg-burdeos text-crema flex items-center justify-center flex-shrink-0"><AtSign size={22} aria-hidden /></span>
+        <span className="flex-1 min-w-0">
+          <span className="block text-[17px] font-semibold text-burdeos">Optimiza tu perfil de Instagram</span>
+          <span className="block text-[14px] text-burdeos/80">Sube una captura: nombre, bio, links y destacadas listos para copiar.</span>
+        </span>
+        <ArrowRight size={20} className="text-burdeos flex-shrink-0 group-hover:translate-x-0.5 transition-transform" aria-hidden />
+      </Link>
+      <CaminoPath userId={userId} hasStrategy={!!strategy} instagram={instagram?.state === 'connected'} manual={manual} onManual={setManual} />
+      {b5 && (
+        <section className="space-y-3" aria-label="Tu estrategia">
+          <h2 className="text-lg font-semibold text-ink">Tu estrategia</h2>
+          <StrategyCards b={b5} />
+        </section>
       )}
-
-      {/* Input section */}
-      <div className="rounded-[var(--radius-lg)] p-5 space-y-4 bg-white shadow-soft" style={{ border: '1.5px solid var(--color-buttermilk)' }}>
-        <div className="p-4 rounded-[var(--radius-md)]" style={{ background: 'var(--color-buttermilk)' }}>
-          <BraviTip
-            message={strategy ? '¿Quieres actualizar tu estrategia? Escribe cambios y regenera.' : 'Toca las frases de abajo, complétalas con tus palabras y genera tu estrategia. No importa el orden.'}
-            size={48}
-          />
-        </div>
-
-        <textarea
-          ref={textRef}
-          rows={10}
-          value={text}
-          onChange={e => setText(e.target.value)}
-          placeholder="Toca una frase de abajo y complétala aquí con tus palabras… (o escríbelo/díctalo como prefieras)"
-          className="w-full px-4 py-3 rounded-[var(--radius-md)] text-sm outline-none resize-none"
-          style={{ border: '1.5px solid rgba(122,24,50,0.2)', background: 'var(--color-cream)', lineHeight: 1.6 }}
-        />
-        <VoiceButton onTranscript={t => setText(prev => (prev ? prev + ' ' + t : t))} />
-        <button
-          onClick={generateStrategy}
-          disabled={saving || !text.trim()}
-          className={`btn-primary w-full justify-center text-base py-3.5 ${text.trim() && !saving ? 'glow-ready' : ''}`}
-          style={{ opacity: !text.trim() ? 0.5 : 1 }}
-        >
-          <Sparkles size={18} className={saving ? 'animate-spin' : ''} />
-          {saving ? 'Generando tu estrategia...' : strategy ? '✨ Regenerar Estrategia' : '✨ Generar Estrategia BRÄVE'}
-        </button>
-        {error && <p className="text-xs text-danger text-center">{error}</p>}
-      </div>
-
-      {/* Frases para completar — tocables: se añaden al cuadro de arriba */}
-      <div className="space-y-3">
-        <p className="text-sm font-semibold text-cherry-dark px-1">
-          Frases para completar — tócalas y se añaden al cuadro de arriba:
-        </p>
-        <div className="rounded-[var(--radius-md)] bg-white shadow-soft p-4 space-y-4" style={{ border: '1.5px solid var(--color-buttermilk)' }}>
-          {PHRASE_BLOCKS.map((block) => {
-            const Icon = block.icon
-            return (
-              <div key={block.title}>
-                <div className="flex items-center gap-2 mb-2 pb-1.5" style={{ borderBottom: '1px solid rgba(255,241,181,0.5)' }}>
-                  <Icon size={14} style={{ color: 'var(--color-cherry)' }} />
-                  <span className="font-semibold text-sm text-ink">{block.title}</span>
-                </div>
-                <div className="space-y-2">
-                  {block.phrases.map(p => (
-                    <button
-                      key={p.stem}
-                      onClick={() => addPhrase(p.stem)}
-                      className="w-full text-left rounded-[var(--radius-sm)] px-3 py-2 transition-all hover:bg-[rgba(255,241,181,0.3)]"
-                      style={{ background: 'var(--color-cream)', border: '1px solid rgba(122,24,50,0.10)' }}
-                      title="Añadir al cuadro de arriba"
-                    >
-                      <span className="text-sm text-ink font-medium block" style={{ lineHeight: 1.4 }}>
-                        {p.stem}
-                      </span>
-                      <span className="text-xs text-ink opacity-55 block" style={{ lineHeight: 1.35 }}>
-                        {p.examples}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      </div>
+      {instagram && <InstagramHomeCard {...instagram} />}
     </div>
   )
 }

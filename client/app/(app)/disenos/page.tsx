@@ -1,13 +1,8 @@
-import type { Metadata } from 'next'
-import DisenosClient from './DisenosClient'
-import PageTransition from '@/components/ui/PageTransition'
+import { redirect } from 'next/navigation'
 
-export const metadata: Metadata = { title: 'Diseños · BRÄVE Studio' }
-
+// DISEÑOS quitado (22-oct-2026, petición Jota): Carruseles y «Diseña tus
+// stories» cubren lo que hacía. Los enlaces antiguos llevan a Stories.
+// (DisenosClient se conserva por si se quiere recuperar.)
 export default function DisenosPage() {
-  return (
-    <PageTransition>
-      <DisenosClient />
-    </PageTransition>
-  )
+  redirect('/stories')
 }

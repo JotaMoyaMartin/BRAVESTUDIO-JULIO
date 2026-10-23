@@ -13,6 +13,7 @@ import RetoContentCard from './RetoContentCard'
 import RetoRoadmap from './RetoRoadmap'
 import RetoPlanGenerator from './RetoPlanGenerator'
 import { RetoTabId } from './RetoTabs'
+import { AIUnavailableError } from '@/lib/ai/client'
 
 interface Props {
   profile: Profile | null
@@ -109,6 +110,8 @@ export default function RetoDashboardView({ profile, progress, config, brand, co
       postsPerWeek: progress.posts_per_week || 4,
       brandContext,
     })
+    // Nunca guardar una plantilla como si la hubiera escrito la IA.
+    if (output.mock && !demoMode) throw new AIUnavailableError()
     const fresh = output.items[0]
     if (!fresh) return
     const json = oldItem.content_json as Record<string, unknown>

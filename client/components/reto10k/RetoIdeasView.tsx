@@ -9,6 +9,7 @@ import { buildBrandFullContext, hasBrandContext } from '@/lib/ai/brand-context'
 import { saveRetoMissionItem, deleteItem, updateRetoMissionItem, generateContentForPlaceholder } from '@/lib/content-utils'
 import { useToast } from '@/components/ui/Toast'
 import RetoContentCard from './RetoContentCard'
+import { AIUnavailableError, AI_UNAVAILABLE_MESSAGE } from '@/lib/ai/client'
 
 interface Props {
   profile: Profile | null
@@ -61,6 +62,7 @@ export default function RetoIdeasView({ profile, progress, config, brand, conten
     setGenerating(true)
     try {
       const output = await runGenerate()
+      if (output.mock && !demoMode) throw new AIUnavailableError()
       for (const item of output.items) {
         await saveRetoMissionItem(userId, {
           type: item.type,
@@ -78,8 +80,8 @@ export default function RetoIdeasView({ profile, progress, config, brand, conten
       }
       toast.show(`${output.items.length} ideas añadidas a tu banco`, 'success')
       onChanged()
-    } catch {
-      toast.show('No se pudo generar. Inténtalo de nuevo.', 'info')
+    } catch (e) {
+      toast.show(e instanceof AIUnavailableError ? AI_UNAVAILABLE_MESSAGE : 'No se pudo generar. Inténtalo de nuevo.', 'info')
     } finally {
       setGenerating(false)
     }
@@ -115,6 +117,8 @@ export default function RetoIdeasView({ profile, progress, config, brand, conten
 
   async function handleRegenerate(oldItem: ContentItem) {
     const output = await runGenerate()
+    // Nunca guardar una plantilla como si la hubiera escrito la IA.
+    if (output.mock && !demoMode) throw new AIUnavailableError()
     const fresh = output.items[0]
     if (!fresh) return
     const json = oldItem.content_json as Record<string, unknown>

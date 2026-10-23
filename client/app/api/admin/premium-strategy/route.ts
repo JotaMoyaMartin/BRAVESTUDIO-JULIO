@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { generateAIContent, extractJSON } from '@/lib/ai/client'
+// En el servidor no existe '/api/ai/generate' relativo: llamar al LLM directamente.
+import { serverGenerateAIContent, extractJSON } from '@/lib/ai/server-generate'
 import { STRATEGY_PROMPT } from '@/lib/ai/prompts/strategy'
 import { buildProfile } from '@/lib/brand-extract'
 import { StrategyDocument } from '@/lib/strategy-types'
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const raw = await generateAIContent(STRATEGY_PROMPT(transcription))
+    const raw = await serverGenerateAIContent(STRATEGY_PROMPT(transcription))
     const parsed = extractJSON<StrategyDocument>(raw)
 
     if (!parsed || !parsed.perfil_brave) {

@@ -4,10 +4,10 @@ import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Profile } from '@/types/database'
 import {
-  Home, Sparkles, Star,
+  Home, Sparkles, Star, MessageCircle,
   Film, LayoutGrid, BookOpen, Calendar, LogOut, Menu, X, Zap, Camera,
   Clapperboard, Wand2, Settings, Shield, Crown, GraduationCap, Users, BarChart3,
-  ChartNoAxesColumn, Palette, LayoutTemplate, Scissors, Images,
+  ChartNoAxesColumn, Palette, Scissors, Images,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -25,6 +25,8 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { href: '/inicio', label: 'Inicio', icon: Home },
+  // ASISTENTE (22-oct-2026): chat de Bravi + próximos pasos (fuera de Inicio).
+  { href: '/asistente', label: 'Asistente', icon: MessageCircle },
   // Reto 10K oculto por Jota (30 sep): simplificar — reactivar junto al tile
   // de tiles.ts. La ruta /reto-10k sigue existiendo por URL directa.
   { href: '/mi-marca', label: 'Mi Marca', icon: Star },
@@ -42,8 +44,7 @@ const navItems: NavItem[] = [
   { href: '/estudio', label: 'Estudio de fotos', icon: Camera },
   // EDITAR VIDEOS (13-oct-2026): recorte de silencios guiado, todo en el navegador.
   { href: '/editar-videos', label: 'Editar Videos', icon: Scissors },
-  // DISEÑOS (9-oct-2026): galería de plantillas de marca listas para personalizar.
-  { href: '/disenos', label: 'Diseños', icon: LayoutTemplate },
+  // DISEÑOS quitado del menú (22-oct-2026, Jota): lo cubren Carruseles y Stories.
   { href: '/biblioteca', label: 'Biblioteca', icon: BookOpen },
   // Análisis — Instagram conectado (6-oct-2026): datos reales de la cuenta.
   ...(showInstagram() ? [{ href: '/analisis', label: 'Análisis', icon: ChartNoAxesColumn }] : []),
@@ -51,6 +52,8 @@ const navItems: NavItem[] = [
 
 const premiumNavItems: NavItem[] = [
   { href: '/inicio', label: 'Inicio', icon: Home },
+  // ASISTENTE (22-oct-2026): chat de Bravi + próximos pasos (fuera de Inicio).
+  { href: '/asistente', label: 'Asistente', icon: MessageCircle },
   { href: '/mi-estrategia', label: 'Mi Estrategia', icon: Star },
   { href: '/plan-contenidos', label: 'Plan de Contenidos', icon: Sparkles },
   { href: '/metricas', label: 'Métricas', icon: BarChart3 },
@@ -69,8 +72,7 @@ const premiumNavItems: NavItem[] = [
   { href: '/estudio', label: 'Estudio de fotos', icon: Camera },
   // EDITAR VIDEOS (13-oct-2026): recorte de silencios guiado, todo en el navegador.
   { href: '/editar-videos', label: 'Editar Videos', icon: Scissors },
-  // DISEÑOS (9-oct-2026): galería de plantillas de marca listas para personalizar.
-  { href: '/disenos', label: 'Diseños', icon: LayoutTemplate },
+  // DISEÑOS quitado del menú (22-oct-2026, Jota): lo cubren Carruseles y Stories.
   { href: '/academia', label: 'Academia', icon: GraduationCap, badge: 'NUEVO', highlight: true },
 ]
 

@@ -4,6 +4,7 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import { LucideIcon } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ArrowRight } from 'lucide-react'
+import SectionBanner, { type SectionBannerKind } from './SectionBanner'
 
 export interface AppTileLive {
   /** Portadas reales (9:16) que rotan de fondo — la sección es VIVA, no estática. */
@@ -35,6 +36,8 @@ export interface AppTileProps {
   /** Copy para el estado vivo (lo rellena ToolsSection cuando hay datos). */
   liveCaption?: string
   liveNoun?: string
+  /** Banner hecho con código (mismo estilo que las portadas ilustradas). */
+  banner?: SectionBannerKind
   /** Píldora informativa sobre el tile (p.ej. sección bloqueada: "Próximamente"). */
   badge?: string
 }
@@ -179,7 +182,21 @@ function LiveHeroTile({
   )
 }
 
-export default function AppTile({ href, icon: Icon, label, desc, tone, image, imageAspect, live, badge }: AppTileProps) {
+export default function AppTile({ href, icon: Icon, label, desc, tone, image, imageAspect, live, badge, banner }: AppTileProps) {
+  if (banner && !image) {
+    return (
+      <Link href={href} className="block rounded-[var(--radius-md)] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-cherry" aria-label={`${label}: ${desc}`}>
+        <motion.div
+          whileHover={{ y: -4, scale: 1.02 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+          className="tile-shine rounded-[var(--radius-md)] overflow-hidden"
+          style={{ boxShadow: 'var(--shadow-soft)', ...tileShineDelay(href) }}
+        >
+          <SectionBanner kind={banner} />
+        </motion.div>
+      </Link>
+    )
+  }
   // La portada curada (image) manda sobre el tile vivo: es la cara que Jota
   // eligió para la sección. El abanico de portadas reales solo si no hay banner.
   if (image) {

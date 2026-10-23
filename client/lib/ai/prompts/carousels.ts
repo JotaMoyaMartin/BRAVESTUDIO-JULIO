@@ -20,6 +20,8 @@ export interface CarouselOutput {
   slides: CarouselSlide[]
   visualIdea: string
   captionWithHashtags: string
+  /** true = la IA falló y esto es una plantilla de ejemplo (no un texto a medida). */
+  mock?: boolean
 }
 
 const CAROUSEL_PROMPT_STRUCTURES: Record<number, string[]> = {
@@ -168,5 +170,5 @@ export async function generateCarousel(input: CarouselInput): Promise<CarouselOu
   } catch {
     // fall through to mock
   }
-  return getMockCarousel(input)
+  return { ...getMockCarousel(input), mock: true }
 }

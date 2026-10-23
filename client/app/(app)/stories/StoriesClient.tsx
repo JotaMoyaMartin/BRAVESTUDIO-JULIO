@@ -7,7 +7,7 @@ import { openTeleprompter } from '@/lib/teleprompter/input'
 import {
   generateStories,
   generateQuestions,
-  generateQuestionAnswer,
+  generateQuestionAnswerChecked,
   type StoriesOutput,
 } from '@/lib/ai/prompts/stories'
 import {
@@ -30,6 +30,7 @@ import { BrandFullContextInput, buildBrandFullContext } from '@/lib/ai/brand-con
 import BraviGuide from '@/components/bravi/BraviGuide'
 import BraviTip from '@/components/bravi/BraviTip'
 import PageHeader from '@/components/ui/PageHeader'
+import AIUnavailableNotice from '@/components/ui/AIUnavailableNotice'
 import ReadySequences from './ReadySequences'
 import StoryDesigner from './StoryDesigner'
 import { SEQUENCE_TYPES, sequenceType, readyToStories, READY_SEQUENCES, type ReadySequence, type SequenceType } from '@/lib/stories/sequences'
@@ -270,6 +271,8 @@ function StoriesCreator({ userId, brandFull, focusDesign = false }: { userId: st
   const [mode, setMode] = useSessionState<'text' | 'camera'>(`u:${userId}:stories:mode`, 'text')
   const [generating, setGenerating] = useState(false)
   const [result, setResult] = useSessionState<StoriesOutput | null>(`u:${userId}:stories:result`, null)
+  // Story que no se pudo regenerar porque la IA no respondió (aviso + reintentar).
+  const [singleFailed, setSingleFailed] = useState<number | null>(null)
   const [copied, setCopied] = useState<string | null>(null)
   const [regenerating, setRegenerating] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
@@ -354,6 +357,7 @@ function StoriesCreator({ userId, brandFull, focusDesign = false }: { userId: st
       brandContext: brandContext || undefined,
     })
     setResult(out)
+    setSingleFailed(null)
     // Secuencia nueva: el diseño y lo guardado de la anterior ya no valen.
     setDesignSlides({})
     setVisuals({})
@@ -472,6 +476,7 @@ function StoriesCreator({ userId, brandFull, focusDesign = false }: { userId: st
       brandContext: brandContext || undefined,
     })
     setResult(out)
+    setSingleFailed(null)
     setSavedLib(false)
     setScheduledId(null)
     setVisuals({}) // el texto cambió entero: los visuales quedan obsoletos
@@ -483,12 +488,18 @@ function StoriesCreator({ userId, brandFull, focusDesign = false }: { userId: st
   async function regenerateSingle(number: number) {
     if (!result || regenerating !== null) return
     setRegenerating(number)
+    setSingleFailed(null)
     try {
       const fresh = await generateStories({ service: service || 'General',
       idea: freeText || undefined, count, sequenceType: seqType, mode, detail: detail || undefined, brandContext: brandContext || undefined })
+      // La IA falló: no cambiamos una story escrita por la IA por una plantilla.
+      if (fresh.mock && !result.mock) {
+        setSingleFailed(number)
+        return
+      }
       const newStory = fresh.stories[number - 1]
       if (newStory) {
-        setResult(prev => prev ? { stories: prev.stories.map(s => s.number === number ? newStory : s) } : prev)
+        setResult(prev => prev ? { ...prev, stories: prev.stories.map(s => s.number === number ? newStory : s) } : prev)
         setVisuals(prev => { const next = { ...prev }; delete next[number]; return next })
         // Diseño de esa story: re-siembra con el texto NUEVO (si estaba diseñada).
         setDesignSlides(prev => {
@@ -598,6 +609,17 @@ Visual: ${s.visualIdea}`
             <Plus size={14} aria-hidden /> Nueva secuencia
           </button>
         </div>
+
+        {result.mock && (
+          <AIUnavailableNotice demo={isDemoMode} onRetry={regenerateAll} retrying={generating} />
+        )}
+        {singleFailed !== null && !result.mock && (
+          <AIUnavailableNotice
+            showsExample={false}
+            onRetry={() => regenerateSingle(singleFailed)}
+            retrying={regenerating !== null}
+          />
+        )}
 
         {/* Result view */}
         {/* Una sola vista (la de texto duplicaba información) */}
@@ -994,7 +1016,8 @@ function QuestionBox({ userId, brandFull }: { userId: string; brandFull: BrandFu
   const [copied, setCopied] = useState<string | null>(null)
   const [saved, setSaved] = useState<Set<string>>(new Set())
   const [responding, setResponding] = useState<string | null>(null)
-  const [answers, setAnswers] = useState<Record<string, { written: string; camera: string }>>({})
+  const [answers, setAnswers] = useState<Record<string, { written: string; camera: string; mock?: boolean }>>({})
+  const [questionsMock, setQuestionsMock] = useState(false)
 
   async function handleGenerate() {
     if (!topic) return
@@ -1005,6 +1028,7 @@ function QuestionBox({ userId, brandFull }: { userId: string; brandFull: BrandFu
       brandContext: brandContext || undefined,
     })
     setQuestions(out.questions)
+    setQuestionsMock(!!out.mock)
     setGenerating(false)
   }
 
@@ -1035,10 +1059,13 @@ function QuestionBox({ userId, brandFull }: { userId: string; brandFull: BrandFu
     setResponding(q)
     try {
       const [written, camera] = await Promise.all([
-        generateQuestionAnswer({ question: q, mode: 'written', brandContext: brandContext || undefined }),
-        generateQuestionAnswer({ question: q, mode: 'camera', brandContext: brandContext || undefined }),
+        generateQuestionAnswerChecked({ question: q, mode: 'written', brandContext: brandContext || undefined }),
+        generateQuestionAnswerChecked({ question: q, mode: 'camera', brandContext: brandContext || undefined }),
       ])
-      setAnswers(prev => ({ ...prev, [q]: { written, camera } }))
+      setAnswers(prev => ({
+        ...prev,
+        [q]: { written: written.answer, camera: camera.answer, mock: written.mock || camera.mock },
+      }))
     } catch {
       setAnswers(prev => ({
         ...prev,
@@ -1138,6 +1165,9 @@ function QuestionBox({ userId, brandFull }: { userId: string; brandFull: BrandFu
 
       {questions.length > 0 && (
         <div className="space-y-3">
+          {questionsMock && (
+            <AIUnavailableNotice demo={isDemoMode} onRetry={handleGenerate} retrying={generating} />
+          )}
           <p className="font-semibold" style={{ color: '#1a1a1a' }}>
             {questions.length} preguntas sobre {topic}
           </p>
@@ -1157,6 +1187,8 @@ function QuestionBox({ userId, brandFull }: { userId: string; brandFull: BrandFu
                 responding={responding === q}
                 answerWritten={qAnswers?.written ?? null}
                 answerCamera={qAnswers?.camera ?? null}
+                answerIsExample={!!qAnswers?.mock}
+                isDemoMode={isDemoMode}
                 onSaveAnswer={(mode, text) => handleSaveAnswer(mode, text, q)}
                 onScheduleAnswer={(mode, text) => {
                   // QuestionCard manages its own date picker internally;

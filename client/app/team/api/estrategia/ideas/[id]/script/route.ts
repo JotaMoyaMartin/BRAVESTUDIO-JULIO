@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { resolveActor, canManageStrategy, buildBrandContextForUser, findClientIdBySupabaseId } from '@/lib/team/api-helpers'
-import { generateReel, ReelInput, ContentObjective } from '@/lib/ai/prompts/reels'
+import { buildReelPrompt, ReelInput, ReelOutput, ContentObjective } from '@/lib/ai/prompts/reels'
+import { serverGenerateAIContent, extractJSON } from '@/lib/ai/server-generate'
+import { AI_UNAVAILABLE_MESSAGE } from '@/lib/ai/client'
 
 /**
  * POST /team/api/estrategia/ideas/[id]/script
@@ -62,7 +64,22 @@ export async function POST(req: NextRequest, ctx: { params: { id: string } }) {
     freeText: `${idea.title}. Gancho: ${idea.hook_idea || ''}`,
   }
 
-  const reel = await generateReel(reelInput)
+  // Llamada directa al LLM desde el servidor (fetch relativo a /api/ai/generate
+  // no funciona aquí). Si la IA falla NO guardamos una plantilla como guion.
+  let reel: ReelOutput | null = null
+  try {
+    const parsed = extractJSON<ReelOutput>(await serverGenerateAIContent(buildReelPrompt(reelInput)))
+    if (
+      parsed && typeof parsed.title === 'string' && parsed.script &&
+      typeof parsed.script.hook === 'string' && typeof parsed.script.context === 'string' &&
+      typeof parsed.script.solution === 'string' && typeof parsed.script.cta === 'string'
+    ) reel = parsed
+  } catch {
+    // reel sigue null
+  }
+  if (!reel) {
+    return NextResponse.json({ error: AI_UNAVAILABLE_MESSAGE }, { status: 503 })
+  }
 
   // 4) Insertar content_items con tag='premium-script'
   const contentType = idea.type === 'carrusel' ? 'carrusel' : idea.type === 'story' ? 'story' : 'reel'

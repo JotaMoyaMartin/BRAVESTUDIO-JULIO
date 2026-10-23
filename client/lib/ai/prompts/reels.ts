@@ -71,6 +71,8 @@ export interface ReelOutput {
   }
   visualIdea: string
   captionWithHashtags: string
+  /** true = la IA falló y esto es una plantilla de ejemplo (no un texto a medida). */
+  mock?: boolean
 }
 
 // Enfoque del guion según el objetivo elegido (el ESTRUCTURA GANCHO→CONTEXTO→
@@ -258,6 +260,6 @@ export async function generateReelChecked(input: ReelInput, opts?: { seed?: numb
 }
 
 export async function generateReel(input: ReelInput, opts?: { seed?: number }): Promise<ReelOutput> {
-  const { reel } = await generateReelChecked(input, opts)
-  return reel
+  const { reel, mock } = await generateReelChecked(input, opts)
+  return mock ? { ...reel, mock: true } : reel
 }

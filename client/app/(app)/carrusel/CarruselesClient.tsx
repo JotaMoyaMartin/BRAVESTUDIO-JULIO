@@ -78,6 +78,8 @@ export default function CarruselesClient({ userId, brandContext }: Props) {
   const [proposalBusy, setProposalBusy] = useState(false)
   const [proposalError, setProposalError] = useState<string | null>(null)
   const [proposalIsDemo, setProposalIsDemo] = useState(false)
+  // true = la propuesta falló porque la IA no respondió (no por falta de tema).
+  const [proposalAIDown, setProposalAIDown] = useState(false)
   const [hookBusy, setHookBusy] = useState(false)
   const [tweakBusy, setTweakBusy] = useState<CopyTweak | null>(null)
   const [ctaBusy, setCtaBusy] = useState(false)
@@ -187,6 +189,7 @@ export default function CarruselesClient({ userId, brandContext }: Props) {
       return
     }
     setProposalError(null)
+    setProposalAIDown(false)
     setProposalBusy(true)
     try {
       const prompt = buildCopyPrompt({
@@ -206,7 +209,8 @@ export default function CarruselesClient({ userId, brandContext }: Props) {
         setProposalIsDemo(true)
         patchProposal(demoProposalFor(draft.styleId))
       } else {
-        setProposalError('No se pudo crear la propuesta. Prueba otra vez dentro de un momento.')
+        setProposalError('La IA no está disponible ahora mismo. Inténtalo en unos minutos.')
+        setProposalAIDown(true)
       }
     } finally {
       setProposalBusy(false)
@@ -646,6 +650,7 @@ export default function CarruselesClient({ userId, brandContext }: Props) {
         proposalBusy={proposalBusy}
         proposalError={proposalError}
         proposalIsDemo={proposalIsDemo}
+        proposalAIDown={proposalAIDown}
         hookBusy={hookBusy}
         tweakBusy={tweakBusy}
         ctaBusy={ctaBusy}

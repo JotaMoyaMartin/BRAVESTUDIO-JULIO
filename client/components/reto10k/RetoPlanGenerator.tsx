@@ -10,6 +10,7 @@ import { saveRetoPlanDay, updateRetoMissionItem } from '@/lib/content-utils'
 import { generateMissionBatch } from '@/lib/ai/prompts/reto10k'
 import { buildBrandFullContext, hasBrandContext } from '@/lib/ai/brand-context'
 import { useToast } from '@/components/ui/Toast'
+import { AIUnavailableError } from '@/lib/ai/client'
 
 interface Props {
   profile: Profile | null
@@ -70,6 +71,7 @@ export default function RetoPlanGenerator({ profile, progress, config, brand, de
       const brandContext = hasBrandContext(brand) ? buildBrandFullContext(brand as any) : undefined
       const firstBatch = plan.slice(0, BATCH_SIZE)
       const firstBatchIds = placeholderIds.slice(0, BATCH_SIZE)
+      let aiDown = false
 
       try {
         const output = await generateMissionBatch({
@@ -86,6 +88,9 @@ export default function RetoPlanGenerator({ profile, progress, config, brand, de
           })),
           brandContext,
         })
+        // IA caída: no guardamos plantillas; las misiones quedan pendientes y
+        // se escriben con IA al abrirlas.
+        if (output.mock && !demoMode) throw new AIUnavailableError()
 
         await Promise.all(
           output.items.map((item, idx) => {
@@ -108,11 +113,17 @@ export default function RetoPlanGenerator({ profile, progress, config, brand, de
         )
       } catch {
         // Si falla, todas se quedan como placeholder — se generan al abrir
+        aiDown = true
       }
 
       setGenProgress({ done: plan.length, total: plan.length })
 
-      toast.show('Plan de 30 días creado con contenido completo', 'success')
+      toast.show(
+        aiDown
+          ? 'Plan de 30 días creado. La IA no está disponible ahora: cada misión se escribirá cuando la abras.'
+          : 'Plan de 30 días creado con contenido completo',
+        aiDown ? 'info' : 'success',
+      )
       onDone()
     } catch {
       toast.show('No se pudo generar el plan. Inténtalo de nuevo.', 'info')

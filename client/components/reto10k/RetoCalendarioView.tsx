@@ -11,6 +11,7 @@ import { buildBrandFullContext, hasBrandContext } from '@/lib/ai/brand-context'
 import { useToast } from '@/components/ui/Toast'
 import CalendarView from '@/components/content/CalendarView'
 import RetoContentCard from './RetoContentCard'
+import { AIUnavailableError } from '@/lib/ai/client'
 
 interface Props {
   profile: Profile | null
@@ -69,6 +70,8 @@ export default function RetoCalendarioView({ profile, progress, config, brand, c
       postsPerWeek: progress.posts_per_week || 4,
       brandContext,
     })
+    // Nunca guardar una plantilla como si la hubiera escrito la IA.
+    if (output.mock && !demoMode) throw new AIUnavailableError()
     const fresh = output.items[0]
     if (!fresh) return
     const json = oldItem.content_json as Record<string, unknown>

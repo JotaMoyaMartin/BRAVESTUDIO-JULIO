@@ -40,3 +40,18 @@ export async function generateAIContent(
   }
   return content
 }
+
+/** Texto único (español sencillo) para cuando la IA no responde. */
+export const AI_UNAVAILABLE_MESSAGE = 'La IA no está disponible ahora mismo. Inténtalo en unos minutos.'
+
+/**
+ * La IA falló y el generador devolvió una plantilla (mock=true). Se lanza en
+ * flujos que GUARDAN el resultado (p. ej. Reto 10K) para no guardar nunca una
+ * plantilla como si fuera un texto de la IA.
+ */
+export class AIUnavailableError extends Error {
+  constructor() {
+    super(AI_UNAVAILABLE_MESSAGE)
+    this.name = 'AIUnavailableError'
+  }
+}

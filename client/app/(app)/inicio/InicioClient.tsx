@@ -15,14 +15,17 @@ import {
   buildBraviLine,
 } from '@/lib/home-today'
 import Bravi from '@/components/bravi/Bravi'
-import BraviAssistant from '@/components/home/BraviAssistant'
+import BraviHomeChat from '@/components/home/BraviHomeChat'
+import NextStepsCard from '@/components/home/NextStepsCard'
 import { buildBraviChecklist } from '@/lib/home-bravi'
-import AppTile, { AppTileLive, AppTileProps } from '@/components/home/AppTile'
+import AppTile from '@/components/home/AppTile'
 import { TILES_NORMAL, TILES_PREMIUM } from '@/components/home/tiles'
 import ReelsViralesHero from '@/components/home/ReelsViralesHero'
+import AssistantBar from '@/components/home/AssistantBar'
+import { HomeHero } from '@/components/home/HomeVisual'
+import PageHeader from '@/components/ui/PageHeader'
 import InstagramHomeCard, { type InstagramHomeState, type InstagramHomeSummary } from '@/components/home/InstagramHomeCard'
 import type { ReelInspiration, ReelTransition } from '@/types/database'
-import { reelCategory, categoryLabel } from '@/lib/reel-categories'
 
 // HOME v2 — "BRÄVE me guía": una dirección, una señal de progreso, libertad debajo.
 // Sin catálogo (los tiles viven en /herramientas), sin XP/niveles, sin banners duales.
@@ -33,59 +36,6 @@ function greeting(hour: number): string {
   return 'Buenas noches'
 }
 
-// Exploración: todo lo que BRÄVE sabe hacer, a la vista. Portadas reales
-// (Inspiración/Transiciones) + tarjetas grandes con las herramientas.
-// Reutiliza tiles.ts / AppTile / previews de la Home anterior — sin duplicar.
-function ToolsSection({
-  tiles,
-  inspirations,
-  transitions,
-}: {
-  tiles: AppTileProps[]
-  inspirations: ReelInspiration[]
-  transitions: ReelTransition[]
-}) {
-  // Tiles VIVOS: el hero de Inspiración Reels mezcla portadas de las DOS tablas
-  // (inspiraciones + transiciones ya viven juntas) y muestra la categoría de
-  // cada portada flotando mientras pasan. El deck solo usa portadas de Storage
-  // (absolutas): las locales (/reels/..., aún no desplegadas) no van al hero.
-  const liveDeck = useMemo(() => {
-    const covers: string[] = []
-    const tags: (string | null)[] = []
-    let total = 0
-    for (const r of [...(inspirations ?? []), ...(transitions ?? [])]) {
-      if (!r?.cover_image) continue
-      total++
-      if (!r.cover_image.startsWith('http')) continue
-      covers.push(r.cover_image)
-      tags.push(categoryLabel(reelCategory(r)))
-    }
-    if (covers.length === 0) return null
-    return { covers, tags, total }
-  }, [inspirations, transitions])
-
-  return (
-    <section className="space-y-4">
-      <h2 className="text-lg font-bold text-ink" style={{ letterSpacing: '-0.3px' }}>Todas tus herramientas</h2>
-      {/* REELS VIRALES (21-oct-2026): un solo bloque que sustituye a Inspiración + Transiciones */}
-      <ReelsViralesHero inspirations={inspirations} transitions={transitions} />
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
-        {tiles.filter(t => t.href !== '/inspiracion-reels').map(t => {
-          const live: AppTileLive | undefined =
-            t.href === '/inspiracion-reels' && liveDeck && t.liveCaption
-              ? { ...liveDeck, caption: t.liveCaption, noun: t.liveNoun ?? 'ideas' }
-              : undefined
-          return (
-            <div key={t.href} className={t.image || live ? 'col-span-2 sm:col-span-3' : ''}>
-              <AppTile {...t} live={live} />
-            </div>
-          )
-        })}
-      </div>
-    </section>
-  )
-}
-
 export default function InicioClient({
   profile,
   todayInput,
@@ -94,6 +44,7 @@ export default function InicioClient({
   inspirations = [],
   transitions = [],
   instagram = { state: 'preparing' },
+  view = 'inicio',
 }: {
   profile: Profile | null
   todayInput: TodayInput | null
@@ -102,6 +53,8 @@ export default function InicioClient({
   inspirations?: ReelInspiration[]
   transitions?: ReelTransition[]
   instagram?: { state: InstagramHomeState; username?: string | null; summary?: InstagramHomeSummary | null }
+  /** 'asistente' = /asistente (chat completo y pasos); 'inicio' = portada visual. */
+  view?: 'inicio' | 'asistente'
 }) {
   const [demoPlan, setDemoPlan] = useState<Partial<ContentItem>[]>([])
   const [demoBrand, setDemoBrand] = useState<Record<string, unknown> | null>(null)
@@ -168,7 +121,7 @@ export default function InicioClient({
 
   // Asistente BRÄVE: checklist determinista con los contadores reales +
   // contexto de marca (optimized_summary) para que Bravi hable del salón.
-  const braviSteps = buildBraviChecklist({
+  const braviSteps = useMemo(() => buildBraviChecklist({
     brandState: effectiveInput?.brandState ?? null,
     isPremium,
     totalItems: effectiveInput?.totalItems ?? 0,
@@ -176,112 +129,87 @@ export default function InicioClient({
     weekCreated: effectiveInput?.weekCreated ?? 0,
     weekPublished: effectiveInput?.weekPublished ?? 0,
     instagramConnected: instagram.state === 'connected',
-  })
-  const brandContext = brandSummary ?? (isDemo ? ((demoBrand?.optimized_summary as string | undefined) ?? null) : null)
+  }), [effectiveInput, isPremium, instagram.state])
 
-  // --- Estado Brain incompleto: dirección clara + herramientas visibles ---
-  if (brainIncomplete && plan && effectiveInput) {
+  const tiles = isPremium ? TILES_PREMIUM : TILES_NORMAL
+  const userId = profile?.id ?? 'demo'
+
+  // --- ASISTENTE (/asistente): chat completo de Bravi + tus pasos ---
+  if (view === 'asistente') {
     return (
-      <div className="max-w-2xl space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold text-ink" style={{ letterSpacing: '-0.5px' }}>
-            {greeting(hour)}, {firstName} 👋
-          </h1>
-          <p className="mt-1 text-base text-cherry-dark opacity-80">Tu plan para hoy</p>
-        </div>
-
-        <BraviAssistant
+      <div className="max-w-2xl space-y-6">
+        <PageHeader
+          title="Asistente"
+          subtitle="Bravi, tu directora de marketing: pregúntale lo que quieras y sigue tus próximos pasos."
+        />
+        {priority && (
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-[var(--radius-sm)] flex items-center justify-center flex-shrink-0" style={{ background: 'var(--color-buttermilk)' }}>
+              <Target size={17} style={{ color: 'var(--color-cherry)' }} />
+            </div>
+            <div>
+              <p className="text-[13px] font-semibold text-cereza">Tu prioridad</p>
+              <p className="text-[15px] font-semibold text-cherry-dark">{priority}</p>
+            </div>
+          </div>
+        )}
+        <BraviHomeChat
           profileName={profile?.full_name ?? null}
           steps={braviSteps}
-          suggestionTitle={plan.primary.title}
-          suggestionHref={plan.primary.ctaHref}
-          brandContext={brandContext}
+          suggestionTitle={plan?.primary.title ?? null}
+          suggestionHref={plan?.primary.ctaHref ?? null}
         />
-
-        <InstagramHomeCard {...instagram} />
-
-        <ToolsSection tiles={TILES_NORMAL} inspirations={inspirations} transitions={transitions} />
+        <NextStepsCard steps={braviSteps} />
+        {plan && plan.after.length > 0 && (
+          <div className="card p-4 space-y-2">
+            <p className="text-[14px] font-semibold text-ink">Después</p>
+            <ul className="space-y-2">
+              {plan.after.map(a => (
+                <li key={a.href + a.label}>
+                  <Link href={a.href} className="group inline-flex items-center gap-2.5 text-[15px] font-medium text-cherry-dark hover:text-cherry">
+                    <ArrowRight size={14} aria-hidden /> {a.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {progressLine && <p className="text-sm text-cherry-dark opacity-70">{progressLine}</p>}
       </div>
     )
   }
 
+  // --- INICIO: visual y directo (cabecera con foto, barra del asistente, herramientas) ---
   return (
-    <div className="max-w-2xl space-y-7">
-      {/* 1. Cabecera — BRÄVE dirige primero */}
-      <div>
-        <h1 className="text-3xl font-bold text-ink" style={{ letterSpacing: '-0.5px' }}>
-          {greeting(hour)}, {firstName} 👋
-        </h1>
-        <p className="mt-1 text-base text-cherry-dark opacity-80">Tu plan para hoy</p>
-      </div>
+    <div className="max-w-5xl space-y-6">
+      <HomeHero
+        userId={userId}
+        greeting={`Bienvenida, ${firstName} · ${greeting(hour).toLowerCase()}`}
+        brandCta={brainIncomplete && plan ? { title: plan.primary.title, href: plan.primary.ctaHref } : null}
+      />
 
-      {/* 2. Bravi — una línea con contexto real (o nada) */}
-      {braviLine && (
-        <div className="flex items-center gap-2.5">
-          <Bravi size={30} context={{ lastSection: profile?.last_visited_section ?? null, streak: 0, itemsToday: 0, hasScheduled: false, hour }} showMessage={false} className="flex-shrink-0" />
-          <p className="text-sm font-medium text-cherry-dark" style={{ lineHeight: 1.5 }}>{braviLine}</p>
+      <AssistantBar userId={userId} />
+
+      {/* Tus herramientas: los banners de BRÄVE (horizontales, como los diseñó Jota) */}
+      <section className="space-y-4" aria-label="Tus herramientas">
+        <h2 className="text-lg font-semibold text-ink">Tus herramientas</h2>
+        <ReelsViralesHero inspirations={inspirations} transitions={transitions} userId={userId} />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+          {tiles.filter(t => t.href !== '/inspiracion-reels').map(t => (
+            <AppTile key={t.href} {...t} />
+          ))}
         </div>
-      )}
+      </section>
 
-      {/* 3. 🎯 Tu prioridad — solo con datos reales del Brain */}
-      {priority && (
-        <div className="flex items-center gap-3">
-          <div
-            className="w-9 h-9 rounded-[var(--radius-sm)] flex items-center justify-center flex-shrink-0"
-            style={{ background: 'var(--color-buttermilk)' }}
-          >
-            <Target size={17} style={{ color: 'var(--color-cherry)' }} />
-          </div>
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-widest text-cherry opacity-60">Tu prioridad</p>
-            <p className="text-sm font-semibold text-cherry-dark">{priority}</p>
-          </div>
-        </div>
-      )}
-
-      {/* 4. Acción principal — domina la página (el asistente BRÄVE) */}
-      {plan && (
-        <BraviAssistant
-          profileName={profile?.full_name ?? null}
-          steps={braviSteps}
-          suggestionTitle={plan.primary.title}
-          suggestionHref={plan.primary.ctaHref}
-          brandContext={brandContext}
-        />
-      )}
-
-      {/* 5. Después — máximo 2, solo reales */}
-      {plan && plan.after.length > 0 && (
-        <div>
-          <p className="text-[11px] font-bold uppercase tracking-widest text-cherry opacity-60 mb-2">Después</p>
-          <ul className="space-y-2">
-            {plan.after.map(a => (
-              <li key={a.href + a.label}>
-                <Link href={a.href} className="group inline-flex items-center gap-2.5 text-sm font-medium text-cherry-dark hover:text-cherry">
-                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ border: '1.5px solid var(--color-cherry)', opacity: 0.45 }} />
-                  {a.label}
-                  <ArrowRight size={13} className="opacity-0 group-hover:opacity-100 transition-opacity" />
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {/* 5b. Tu Instagram — conexión + lo esencial del Análisis de perfil */}
       <InstagramHomeCard {...instagram} />
 
-      {/* 6. Progreso — una sola señal */}
-      {progressLine && (
-        <p className="text-sm text-cherry-dark opacity-60">{progressLine}</p>
-      )}
-
-      {/* 7. Exploración — todas las herramientas a la vista (portadas reales + tarjetas grandes) */}
-      <ToolsSection
-        tiles={isPremium ? TILES_PREMIUM : TILES_NORMAL}
-        inspirations={inspirations}
-        transitions={transitions}
-      />
+      <Link href="/asistente" className="card p-4 flex items-center gap-3 hover:-translate-y-0.5 transition-transform">
+        <Bravi size={40} showMessage={false} className="flex-shrink-0" />
+        <span>
+          <span className="block text-[16px] font-semibold text-ink">Asistente</span>
+          <span className="block text-[14px] text-tinta-2">Habla con Bravi y sigue tus próximos pasos</span>
+        </span>
+      </Link>
     </div>
   )
 }

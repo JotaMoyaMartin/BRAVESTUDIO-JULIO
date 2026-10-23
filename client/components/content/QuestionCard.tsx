@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { Copy, Check, BookOpen, MessageSquare, RefreshCw, Calendar, ChevronDown, ChevronUp, Clapperboard } from 'lucide-react'
+import AIUnavailableNotice from '@/components/ui/AIUnavailableNotice'
 
 interface Props {
   question: string
@@ -14,6 +15,9 @@ interface Props {
   responding: boolean
   answerWritten: string | null
   answerCamera: string | null
+  /** La IA falló y las respuestas son de ejemplo. */
+  answerIsExample?: boolean
+  isDemoMode?: boolean
   onSaveAnswer: (mode: 'written' | 'camera', text: string) => void
   onScheduleAnswer: (mode: 'written' | 'camera', text: string) => void
   onTeleprompter?: (text: string) => void
@@ -21,7 +25,7 @@ interface Props {
 
 export default function QuestionCard({
   question, topic, index, copied, onCopy, onSave, saved, onRespond, responding,
-  answerWritten, answerCamera, onSaveAnswer, onScheduleAnswer, onTeleprompter,
+  answerWritten, answerCamera, answerIsExample = false, isDemoMode = false, onSaveAnswer, onScheduleAnswer, onTeleprompter,
 }: Props) {
   const [expanded, setExpanded] = useState(false)
   const [showSchedule, setShowSchedule] = useState<'written' | 'camera' | null>(null)
@@ -99,6 +103,9 @@ export default function QuestionCard({
 
           {!responding && answerWritten !== null && (
             <>
+              {answerIsExample && (
+                <AIUnavailableNotice demo={isDemoMode} onRetry={onRespond} retrying={responding} />
+              )}
               {/* Written answer */}
               <AnswerSubCard
                 mode="written"

@@ -9,6 +9,7 @@ import { RetoCardStatus } from '@/types/reto10k'
 import { setRetoStatus, scheduleRetoItem, deleteItem } from '@/lib/content-utils'
 import { useToast } from '@/components/ui/Toast'
 import { RETO_POINTS } from '@/types/reto10k'
+import { AIUnavailableError, AI_UNAVAILABLE_MESSAGE } from '@/lib/ai/client'
 
 interface Props {
   item: ContentItem
@@ -175,8 +176,8 @@ export default function RetoContentCard({ item, userId, demoMode, currentXp, onC
       await onRegenerate(item)
       toast.show('Nueva idea generada', 'success')
       onChanged?.()
-    } catch {
-      toast.show('No se pudo regenerar. Inténtalo de nuevo.', 'info')
+    } catch (e) {
+      toast.show(e instanceof AIUnavailableError ? AI_UNAVAILABLE_MESSAGE : 'No se pudo regenerar. Inténtalo de nuevo.', 'info')
     } finally {
       setRegenerating(false)
     }
@@ -190,8 +191,8 @@ export default function RetoContentCard({ item, userId, demoMode, currentXp, onC
       try {
         await onGenerateContent(item)
         onChanged?.()
-      } catch {
-        toast.show('No se pudo generar el contenido. Inténtalo de nuevo.', 'info')
+      } catch (e) {
+        toast.show(e instanceof AIUnavailableError ? AI_UNAVAILABLE_MESSAGE : 'No se pudo generar el contenido. Inténtalo de nuevo.', 'info')
         setExpanded(false)
       } finally {
         setGeneratingContent(false)

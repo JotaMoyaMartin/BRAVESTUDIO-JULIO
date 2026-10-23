@@ -32,10 +32,14 @@ export interface SingleStory {
 
 export interface StoriesOutput {
   stories: SingleStory[]
+  /** true = la IA falló y esto es una plantilla de ejemplo (no un texto a medida). */
+  mock?: boolean
 }
 
 export interface QuestionBoxOutput {
   questions: string[]
+  /** true = la IA falló y esto es una plantilla de ejemplo (no un texto a medida). */
+  mock?: boolean
 }
 
 export function buildStoriesPrompt(input: StoryInput): string {
@@ -227,7 +231,7 @@ export async function generateStories(input: StoryInput): Promise<StoriesOutput>
   } catch {
     // fall through to mock
   }
-  return getMockStories(input)
+  return { ...getMockStories(input), mock: true }
 }
 
 // ── Question Box ───────────────────────────────────────────────────
@@ -291,24 +295,32 @@ export async function generateQuestions(input: {
   } catch {
     // fall through to mock
   }
-  return getMockQuestions(input.topic)
+  return { ...getMockQuestions(input.topic), mock: true }
 }
 
-/** LLM-backed answer generation with mock fallback. */
+/** LLM-backed answer generation with mock fallback. mock=true → respuesta de ejemplo. */
+export async function generateQuestionAnswerChecked(input: {
+  question: string
+  mode: 'written' | 'camera'
+  brandContext?: string
+}): Promise<{ answer: string; mock: boolean }> {
+  try {
+    const raw = await generateAIContent(buildAnswerPrompt(input))
+    if (raw && raw.trim().length > 0) {
+      return { answer: raw.trim(), mock: false }
+    }
+  } catch {
+    // fall through to mock
+  }
+  return { answer: getMockAnswer(input.question, input.mode), mock: true }
+}
+
 export async function generateQuestionAnswer(input: {
   question: string
   mode: 'written' | 'camera'
   brandContext?: string
 }): Promise<string> {
-  try {
-    const raw = await generateAIContent(buildAnswerPrompt(input))
-    if (raw && raw.trim().length > 0) {
-      return raw.trim()
-    }
-  } catch {
-    // fall through to mock
-  }
-  return getMockAnswer(input.question, input.mode)
+  return (await generateQuestionAnswerChecked(input)).answer
 }
 
 function getMockAnswer(question: string, mode: 'written' | 'camera'): string {

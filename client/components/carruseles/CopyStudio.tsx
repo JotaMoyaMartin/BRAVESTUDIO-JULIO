@@ -12,6 +12,7 @@
 import { useRef, useState, useEffect } from 'react'
 import { ArrowRight, ChevronDown, Lock, RefreshCw, Wand2 } from 'lucide-react'
 import Button from '@/components/ui/Button'
+import AIUnavailableNotice from '@/components/ui/AIUnavailableNotice'
 import type {
   CopyProposal,
   CopySlide,
@@ -34,6 +35,8 @@ interface Props {
   proposalBusy: boolean
   proposalError: string | null
   proposalIsDemo: boolean
+  /** La IA no respondió al crear la propuesta: aviso + reintentar. */
+  proposalAIDown?: boolean
   hookBusy: boolean
   tweakBusy: CopyTweak | null
   ctaBusy: boolean
@@ -211,7 +214,15 @@ export default function CopyStudio(props: Props) {
       </div>
 
       {/* ── 02 · PROPUESTA EDITABLE ────────────────────────────────────── */}
-      {props.proposalError && !props.proposal && (
+      {props.proposalAIDown && !props.proposal && (
+        <AIUnavailableNotice
+          className="mt-4"
+          showsExample={false}
+          onRetry={props.onCreateProposal}
+          retrying={props.proposalBusy}
+        />
+      )}
+      {props.proposalError && !props.proposalAIDown && !props.proposal && (
         <div className="mt-4 p-4 rounded-[var(--radius-sm)] bg-white border border-[rgba(122,24,50,0.2)]">
           <p className="text-sm text-cherry-dark">{props.proposalError}</p>
         </div>
@@ -228,13 +239,7 @@ export default function CopyStudio(props: Props) {
             </div>
 
             {props.proposalIsDemo && (
-              <div className="mb-4 px-4 py-3 rounded-[var(--radius-sm)] bg-[var(--color-warm-gray)] border border-ink/10">
-                <p className="text-xs text-ink/60 leading-relaxed">
-                  <span className="font-semibold text-cherry-dark">Ejemplo</span> · La IA no está
-                  disponible ahora: este es un carrusel de ejemplo para explorar el flujo. Puedes
-                  editar todo lo que ves.
-                </p>
-              </div>
+              <AIUnavailableNotice className="mb-4" demo />
             )}
 
             {/* Tarjetas editables */}

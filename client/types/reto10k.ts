@@ -97,6 +97,8 @@ export interface RetoItem {
 export interface RetoOutput {
   items: RetoItem[]
   summary: string
+  /** true = la IA falló y esto es una plantilla de ejemplo (no un texto a medida). */
+  mock?: boolean
 }
 
 // ── Misión del día: item único dedicado ───────────────────────────────
@@ -119,6 +121,8 @@ export interface RetoMissionItem {
 export interface RetoMissionOutput {
   item: RetoMissionItem
   summary: string
+  /** true = la IA falló y esto es una plantilla de ejemplo (no un texto a medida). */
+  mock?: boolean
 }
 
 // ── Batch de misiones (varios dias en una sola llamada IA) ───────────
@@ -143,6 +147,8 @@ export interface RetoMissionBatchInput {
 export interface RetoMissionBatchOutput {
   items: RetoMissionItem[]
   summary: string
+  /** true = la IA falló y esto es una plantilla de ejemplo (no un texto a medida). */
+  mock?: boolean
 }
 
 // ── Plan de 30 días ───────────────────────────────────────────────────

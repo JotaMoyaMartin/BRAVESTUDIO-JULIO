@@ -4,6 +4,7 @@ import { ContentItem, BrandProfile } from '@/types/database'
 import { RETO_POINTS, RetoCardStatus, Reto10kProgress, Reto10kConfig } from '@/types/reto10k'
 import { generateMissionContent } from '@/lib/ai/prompts/reto10k'
 import { buildBrandFullContext, hasBrandContext } from '@/lib/ai/brand-context'
+import { AIUnavailableError } from '@/lib/ai/client'
 
 // ── Clipboard ──────────────────────────────────────────────────────
 
@@ -433,6 +434,8 @@ export async function generateContentForPlaceholder(
     missionPromptHint: missionHint,
     brandContext,
   })
+  // Nunca guardar una plantilla como si la hubiera escrito la IA.
+  if (output.mock && !isDemoMode) throw new AIUnavailableError()
 
   await updateRetoMissionItem(userId, item.id, {
     type: output.item.type,

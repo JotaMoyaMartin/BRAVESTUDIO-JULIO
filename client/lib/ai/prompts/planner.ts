@@ -30,6 +30,8 @@ export interface PlannerItem {
 export interface PlannerOutput {
   items: PlannerItem[]
   summary: string
+  /** true = la IA falló y esto es una plantilla de ejemplo (no un texto a medida). */
+  mock?: boolean
 }
 
 const DEFAULT_DAYS: Record<number, string[]> = {
@@ -415,5 +417,5 @@ export async function generatePlan(input: PlannerInput): Promise<PlannerOutput> 
   } catch {
     // fall through to mock
   }
-  return generateMockPlan(input)
+  return { ...generateMockPlan(input), mock: true }
 }

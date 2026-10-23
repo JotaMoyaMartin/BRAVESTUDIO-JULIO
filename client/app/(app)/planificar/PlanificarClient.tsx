@@ -10,6 +10,7 @@ import { READY_SEQUENCES, readyToStories } from '@/lib/stories/sequences'
 import { addWeeklyStories } from '@/lib/plan/stories-in-plan'
 import { buildBrandFullContext, hasBrandContext, BrandFullContextInput } from '@/lib/ai/brand-context'
 import UsarMiMarcaToggle from '@/components/ui/UsarMiMarcaToggle'
+import AIUnavailableNotice from '@/components/ui/AIUnavailableNotice'
 import PageHeader from '@/components/ui/PageHeader'
 import { ContentItem } from '@/types/database'
 import { useSessionState, clearSectionState } from '@/lib/session-store'
@@ -89,6 +90,8 @@ function CrearTab({ userId, brand, isDemoMode, onSaved }: { userId: string; bran
   const [freeText, setFreeText] = useSessionState<string>(`u:${userId}:planificar:freeText`, '')
   const [generating, setGenerating] = useState(false)
   const [plan, setPlan] = useSessionState<PlannerItem[] | null>(`u:${userId}:planificar:plan`, null)
+  // true = la IA falló y el plan es una plantilla de ejemplo.
+  const [planMock, setPlanMock] = useSessionState<boolean>(`u:${userId}:planificar:planMock`, false)
   const [savedIds, setSavedIds] = useSessionState<string[]>(`u:${userId}:planificar:savedIds`, [])
   const [refreshCounters, setRefreshCounters] = useSessionState<Record<string, number>>(`u:${userId}:planificar:refreshCounters`, {})
   // Guion de cada idea: se genera UNA vez y es el mismo que se ve y se guarda.
@@ -125,6 +128,7 @@ function CrearTab({ userId, brand, isDemoMode, onSaved }: { userId: string; bran
       brandContext,
     })
     setPlan(opts.includeStories ? addWeeklyStories(result.items, opts.services) : result.items)
+    setPlanMock(!!result.mock)
     setSavedIds([])
     setGuiones({})
     setGenerating(false)
@@ -275,9 +279,14 @@ function CrearTab({ userId, brand, isDemoMode, onSaved }: { userId: string; bran
           </div>
         </div>
 
+        {planMock && (
+          <AIUnavailableNotice demo={isDemoMode} onRetry={() => generate()} retrying={generating} />
+        )}
+
         <div className="space-y-3">
           {plan.map(item => (
             <PlanDraftCard
+              isDemoMode={isDemoMode}
               key={`${item.id}-${refreshCounters[item.id] || 0}`}
               item={item}
               objective={objective}
@@ -408,8 +417,9 @@ function CrearTab({ userId, brand, isDemoMode, onSaved }: { userId: string; bran
   )
 }
 
-function PlanDraftCard({ item, objective, isSaved, onRegenerate, onRemove, onSave, guion, onGuion, brandContext }: {
+function PlanDraftCard({ item, objective, isSaved, onRegenerate, onRemove, onSave, guion, onGuion, brandContext, isDemoMode }: {
   item: PlannerItem
+  isDemoMode: boolean
   objective: PlanObjective
   isSaved: boolean
   guion: Guion | null
@@ -432,6 +442,15 @@ function PlanDraftCard({ item, objective, isSaved, onRegenerate, onRemove, onSav
       onGuion(g)
       setLoadingGuion(false)
       return g
+    })
+  }
+
+  /** La IA falló en este guion: pedirlo otra vez. */
+  function retryGuion() {
+    setLoadingGuion(true)
+    genGuion(item, objective, brandContext).then(g => {
+      onGuion(g)
+      setLoadingGuion(false)
     })
   }
 
@@ -479,6 +498,9 @@ function PlanDraftCard({ item, objective, isSaved, onRegenerate, onRemove, onSav
 
       {expanded && guion && (
         <div className="border-t px-5 py-4 space-y-4" style={{ borderColor: 'rgba(255,241,181,0.5)' }}>
+          {'mock' in guion && guion.mock && (
+            <AIUnavailableNotice demo={isDemoMode} onRetry={retryGuion} retrying={loadingGuion} />
+          )}
           <GuionView item={item} guion={guion} copied={copied} onCopy={copy} />
 
           {editingDate && (

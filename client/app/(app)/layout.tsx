@@ -6,6 +6,8 @@ import PreviewPremiumBanner from '@/components/layout/PreviewPremiumBanner'
 import { Profile } from '@/types/database'
 import { hasActiveAccess, ACCESS_REDIRECT } from '@/lib/access'
 import { ToastProvider } from '@/components/ui/Toast'
+import { BraviChatProvider } from '@/components/bravi/BraviChatProvider'
+import BraviFab from '@/components/bravi/BraviFab'
 
 const IS_CONFIGURED = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').startsWith('http')
 
@@ -40,6 +42,8 @@ const DEMO_PROFILE: Profile = {
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   let typedProfile: Profile = DEMO_PROFILE
   let isPreviewingPremium = false
+  // Contexto del salón para el chat con Bravi (resumen de Mi Marca).
+  let brandSummary: string | null = null
 
   if (IS_CONFIGURED) {
     const { redirect } = await import('next/navigation')
@@ -81,6 +85,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     if (isPreviewingPremium) {
       typedProfile = { ...typedProfile, role: 'premium' }
     }
+
+    const { data: brandRow } = await supabase
+      .from('brand_profiles')
+      .select('optimized_summary')
+      .eq('user_id', user!.id)
+      .maybeSingle()
+    brandSummary = (brandRow as { optimized_summary?: string | null } | null)?.optimized_summary ?? null
   }
 
   return (
@@ -90,7 +101,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <div className="max-w-4xl mx-auto px-5 sm:px-6 pt-20 pb-8 md:pt-8 md:py-8">
           <SectionTracker />
           {isPreviewingPremium && <PreviewPremiumBanner />}
-          <ToastProvider>{children}</ToastProvider>
+          <ToastProvider>
+            <BraviChatProvider brandContext={brandSummary} isDemo={typedProfile.id === 'demo'}>
+              {children}
+              <BraviFab />
+            </BraviChatProvider>
+          </ToastProvider>
         </div>
       </main>
     </div>

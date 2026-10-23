@@ -18,6 +18,8 @@ export interface BraviChatInput {
   steps: BraviStep[]
   suggestionLabel?: string | null
   suggestionHref?: string | null
+  /** Sección en la que está la usuaria al escribir (Bravi flotante). */
+  currentSection?: string | null
 }
 
 export interface BraviReply {
@@ -37,6 +39,10 @@ const CTA_HREFS = new Set([
   '/foto-inspo',
   '/carrusel',
   '/teleprompter',
+  '/estudio',
+  '/editar-videos',
+  '/analisis',
+  '/inspiracion-reels',
 ])
 
 function normalizeHref(href: string): string {
@@ -67,17 +73,17 @@ export function buildBraviChatPrompt(input: BraviChatInput): string {
 ${input.brandContext ? `\nCONTEXTO DEL SALÓN:\n${input.brandContext}\n` : ''}
 SUGERENCIA DE HOY (la tarjeta "Recomendado para hoy" que la usuaria ve en esta misma tarjeta): ${input.suggestionLabel ?? 'ninguna hoy'}
 ${input.suggestionHref && suggestionHrefAllowed(input.suggestionHref) ? `(botón de la sugerencia: ${input.suggestionHref})\n` : ''}
-PASOS DEL CHECKLIST (abajo de la tarjeta, la usuaria puede tocarlos):
+${input.currentSection ? `AHORA MISMO LA USUARIA ESTÁ EN: ${input.currentSection}. Si la pregunta es sobre esa sección, responde pensando en ella.\n` : ''}${input.steps.length > 0 ? `PASOS DEL CHECKLIST (la usuaria los ve en Inicio y puede tocarlos):
 ${steps}
 
 ${firstPending ? `El siguiente paso pendiente es "${firstPending.label}".` : 'Ya completó todos los pasos del checklist.'}
-
+` : ''}
 HISTORIAL RECIENTE (máx 6 mensajes, el actual es el último):
 ${history || '(primer mensaje de la conversación)'}
 
 PREGUNTA DE LA USUARIA: ${input.question}
 
-Si propones ir a una sección, el "href" del cta DEBE ser exactamente uno de esta lista: /mi-marca, /crear-contenido, /stories, /planificar, /calendario, /biblioteca, /banco-ganchos, /foto-inspo, /carrusel, /teleprompter. Si no corresponde, cta = null.
+Si propones ir a una sección, el "href" del cta DEBE ser exactamente uno de esta lista: ${Array.from(CTA_HREFS).join(', ')}. Si no corresponde, cta = null.
 
 Devuelve EXACTAMENTE este JSON:
 {
@@ -100,7 +106,7 @@ export function getMockBraviReply(input: BraviChatInput): BraviReply {
   if (/\b(empez|por donde|no se por|comienzo|marca|informacion|falta)/.test(q)) {
     if (firstPending) {
       return {
-        reply: `Vamos paso a paso. El primero es "${firstPending.label}". ${firstPending.desc}. Toca ese paso abajo y te acompaño.`,
+        reply: `Vamos paso a paso. El primero es "${firstPending.label}". ${firstPending.desc}. Toca el botón y te llevo.`,
         cta: sanitizeCta({ label: firstPending.label, href: firstPending.href }),
       }
     }

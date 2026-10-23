@@ -18,6 +18,7 @@ import { useToast } from '@/components/ui/Toast'
 import { buildBrandFullContext, hasBrandContext, BrandFullContextInput } from '@/lib/ai/brand-context'
 import { openTeleprompter } from '@/lib/teleprompter/input'
 import UsarMiMarcaToggle from '@/components/ui/UsarMiMarcaToggle'
+import AIUnavailableNotice from '@/components/ui/AIUnavailableNotice'
 import BraviGuide from '@/components/bravi/BraviGuide'
 import {
   Copy, BookOpen, RefreshCw, Check, ChevronLeft, Clapperboard, RotateCcw, Sparkles, Mic,
@@ -385,7 +386,9 @@ export default function CrearContenidoClient({
         {/* ───────────── PASO 2 · GANCHOS ───────────── */}
         {step === 'hooks' && (
           <motion.div key="hooks" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.25 }} className="space-y-4">
-            {hooksMock && !hooksLoading && <MockNotice />}
+            {hooksMock && !hooksLoading && (
+              <AIUnavailableNotice demo={isDemoMode} onRetry={() => loadHooks(false)} />
+            )}
 
             {/* Lo que he entendido */}
             {hasIdea && understanding && !hooksLoading && (
@@ -479,7 +482,9 @@ export default function CrearContenidoClient({
               <LoadingCards label="Escribiendo tu guion…" big />
             ) : (
               <>
-                {current.mock && <MockNotice />}
+                {current.mock && (
+                  <AIUnavailableNotice demo={isDemoMode} onRetry={() => writeScript(current.hook, current.hook.structure)} />
+                )}
                 <ScriptView
                   current={current}
                   service={topicLabel}
@@ -548,7 +553,7 @@ function otherStructure(objective: ContentObjective, currentId: StructureId): St
 /** Barra de acción: pegada abajo en móvil (siempre a mano con el pulgar), normal en ordenador. */
 function StickyBar({ children }: { children: React.ReactNode }) {
   return (
-    <div className="sticky bottom-0 z-20 -mx-4 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] bg-gradient-to-t from-cream via-cream/95 to-cream/0 md:static md:mx-0 md:px-0 md:pb-0 md:bg-none">
+    <div data-bottom-bar className="sticky bottom-0 z-20 -mx-4 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] bg-gradient-to-t from-cream via-cream/95 to-cream/0 md:static md:mx-0 md:px-0 md:pb-0 md:bg-none">
       {children}
     </div>
   )
@@ -699,14 +704,6 @@ function CopyBtn({ active, onClick, label }: { active: boolean; onClick: () => v
       {active ? <Check size={12} /> : <Copy size={12} />}
       {active ? '¡Copiado!' : label}
     </button>
-  )
-}
-
-function MockNotice() {
-  return (
-    <div className="rounded-2xl px-4 py-3 bg-warm-gray text-xs text-cherry-dark/80 border border-dashed border-cherry/25">
-      <b>Estás viendo un ejemplo.</b> La IA no está conectada ahora mismo, así que no es un texto a medida. Vuelve a intentarlo en un momento.
-    </div>
   )
 }
 

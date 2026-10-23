@@ -282,7 +282,7 @@ export async function generateRetos(input: RetoInput): Promise<RetoOutput> {
   } catch {
     // fall through to mock
   }
-  return generateMockRetos(input)
+  return { ...generateMockRetos(input), mock: true }
 }
 
 // ── Generación de item único para la misión del día ───────────────────
@@ -526,7 +526,7 @@ export async function generateMissionContent(input: RetoMissionInput): Promise<R
   } catch {
     // fall through to mock
   }
-  return generateMockMissionContent(input)
+  return { ...generateMockMissionContent(input), mock: true }
 }
 
 // ── Batch: generar varias misiones en una sola llamada IA ─────────────
@@ -676,5 +676,5 @@ export async function generateMissionBatch(input: RetoMissionBatchInput): Promis
   } catch {
     // fall through to mock
   }
-  return generateMockMissionBatch(input)
+  return { ...generateMockMissionBatch(input), mock: true }
 }

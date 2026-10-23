@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
 import Sidebar from '@/components/layout/Sidebar'
 import SectionTracker from '@/components/layout/SectionTracker'
+import SectionReset from '@/components/layout/SectionReset'
 import PreviewPremiumBanner from '@/components/layout/PreviewPremiumBanner'
 import { Profile } from '@/types/database'
 import { hasActiveAccess, ACCESS_REDIRECT } from '@/lib/access'
@@ -101,6 +102,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <div className="max-w-4xl mx-auto px-5 sm:px-6 pt-20 pb-8 md:pt-8 md:py-8">
           <SectionTracker />
           {isPreviewingPremium && <PreviewPremiumBanner />}
+          <SectionReset userId={typedProfile.id} />
           <ToastProvider>
             <BraviChatProvider brandContext={brandSummary} isDemo={typedProfile.id === 'demo'}>
               {children}

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { hasActiveAccess } from '@/lib/access'
 import { IS_DEMO } from '@/lib/demo'
 import SupportButton from '@/components/SupportButton'
+import AuthShell from '@/components/auth/AuthShell'
 
 function LoginForm() {
   const [email, setEmail] = useState('')
@@ -77,37 +78,13 @@ function LoginForm() {
   }
 
   return (
-    <div
-      className="min-h-screen flex items-center justify-center p-4"
-      style={{ background: '#FFF8E7' }}
-    >
-      <div className="w-full max-w-sm">
-
-        <div className="text-center mb-8">
-          <div
-            className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4"
-            style={{ background: '#7A1832' }}
-          >
-            <span className="text-white text-xl">✦</span>
-          </div>
-          <h1 className="text-3xl font-bold" style={{ color: '#591427', letterSpacing: '-0.5px' }}>
-            BRÄVE Studio
-          </h1>
-        </div>
-
-        <div
-          className="rounded-3xl p-8"
-          style={{ background: 'white', border: '1.5px solid rgba(122,24,50,0.1)', boxShadow: '0 4px 24px rgba(89,20,39,0.07)' }}
-        >
-          <div className="flex flex-col items-center gap-3 mb-8 text-center">
-            <div className="rounded-full flex items-center justify-center" style={{ width: 84, height: 84, background: 'rgba(255,241,181,0.8)' }}>
-              <img src="/bravi2.png" alt="Bravi" className="bravi-float" style={{ width: 56, height: 56, objectFit: 'contain', filter: 'drop-shadow(0 2px 4px rgba(89,20,39,0.18))' }} draggable={false} />
-            </div>
-            <p className="text-sm leading-relaxed" style={{ color: '#591427', opacity: 0.8 }}>
-              Acceso exclusivo para miembros activos de la comunidad BRÄVE
-            </p>
-          </div>
-
+    <AuthShell eyebrow="Miembros BRÄVE" title="Bienvenida de nuevo" subtitle="Entra con tu email y tu contraseña."
+      footer={
+        <a href="/skool-access" className="flex items-center justify-between gap-3 rounded-2xl px-5 py-4 transition-colors hover:bg-white/15" style={{ background: 'rgba(255,247,238,0.08)', border: '1px solid rgba(246,231,166,0.3)', color: '#FFF7EE' }}>
+          <span><span className="block text-[15px] font-semibold">¿Eres alumna de Skool?</span><span className="block text-[13px]" style={{ color: '#F6E7A6' }}>Activa tu acceso gratis con tu código</span></span>
+          <span aria-hidden className="text-lg">→</span>
+        </a>
+      }>
           {error && (
             <div
               className="mb-4 p-3 rounded-xl text-sm text-center"
@@ -192,9 +169,7 @@ function LoginForm() {
               <SupportButton variant="inline" subject="Problema para entrar en BRÄVE Studio" />
             </div>
           </div>
-        </div>
-      </div>
-    </div>
+    </AuthShell>
   )
 }
 

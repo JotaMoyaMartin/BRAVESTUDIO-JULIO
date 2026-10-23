@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { IS_DEMO } from '@/lib/demo'
 import SupportButton from '@/components/SupportButton'
+import AuthShell from '@/components/auth/AuthShell'
 
 export default function SkoolAccessClient() {
   const [fullName, setFullName] = useState('')
@@ -112,38 +113,7 @@ export default function SkoolAccessClient() {
   }
 
   return (
-    <div
-      className="min-h-screen flex items-center justify-center p-4"
-      style={{ background: '#FFF8E7' }}
-    >
-      <div className="w-full max-w-sm">
-
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div
-            className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4"
-            style={{ background: '#7A1832' }}
-          >
-            <span className="text-white text-xl">✦</span>
-          </div>
-          <h1 className="text-2xl font-bold" style={{ color: '#591427' }}>
-            Acceso para miembros BRÄVE
-          </h1>
-        </div>
-
-        <div
-          className="rounded-3xl p-8"
-          style={{ background: 'white', border: '1.5px solid rgba(122,24,50,0.1)', boxShadow: '0 4px 24px rgba(89,20,39,0.07)' }}
-        >
-          <div className="flex flex-col items-center gap-3 mb-6 text-center">
-            <div className="rounded-full flex items-center justify-center" style={{ width: 84, height: 84, background: 'rgba(255,241,181,0.8)' }}>
-              <img src="/bravi2.png" alt="Bravi" className="bravi-float" style={{ width: 56, height: 56, objectFit: 'contain', filter: 'drop-shadow(0 2px 4px rgba(89,20,39,0.18))' }} draggable={false} />
-            </div>
-            <p className="text-sm leading-relaxed" style={{ color: '#591427', opacity: 0.8 }}>
-              Si formas parte de la comunidad, crea tu cuenta con tu email e introduce tu código de acceso.
-            </p>
-          </div>
-
+    <AuthShell eyebrow="Alumnas de Skool" title="Activa tu acceso" subtitle="Crea tu cuenta con el mismo email que usas en Skool y el código que encontrarás en el módulo de la app.">
           {error && (
             <div className="mb-4 space-y-2">
               <div
@@ -278,8 +248,6 @@ export default function SkoolAccessClient() {
               ¿Ya tienes cuenta? Inicia sesión
             </a>
           </div>
-        </div>
-      </div>
-    </div>
+    </AuthShell>
   )
 }

@@ -5,6 +5,7 @@ import { stripe } from '@/lib/stripe'
 import { getPriceId, Currency, Plan } from '@/lib/stripe-prices'
 import { sendEmail } from '@/lib/email/send'
 import { welcomeEmail } from '@/lib/email/templates'
+import { activateSkoolAccess } from '@/lib/skool/server'
 
 /**
  * Auth callback — handles email confirmation redirects and password reset
@@ -35,6 +36,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/login`)
   }
 
+  // Entrada con email desde Skool (enlace del email): activa su acceso si está en la lista.
+  await activateSkoolAccess(user.id, user.email).catch(() => false)
+
   const metadata = user.user_metadata || {}
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || origin
 
@@ -45,7 +49,9 @@ export async function GET(request: NextRequest) {
   }
 
   // Send welcome email (fire-and-forget) — only if user has email
-  if (user.email) {
+  // Solo la primera vez (ahora también se entra por enlace del email cada día).
+  const isNewUser = Date.now() - new Date(user.created_at).getTime() < 15 * 60_000
+  if (user.email && isNewUser) {
     try {
       await sendEmail(user.email, '¡Bienvenida a BRÄVE Studio!', welcomeEmail(fullName as string || ''))
     } catch (e) {

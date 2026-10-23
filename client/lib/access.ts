@@ -6,8 +6,9 @@ export function hasActiveAccess(
   profile: Pick<Profile, 'access_status' | 'subscription_status' | 'is_active' | 'access_source' | 'access_expires_at'>
 ): boolean {
   // Promo expirado: si el acceso viene de un promo y ya caducó, se revoca perezosamente
+  // Skool: si dejó de estar en la lista, pierde el acceso al acabar el margen.
   if (
-    profile.access_source === 'promo' &&
+    (profile.access_source === 'promo' || profile.access_source === 'skool') &&
     profile.access_expires_at &&
     new Date(profile.access_expires_at).getTime() < Date.now()
   ) {

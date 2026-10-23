@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Profile } from '@/types/database'
@@ -20,6 +20,13 @@ export default function AccessBlockedClient({ profile }: Props) {
   const [portalError, setPortalError] = useState('')
 
   const hasStripeCustomer = !!profile.stripe_customer_id
+
+  // Si su email está en la lista de Skool, se activa sola y entra.
+  useEffect(() => {
+    fetch('/api/auth/skool/activar', { method: 'POST' })
+      .then(r => r.json()).then(j => { if (j?.active) { router.push('/inicio'); router.refresh() } })
+      .catch(() => {})
+  }, [router])
 
   async function handleRedeem(e: React.FormEvent) {
     e.preventDefault()

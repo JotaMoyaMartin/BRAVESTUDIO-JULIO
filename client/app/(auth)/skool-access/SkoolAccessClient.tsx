@@ -62,7 +62,13 @@ export default function SkoolAccessClient() {
         data: { full_name: fullName.trim(), promo_code: code.toUpperCase() },
       },
     })
-    if (authError) {
+    if (authError || (data.user && data.user.identities?.length === 0)) {
+      // Ya tenía cuenta con ese email: que entre desde el login.
+      if (!authError || /already|registered|exists/i.test(authError.message)) {
+        setError('Ya tienes cuenta con este email. Entra en «Iniciar sesión» con tu contraseña (o pulsa «¿Olvidaste tu contraseña?»).')
+        setLoading(false)
+        return
+      }
       setError(authError.message || 'No se pudo crear la cuenta.')
       setLoading(false)
       return
@@ -179,8 +185,11 @@ export default function SkoolAccessClient() {
 
             <div>
               <label className="block text-sm font-medium mb-1.5" style={{ color: '#591427' }}>
-                Email
+                Tu email de Skool
               </label>
+              <p className="text-xs mb-1.5" style={{ color: '#591427', opacity: 0.65 }}>
+                Usa el mismo email con el que entras en Skool: así mantienes tu acceso.
+              </p>
               <input
                 type="email"
                 value={email}

@@ -194,7 +194,7 @@ export async function middleware(request: NextRequest) {
       profile &&
       !isPrivileged &&
       profile.access_status === 'active' &&
-      profile.access_source === 'promo' &&
+      (profile.access_source === 'promo' || profile.access_source === 'skool') &&
       profile.access_expires_at &&
       new Date(profile.access_expires_at).getTime() < Date.now()
     ) {

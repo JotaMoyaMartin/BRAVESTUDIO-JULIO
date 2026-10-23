@@ -12,6 +12,7 @@ import {
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import BraviMascot from '@/components/bravi/BraviMascot'
+import { showInstagram } from '@/lib/features'
 
 interface NavItem {
   href: string
@@ -45,7 +46,7 @@ const navItems: NavItem[] = [
   { href: '/disenos', label: 'Diseños', icon: LayoutTemplate },
   { href: '/biblioteca', label: 'Biblioteca', icon: BookOpen },
   // Análisis — Instagram conectado (6-oct-2026): datos reales de la cuenta.
-  { href: '/analisis', label: 'Análisis', icon: ChartNoAxesColumn },
+  ...(showInstagram() ? [{ href: '/analisis', label: 'Análisis', icon: ChartNoAxesColumn }] : []),
 ]
 
 const premiumNavItems: NavItem[] = [
@@ -54,7 +55,7 @@ const premiumNavItems: NavItem[] = [
   { href: '/plan-contenidos', label: 'Plan de Contenidos', icon: Sparkles },
   { href: '/metricas', label: 'Métricas', icon: BarChart3 },
   // Análisis — Instagram conectado (6-oct-2026): datos propios de la cuenta.
-  { href: '/analisis', label: 'Análisis', icon: ChartNoAxesColumn },
+  ...(showInstagram() ? [{ href: '/analisis', label: 'Análisis', icon: ChartNoAxesColumn }] : []),
   { href: '/crear-contenido', label: 'Crear guiones', icon: Film },
   { href: '/biblioteca', label: 'Biblioteca', icon: BookOpen },
   { href: '/stories', label: 'Stories', icon: LayoutGrid },

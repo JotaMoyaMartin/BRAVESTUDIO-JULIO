@@ -6,6 +6,7 @@
 import Link from 'next/link'
 import { ArrowRight, RefreshCw, Sparkles } from 'lucide-react'
 import InstagramGlyph, { IG_GRADIENT } from '@/components/social/InstagramGlyph'
+import { showInstagram } from '@/lib/features'
 
 export type InstagramHomeState = 'demo' | 'preparing' | 'disconnected' | 'expired' | 'connected'
 
@@ -25,7 +26,7 @@ export default function InstagramHomeCard({
   username?: string | null
   summary?: InstagramHomeSummary | null
 }) {
-  if (state === 'preparing') return null
+  if (state === 'preparing' || !showInstagram()) return null
 
   const icon = (
     <span className="h-11 w-11 rounded-2xl flex items-center justify-center text-white flex-shrink-0" style={{ background: IG_GRADIENT }}>

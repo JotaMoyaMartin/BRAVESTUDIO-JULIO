@@ -6,6 +6,7 @@
 import { getConnectInfo, isSocialProviderReady } from './repo'
 import { getSavedReport } from './analysis'
 import { FORMAT_LABEL } from './profile-stats'
+import { showInstagram } from '@/lib/features'
 import type { InstagramHomeState, InstagramHomeSummary } from '@/components/home/InstagramHomeCard'
 
 export interface InstagramCardProps {
@@ -15,6 +16,8 @@ export interface InstagramCardProps {
 }
 
 export async function getInstagramCardState(userId: string): Promise<InstagramCardProps> {
+  // Oculto hasta que Meta apruebe la app: sin tarjeta en Inicio ni Mi Marca.
+  if (!showInstagram()) return { state: 'preparing' }
   try {
     if (!isSocialProviderReady()) return { state: 'preparing' }
     const conn = await getConnectInfo(userId, 'instagram')

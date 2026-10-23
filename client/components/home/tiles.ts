@@ -1,5 +1,6 @@
 import { Sparkles, Film, LayoutGrid, Star, Clapperboard, BookOpen, Calendar, BarChart3, GraduationCap, Captions, Images, Zap, Camera, ChartNoAxesColumn, Palette, LayoutTemplate, Scissors } from 'lucide-react'
 import { AppTileProps } from './AppTile'
+import { showInstagram } from '@/lib/features'
 
 // Launcher de mini-apps — vive en /herramientas (Home v2 ya no es catálogo).
 export const TILES_NORMAL: AppTileProps[] = [
@@ -26,7 +27,7 @@ export const TILES_NORMAL: AppTileProps[] = [
   // su tile y nav se quitan; /transiciones-reels redirige a la pestaña correspondiente.
   { href: '/biblioteca', icon: BookOpen, label: 'Biblioteca', desc: 'Todo tu contenido', tone: 'buttermilk', image: '/tiles/biblioteca-banner.jpg' },
   // Análisis — Instagram conectado (6-oct-2026): métricas de la cuenta de IG.
-  { href: '/analisis', icon: ChartNoAxesColumn, label: 'Análisis', desc: '¿Qué funciona en tu Instagram?', tone: 'blue' },
+  ...(showInstagram() ? [{ href: '/analisis', icon: ChartNoAxesColumn, label: 'Análisis', desc: '¿Qué funciona en tu Instagram?', tone: 'blue' } as AppTileProps] : []),
   // Reto 10K oculto por Jota (30 sep): simplificar. La ruta /reto-10k sigue viva —
   // para reactivarlo: devolver esta línea a TILES_NORMAL (y el nav de Sidebar).
   { href: '/carrusel', icon: Images, label: 'Carruseles', desc: 'Carrusel listo para publicar', tone: 'green' },
@@ -37,7 +38,7 @@ export const TILES_PREMIUM: AppTileProps[] = [
   { href: '/plan-contenidos', icon: Sparkles, label: 'Plan de Contenidos', desc: 'Tus guiones asignados', tone: 'pink' },
   { href: '/metricas', icon: BarChart3, label: 'Métricas', desc: 'Resultados y crecimiento', tone: 'blue' },
   // Análisis — Instagram conectado (6-oct-2026): datos propios de la cuenta.
-  { href: '/analisis', icon: ChartNoAxesColumn, label: 'Análisis', desc: '¿Qué funciona en tu Instagram?', tone: 'cream' },
+  ...(showInstagram() ? [{ href: '/analisis', icon: ChartNoAxesColumn, label: 'Análisis', desc: '¿Qué funciona en tu Instagram?', tone: 'cream' } as AppTileProps] : []),
   { href: '/banco-ganchos', icon: Zap, label: 'Banco de Ganchos', desc: '80 ganchos → guion en 1 toque', tone: 'blue' },
   { href: '/estudio', icon: Camera, label: 'Estudio de fotos', desc: 'Hazte la foto, déjala bonita y úsala', tone: 'cream' },
   // Foto Pro — 8-oct-2026: Retoque Pro disponible, Sesión IA próximamente.

@@ -1,3 +1,5 @@
+import { showInstagram } from './features'
+
 // ASISTENTE BRÄVE — checklist de próximos pasos + preguntas frecuentes.
 // Puro y determinista (sin I/O, sin React): la Home pasa los contadores reales
 // y esta lib decide el orden del recorrido. Igual de sobria que home-today.ts.
@@ -77,14 +79,23 @@ export function buildBraviChecklist(input: ChecklistInput): BraviStep[] {
         href: '/planificar',
         done: input.weekCreated > 0,
       },
-      {
-        id: 'publicar',
-        // 22-oct-2026: «medir» = conectar Instagram y ver el Análisis de perfil.
-        label: 'Conecta Instagram y mide',
-        desc: 'Te decimos qué te funciona y cómo mejorar tu perfil',
-        href: '/analisis',
-        done: !!input.instagramConnected || input.weekPublished > 0,
-      },
+      // 22-oct-2026: «medir» = conectar Instagram y ver el Análisis de perfil,
+      // oculto hasta que Meta apruebe la app (lib/features.ts).
+      showInstagram()
+        ? {
+            id: 'publicar',
+            label: 'Conecta Instagram y mide',
+            desc: 'Te decimos qué te funciona y cómo mejorar tu perfil',
+            href: '/analisis',
+            done: !!input.instagramConnected || input.weekPublished > 0,
+          }
+        : {
+            id: 'publicar',
+            label: 'Publica y mide',
+            desc: 'Marca como publicado lo que subes y mira tu progreso',
+            href: '/calendario',
+            done: input.weekPublished > 0,
+          },
     )
   }
   return steps

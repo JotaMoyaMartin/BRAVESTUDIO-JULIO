@@ -164,7 +164,17 @@ describe('publicar (preparado, apagado)', () => {
 })
 
 describe('checklist de Inicio', () => {
+  afterEach(() => { delete process.env.NEXT_PUBLIC_SHOW_INSTAGRAM })
+
+  it('con Instagram oculto, el paso es «Publica y mide» en Mi plan', () => {
+    delete process.env.NEXT_PUBLIC_SHOW_INSTAGRAM
+    const steps = buildBraviChecklist({ brandState: null, isPremium: false, totalItems: 0, storiesCount: 0, weekCreated: 0, weekPublished: 0, instagramConnected: true })
+    expect(steps.some(s => s.href === '/analisis')).toBe(false)
+    expect(steps.find(s => s.id === 'publicar')?.href).toBe('/calendario')
+  })
+
   it('«Conecta Instagram y mide» se completa al conectar Instagram', () => {
+    process.env.NEXT_PUBLIC_SHOW_INSTAGRAM = '1'
     const base = { brandState: null, isPremium: false, totalItems: 0, storiesCount: 0, weekCreated: 0, weekPublished: 0 }
     expect(buildBraviChecklist(base).find(s => s.href === '/analisis')?.done).toBe(false)
     expect(buildBraviChecklist({ ...base, instagramConnected: true }).find(s => s.href === '/analisis')?.done).toBe(true)

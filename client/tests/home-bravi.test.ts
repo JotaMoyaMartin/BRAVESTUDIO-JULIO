@@ -5,6 +5,9 @@ import {
   ChecklistInput,
   BraviStep,
 } from '@/lib/home-bravi'
+
+// Instagram visible en estas pruebas (el interruptor se prueba en social-profile-analysis).
+process.env.NEXT_PUBLIC_SHOW_INSTAGRAM = '1'
 import { getMockBraviReply, buildBraviChatPrompt, BraviChatInput } from '@/lib/ai/prompts/bravi-chat'
 
 const base: ChecklistInput = {

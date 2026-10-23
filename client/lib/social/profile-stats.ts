@@ -93,7 +93,7 @@ const TIME_SLOTS: Array<{ label: string; from: number; to: number }> = [
 
 /** Mínimos para afirmar «mejor día/hora» sin engañar. */
 const MIN_POSTS_FOR_TIMING = 8
-const MIN_POSTS_PER_SLOT = 2
+const MIN_POSTS_PER_SLOT = 3
 
 const n = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null)
 const round1 = (v: number) => Math.round(v * 10) / 10
@@ -208,8 +208,8 @@ export function computeProfileStats(
   const bestFormat = comparable.length >= 2
     ? [...comparable].sort((a, b) => b.avgInteractions - a.avgInteractions)[0].format
     : null
-  if (formats.some(f => f.format === 'carrusel')) {
-    notes.push('Instagram no da el alcance de los carruseles: en ellos comparamos solo me gusta y comentarios.')
+  if (formats.some(f => f.format === 'carrusel' && f.avgReach === null)) {
+    notes.push('Instagram no nos ha dado el alcance de tus carruseles: en ellos comparamos solo me gusta y comentarios.')
   }
 
   // ── Días y horas ───────────────────────────────────────────────────
@@ -228,8 +228,21 @@ export function computeProfileStats(
     }
     bestDays = rankSlots(byDay)
     bestTimes = rankSlots(byTime)
+    // Casi todo a la misma hora: no hay con qué comparar, pero es útil decirlo.
+    const [topSlot, topCount] = [...byTime.entries()].map(([k, v]) => [k, v.length] as const).sort((a, b) => b[1] - a[1])[0] ?? ['', 0]
+    if (!bestTimes && topCount >= total * 0.8) {
+      notes.push(`Casi todo lo publicas a la misma franja (${topSlot.toLowerCase()}): prueba otras horas para saber cuál te funciona mejor.`)
+    }
   }
-  if (!bestDays || !bestTimes) {
+  // Mismo texto repetido (p. ej. reels de prueba): cuentan, pero conviene saberlo.
+  const byCaption = new Map<string, number>()
+  for (const p of posts) if (p.caption.length > 20) byCaption.set(p.caption, (byCaption.get(p.caption) || 0) + 1)
+  const repeated = [...byCaption.values()].filter(c => c >= 2).reduce((a, c) => a + c, 0)
+  if (repeated >= 3) {
+    notes.push(`${repeated} publicaciones repiten el mismo texto (¿reels de prueba?). Cuentan en los números, por eso la frecuencia puede salir más alta.`)
+  }
+
+  if (!bestDays && !bestTimes) {
     notes.push('Aún no hay publicaciones suficientes en días y horas distintos para decir cuál es tu mejor momento.')
   }
 

@@ -123,7 +123,8 @@ export async function generateProfileReport(
       const { content } = await callLLM({
         prompt: buildProfileAnalysisPrompt(profileInput, stats, brand),
         temperature: 0.6,
-        maxTokens: 2500,
+        // Sin límite de longitud: el modelo «piensa» antes de responder y con
+        // num_predict corto devolvía el contenido vacío (23-oct-2026).
         timeoutMs: 90_000,
       })
       advice = parseProfileAdvice(extractJSON(content))

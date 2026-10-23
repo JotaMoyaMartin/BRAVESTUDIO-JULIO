@@ -109,7 +109,7 @@ export default function ProfileReportView({
             label={stats.daysSinceLastPost !== null && stats.daysSinceLastPost <= 1 ? 'fue tu última publicación' : 'desde tu última publicación'}
           />
           <Stat value={fmt(stats.avgInteractions)} label="me gusta + comentarios de media" />
-          <Stat value={stats.engagementRate === null ? '—' : `${String(stats.engagementRate).replace('.', ',')}%`} label="de tus seguidores interactúa" />
+          <Stat value={stats.engagementRate === null ? '—' : `${String(stats.engagementRate).replace('.', ',')}%`} label="interacción media por publicación (sobre tus seguidores)" />
         </div>
       </Block>
 
@@ -135,9 +135,11 @@ export default function ProfileReportView({
 
       {/* ── Cuándo publicar ──────────────────────────────────────── */}
       <Block title="Cuándo publicar" hint="Según cómo funcionaron tus propias publicaciones.">
-        {stats.bestDays && stats.bestTimes ? (
+        {stats.bestDays || stats.bestTimes ? (
           <div className="grid sm:grid-cols-2 gap-3">
-            {[{ t: 'Mejores días', list: stats.bestDays }, { t: 'Mejores horas', list: stats.bestTimes }].map(col => (
+            {[{ t: 'Mejores días', list: stats.bestDays }, { t: 'Mejores horas', list: stats.bestTimes }]
+              .filter((col): col is { t: string; list: NonNullable<typeof stats.bestDays> } => !!col.list)
+              .map(col => (
               <div key={col.t}>
                 <p className="text-[13px] font-semibold text-tinta-2 mb-1.5">{col.t}</p>
                 <ol className="space-y-1.5">

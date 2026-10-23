@@ -1,3 +1,34 @@
+# Instagram en BRÄVE — conexión, análisis y publicar
+
+## Estado (23-oct-2026)
+
+- **Conexión + Análisis de perfil**: hecho y probado con @bravecontent.hair (100 publicaciones, 30 días
+  de métricas, informe con IA). **OCULTO** por decisión de Jota hasta que Meta apruebe la app.
+- Interruptor: `NEXT_PUBLIC_SHOW_INSTAGRAM=1` en Vercel (Production) + volver a publicar → aparece
+  Análisis en el menú, la tarjeta «Tu Instagram» en Inicio y Mi Marca, y el paso «Conecta Instagram y mide».
+  Apagado, `/analisis` sigue funcionando por URL directa (para pruebas de Jota).
+- App de Meta: **bravestudio-insights** (Instagram App ID 1670747061322903), en modo **desarrollo**.
+  Solo pueden conectar las cuentas añadidas como «Evaluador de Instagram» (y que acepten la invitación en
+  instagram.com/accounts/manage_access › Invitaciones para evaluadores). Las demás ven
+  «Rol de desarrollador insuficiente».
+- Direcciones de vuelta registradas: `https://bravestudio.app/api/social/oauth/callback` y la de prueba
+  `https://brave-prueba-instagram.vercel.app/api/social/oauth/callback`.
+
+## Lo que falta para que cualquier estilista pueda conectar (App Review de lectura)
+
+1. **Verificación de empresa** de BRÄVE Content Hair en Meta Business Suite (si no está hecha).
+2. En la app › Casos de uso › API de Instagram › **Permisos y funciones**: pedir **Advanced Access** para
+   `instagram_business_basic` e `instagram_business_manage_insights`.
+3. Para cada permiso: explicación de uso (la estilista conecta su cuenta profesional; BRÄVE lee perfil,
+   publicaciones y estadísticas para darle un informe con mejoras; solo lectura; puede desconectar y se
+   borran sus datos) + **vídeo** (Conectar → pantalla de permisos de Instagram → vuelta a BRÄVE → informe).
+4. Política de privacidad pública y **URL de eliminación de datos** / desautorización en «Configuración de
+   inicio de sesión de empresa» (hoy vacías) → crear rutas que borren los datos (ya existe la lógica en
+   `DELETE /api/social/connection`).
+5. Cuando lo aprueben: app en modo **Publicada** + encender el interruptor.
+
+---
+
 # Publicar en Instagram desde BRÄVE — plan (22-oct-2026)
 
 **Estado:** el código está preparado y **apagado**. No se puede publicar nada hasta que

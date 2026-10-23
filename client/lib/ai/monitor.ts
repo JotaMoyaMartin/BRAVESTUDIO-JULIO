@@ -89,7 +89,7 @@ export async function runAIProbe(): Promise<{ ok: boolean; ms: number; reason?: 
   const { callLLM } = await import('./llm')
   const t0 = Date.now()
   try {
-    const { model } = await callLLM({ prompt: 'Responde solo con la palabra OK.', maxTokens: 5, timeoutMs: 45_000, retries: 1, section: 'prueba-automatica' })
+    const { model } = await callLLM({ prompt: 'Responde solo con la palabra OK.', timeoutMs: 45_000, retries: 1, section: 'prueba-automatica' })
     await recordAIOk('prueba-automatica', model)
     return { ok: true, ms: Date.now() - t0 }
   } catch (err) {

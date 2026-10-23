@@ -28,6 +28,9 @@ export interface LLMCallOptions {
   timeoutMs?: number
   /** Reintentos ante fallos transitorios (red/timeout/5xx/429). Default 1. */
   retries?: number
+  /** Sección de la app que pide (para el registro de fallos de la IA). */
+  section?: string | null
+  userId?: string | null
 }
 
 export interface LLMResult {
@@ -53,7 +56,24 @@ function stripDataUrlPrefix(img: string): string {
   return img.replace(/^data:[^;]+;base64,/, '')
 }
 
+/**
+ * Llama a la IA. Si falla (tras los reintentos), el fallo se guarda en el
+ * registro de la IA y, si se repite, avisa al admin por email
+ * (lib/ai/monitor.ts). El error se relanza igual que siempre.
+ */
 export async function callLLM(options: LLMCallOptions): Promise<LLMResult> {
+  try {
+    return await callLLMRaw(options)
+  } catch (err) {
+    try {
+      const { recordAIFailure } = await import('./monitor')
+      await recordAIFailure(err, { section: options.section, userId: options.userId, model: options.model })
+    } catch { /* el registro nunca rompe la petición */ }
+    throw err
+  }
+}
+
+async function callLLMRaw(options: LLMCallOptions): Promise<LLMResult> {
   if (!isServerAIConfigured()) {
     throw new Error('AI not configured')
   }

@@ -5,6 +5,7 @@ import { Users, CheckCircle, UserPlus, UserX, Clock, CreditCard } from 'lucide-r
 import { ReactNode } from 'react'
 import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
+import AIStatusCard from '@/components/admin/AIStatusCard'
 import { DashboardMetrics } from '@/app/admin/page'
 import { Profile } from '@/types/database'
 
@@ -39,6 +40,7 @@ export default function DashboardTab({ metrics, users }: DashboardTabProps) {
 
   return (
     <div className="space-y-8">
+      <AIStatusCard />
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         {kpis.map((kpi, i) => (
           <motion.div

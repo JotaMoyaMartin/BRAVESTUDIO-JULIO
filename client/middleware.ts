@@ -91,7 +91,9 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/api/social/oauth/callback') ||
     // OAuth de Canva (plantillas): motivo idéntico — la vuelta la valida
     // la propia ruta (sesión admin + state timing-safe + PKCE).
-    pathname.startsWith('/api/canva/oauth/callback')
+    pathname.startsWith('/api/canva/oauth/callback') ||
+    // Vercel Cron: sin cookies; cada ruta exige «Bearer CRON_SECRET».
+    pathname.startsWith('/api/cron/')
 
   if (isPublicAuthRoute) {
     // Redirect authenticated users away ONLY from auth pages (login, signup…).

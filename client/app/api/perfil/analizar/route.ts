@@ -3,6 +3,7 @@ import { callLLM, isServerAIConfigured } from '@/lib/ai/llm'
 import { extractJSON } from '@/lib/ai/extract'
 import { createClient } from '@/lib/supabase/server'
 import { rateLimit } from '@/lib/rate-limit'
+import { recordAIFailure } from '@/lib/ai/monitor'
 import { buildLecturaPrompt, buildTextosPrompt, type Bio, type PerfilActual, type PerfilDatos } from '@/lib/perfil/optimiza'
 
 /**
@@ -33,7 +34,10 @@ function cleanActual(raw: unknown): PerfilActual | null {
 }
 
 export async function POST(req: NextRequest) {
-  if (!isServerAIConfigured()) return NextResponse.json({ error: 'AI not configured' }, { status: 503 })
+  if (!isServerAIConfigured()) {
+    await recordAIFailure(new Error('AI not configured'), { section: 'mi-marca/perfil' })
+    return NextResponse.json({ error: 'AI not configured' }, { status: 503 })
+  }
 
   const supabaseConfigured = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').startsWith('http')
   let key = `perfil-demo:${req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'local'}`
@@ -58,7 +62,7 @@ export async function POST(req: NextRequest) {
   let lectura: 'ok' | 'fallo' | 'sin-captura' = 'sin-captura'
   if (image) {
     try {
-      const { content } = await callLLM({ prompt: buildLecturaPrompt(), images: [image], temperature: 0, timeoutMs: 60_000, retries: 1 })
+      const { content } = await callLLM({ prompt: buildLecturaPrompt(), images: [image], temperature: 0, timeoutMs: 60_000, retries: 1, section: 'mi-marca/perfil · leer captura' })
       actual = cleanActual(extractJSON(content))
       lectura = actual ? 'ok' : 'fallo'
     } catch { lectura = 'fallo' }
@@ -68,7 +72,7 @@ export async function POST(req: NextRequest) {
   let nombres: string[] | undefined
   let bios: Bio[] | undefined
   try {
-    const { content } = await callLLM({ prompt: buildTextosPrompt(datos, actual), temperature: 0.7, timeoutMs: 60_000, retries: 1 })
+    const { content } = await callLLM({ prompt: buildTextosPrompt(datos, actual), temperature: 0.7, timeoutMs: 60_000, retries: 1, section: 'mi-marca/perfil' })
     const j = extractJSON<{ nombres?: unknown; bios?: unknown }>(content)
     nombres = strList(j?.nombres, 3)
     bios = Array.isArray(j?.bios)

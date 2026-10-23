@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { callLLM, isServerAIConfigured } from '@/lib/ai/llm'
 import { createClient } from '@/lib/supabase/server'
 import { rateLimit } from '@/lib/rate-limit'
+import { recordAIFailure } from '@/lib/ai/monitor'
+import { sectionFromPath } from '@/lib/ai/monitor-core'
 
 /**
  * Server-side proxy to the LLM (Ollama cloud).
@@ -27,9 +29,12 @@ const MAX_PROMPT_LENGTH = 30_000
 const RATE_LIMIT_PER_MINUTE = 20
 
 export async function POST(req: NextRequest) {
+  const section = sectionFromPath(req.headers.get('referer'))
   if (!isServerAIConfigured()) {
+    await recordAIFailure(new Error('AI not configured'), { section })
     return NextResponse.json({ error: 'AI not configured' }, { status: 503 })
   }
+  let userId: string | null = null
 
   // ── Auth + rate limit ──────────────────────────────────────────
   const supabaseConfigured = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').startsWith('http')
@@ -39,6 +44,7 @@ export async function POST(req: NextRequest) {
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+    userId = user.id
     const rl = rateLimit(`ai:${user.id}`, RATE_LIMIT_PER_MINUTE, 60_000)
     if (!rl.ok) {
       return NextResponse.json(
@@ -80,7 +86,7 @@ export async function POST(req: NextRequest) {
     const temperature = typeof body.temperature === 'number'
       ? Math.min(1.2, Math.max(0, body.temperature))
       : undefined
-    const { content } = await callLLM({ prompt, temperature, timeoutMs: 60_000, retries: 1 })
+    const { content } = await callLLM({ prompt, temperature, timeoutMs: 60_000, retries: 1, section, userId })
     return NextResponse.json({ content })
   } catch (err) {
     if (err instanceof Error && err.message === 'AI not configured') {

@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
+import { notifyLocalChange } from './sync/engine'
 import type {
   ProductivityState,
   ProductivityTask,
@@ -328,6 +329,7 @@ export function saveState(state: ProductivityState): boolean {
   if (typeof window === 'undefined') return true
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+    notifyLocalChange()
     return true
   } catch (err) {
     if (err instanceof DOMException && err.name === 'QuotaExceededError') {

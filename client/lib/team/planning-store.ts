@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
+import { notifyLocalChange } from './sync/engine'
 import { PLANNINGS, CLIENTS, TEAM } from './mock-data'
 import type { WeeklyPlanning, Notification } from './types'
 
@@ -43,6 +44,7 @@ function saveOverrides(map: Record<string, WeeklyPlanning>): boolean {
   if (typeof window === 'undefined') return true
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(map))
+    notifyLocalChange()
     return true
   } catch (err) {
     if (err instanceof DOMException && err.name === 'QuotaExceededError') {
@@ -79,18 +81,23 @@ export function savePlanning(p: WeeklyPlanning): boolean {
 export function generateShareLink(planningId: string): string {
   const p = getPlanning(planningId)
   if (!p) return ''
-  const token = btoa(planningId)
+  // Enlace imposible de adivinar (antes era el id codificado). Se mantiene si ya era aleatorio.
+  const legacy = btoa(planningId)
+  const token = p.shareToken && p.shareToken !== legacy
+    ? p.shareToken
+    : Array.from(crypto.getRandomValues(new Uint8Array(18)), b => b.toString(16).padStart(2, '0')).join('')
   p.shareToken = token
   savePlanning(p)
   return `${window.location.origin}/team/preview/${token}`
 }
 
 export function getByToken(token: string): WeeklyPlanning | null {
+  const t = decodeURIComponent(token)
+  const byToken = getAllPlannings().find(p => p.shareToken === t)
+  if (byToken) return byToken
   try {
-    // Next.js passes the route param URL-encoded (e.g. `==` becomes `%3D%3D`).
-    // Decode before base64-parsing, otherwise `atob` chokes on the `%` chars.
-    const id = atob(decodeURIComponent(token))
-    return getPlanning(id)
+    // Enlaces antiguos: el id codificado en base64.
+    return getPlanning(atob(t))
   } catch {
     return null
   }
@@ -128,7 +135,7 @@ function loadNotifications(): Notification[] {
 
 function saveNotifications(list: Notification[]): void {
   if (typeof window === 'undefined') return
-  try { localStorage.setItem(NOTIF_KEY, JSON.stringify(list)) } catch { /* ignore */ }
+  try { localStorage.setItem(NOTIF_KEY, JSON.stringify(list)); notifyLocalChange() } catch { /* ignore */ }
 }
 
 export function getAllNotifications(): Notification[] {

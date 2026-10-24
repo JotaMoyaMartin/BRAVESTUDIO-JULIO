@@ -9,6 +9,7 @@ import { hasActiveAccess, ACCESS_REDIRECT } from '@/lib/access'
 import { ToastProvider } from '@/components/ui/Toast'
 import { BraviChatProvider } from '@/components/bravi/BraviChatProvider'
 import BraviFab from '@/components/bravi/BraviFab'
+import { RoleProvider } from '@/components/equipo/AskTeamButton'
 
 const IS_CONFIGURED = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').startsWith('http')
 
@@ -95,6 +96,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     brandSummary = (brandRow as { optimized_summary?: string | null } | null)?.optimized_summary ?? null
   }
 
+  // Modo demo (sin Supabase, solo en local): la misma «Vista Premium» del admin
+  // para ver la app como la ven los clientes del servicio.
+  if (!IS_CONFIGURED && (await cookies()).get('brave_preview_premium')?.value === 'true') {
+    isPreviewingPremium = true
+    typedProfile = { ...typedProfile, role: 'premium' }
+  }
+
   return (
     <div className="app-shell flex h-screen overflow-hidden bg-cream">
       <Sidebar profile={typedProfile} />
@@ -105,7 +113,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <SectionReset userId={typedProfile.id} />
           <ToastProvider>
             <BraviChatProvider brandContext={brandSummary} isDemo={typedProfile.id === 'demo'}>
-              {children}
+              <RoleProvider role={typedProfile.role}>{children}</RoleProvider>
               <BraviFab />
             </BraviChatProvider>
           </ToastProvider>

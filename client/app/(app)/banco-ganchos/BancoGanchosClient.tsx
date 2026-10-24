@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
+import AskTeamButton from '@/components/equipo/AskTeamButton'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -360,6 +361,8 @@ function HookSpotlight({ onOpen, onCopy }: { onOpen: (g: GanchoItem) => void; on
           >
             <Shuffle size={15} aria-hidden /> Otro
           </button>
+          {g && <AskTeamButton titulo={`Reel con el gancho: «${g.text}»`} texto={g.text} seccion="banco-ganchos" label="Para mi equipo"
+            className="inline-flex items-center gap-2 rounded-full px-4 py-3 text-sm font-bold bg-white/15 text-white" />}
         </div>
       </div>
       {/* Marco de móvil decorativo: el gancho vive en pantalla */}

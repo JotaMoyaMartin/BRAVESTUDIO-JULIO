@@ -64,6 +64,35 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
+  // ── Panel del equipo (Fase 1, 24-oct-2026): solo personas del equipo ──
+  // Antes /team era público con usuarias de prueba. Ahora exige cuenta real y
+  // estar en team_members (o ser admin). El enlace de vista previa para la
+  // clienta (/team/preview y su API) sigue siendo público.
+  if (pathname.startsWith('/team') || pathname.startsWith('/api/team/')) {
+    const isPublicTeam = pathname === '/team/login' || pathname.startsWith('/team/preview') || pathname.startsWith('/team/api/preview')
+    if (!isPublicTeam) {
+      const isApi = pathname.startsWith('/team/api/') || pathname.startsWith('/api/team/')
+      if (!user) {
+        return isApi
+          ? NextResponse.json({ error: 'Team auth required' }, { status: 401 })
+          : NextResponse.redirect(new URL('/team/login', request.url))
+      }
+      const { data: isMember, error: rpcError } = await supabase.rpc('is_team_member')
+      let allowed = isMember === true
+      if (rpcError) {
+        // SQL de la Fase 1 aún sin aplicar: solo admins.
+        const { data: p } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+        allowed = p?.role === 'admin' || p?.role === 'superadmin'
+      }
+      if (!allowed) {
+        return isApi
+          ? NextResponse.json({ error: 'No eres del equipo' }, { status: 403 })
+          : NextResponse.redirect(new URL('/team/login?sin-acceso=1', request.url))
+      }
+    }
+    return supabaseResponse
+  }
+
   // Public auth routes (incluye landing page / y la landing V2 de test A/B)
   const isPublicAuthRoute =
     pathname === '/' ||

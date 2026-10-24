@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { CLIENTS, TEAM } from '@/lib/team/mock-data'
 import { getByToken, savePlanning, createNotification } from '@/lib/team/planning-store'
 import { createTask } from '@/lib/team/task-store'
+import { IS_DEMO } from '@/lib/demo'
 import type { WeeklyPlanning, PlanningPublication } from '@/lib/team/types'
 import InstagramFit from './InstagramFit'
 import BraviMascot from '@/components/team/BraviMascot'
@@ -31,27 +32,51 @@ export default function ClientPreviewPublic({ token }: Props) {
   const [prioritySubmitted, setPrioritySubmitted] = useState(false)
   const [submitted, setSubmitted] = useState<'approved' | 'changes' | null>(null)
 
+  const [remoteClient, setRemoteClient] = useState<{ id: string; name?: string; salonName?: string } | null>(null)
+  const [sendError, setSendError] = useState('')
+
   useEffect(() => {
-    const p = getByToken(token)
-    if (!p) setNotFound(true)
-    else {
-      setPlanning(p)
-      if (p.status === 'aprobada') setSubmitted('approved')
-      else if (p.status === 'cambios') setSubmitted('changes')
+    const show = (p: WeeklyPlanning | null) => {
+      if (!p) setNotFound(true)
+      else {
+        setPlanning(p)
+        if (p.status === 'aprobada') setSubmitted('approved')
+        else if (p.status === 'cambios') setSubmitted('changes')
+      }
+      setLoading(false)
     }
-    setLoading(false)
+    // Demo: en este navegador. Con cuenta real: desde la base de datos (así llega al equipo).
+    if (IS_DEMO) { show(getByToken(token)); return }
+    fetch(`/team/api/preview?token=${encodeURIComponent(token)}`)
+      .then(r => (r.ok ? r.json() : null))
+      .then(j => { if (j?.client) setRemoteClient(j.client); show(j?.planning ?? null) })
+      .catch(() => show(null))
   }, [token])
 
-  const approve = () => {
+  /** Con cuenta real, la respuesta de la clienta se guarda en la base de datos. */
+  async function sendRemote(accion: 'aprobar' | 'cambios' | 'prioridad', texto?: string): Promise<boolean> {
+    setSendError('')
+    try {
+      const res = await fetch('/team/api/preview', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token, accion, texto }) })
+      const j = await res.json().catch(() => ({}))
+      if (!res.ok) { setSendError(j.error || 'No se ha podido enviar. Inténtalo de nuevo.'); return false }
+      if (j.planning) setPlanning(j.planning)
+      return true
+    } catch { setSendError('No se ha podido enviar. Revisa tu conexión.'); return false }
+  }
+
+  const approve = async () => {
     if (!planning) return
+    if (!IS_DEMO) { if (await sendRemote('aprobar')) setSubmitted('approved'); return }
     const next = { ...planning, status: 'aprobada' as const, clientComment: '' }
     savePlanning(next)
     setPlanning(next)
     setSubmitted('approved')
   }
 
-  const sendChanges = () => {
+  const sendChanges = async () => {
     if (!planning || !comment.trim()) return
+    if (!IS_DEMO) { if (await sendRemote('cambios', comment)) { setSubmitted('changes'); setShowCommentBox(false) } return }
     const next = { ...planning, status: 'cambios' as const, clientComment: comment }
     savePlanning(next)
     setPlanning(next)
@@ -83,8 +108,9 @@ export default function ClientPreviewPublic({ token }: Props) {
     setShowCommentBox(false)
   }
 
-  const sendPriorityNote = () => {
+  const sendPriorityNote = async () => {
     if (!planning || !priorityNote.trim()) return
+    if (!IS_DEMO) { if (await sendRemote('prioridad', priorityNote)) { setPrioritySubmitted(true); setShowPriorityBox(false) } return }
     const client = CLIENTS.find(c => c.id === planning.clientId)
     if (client) {
       // Priority note goes to the CM of the client, who will then route to editor/designer.
@@ -127,7 +153,7 @@ export default function ClientPreviewPublic({ token }: Props) {
     )
   }
 
-  const client = CLIENTS.find(c => c.id === planning.clientId)
+  const client = CLIENTS.find(c => c.id === planning.clientId) ?? (remoteClient as (typeof CLIENTS)[number] | null)
   const pubs = [...planning.publications].sort((a, b) => a.order - b.order)
   // If the planification is still in draft / pending review, this is a team preview,
   // not a client delivery. Don't show approval buttons.
@@ -307,6 +333,8 @@ export default function ClientPreviewPublic({ token }: Props) {
                 </div>
               </div>
             ) : (
+              <>
+              {sendError && <p className="mb-2 rounded-lg bg-[#FFF1B5] px-3 py-2 text-[13px] text-[#591427]" role="alert">{sendError}</p>}
               <div className="flex gap-2">
                 <button
                   onClick={approve}
@@ -328,6 +356,7 @@ export default function ClientPreviewPublic({ token }: Props) {
                   <StickyNote size={18} />
                 </button>
               </div>
+              </>
             )}
           </div>
         </div>

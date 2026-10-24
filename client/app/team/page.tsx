@@ -14,6 +14,7 @@ import Equipo from '@/components/team/screens/Equipo'
 import Notificaciones from '@/components/team/screens/Notificaciones'
 import Config from '@/components/team/screens/Config'
 import Finanzas from '@/components/team/screens/Finanzas'
+import SyncBar from '@/components/team/SyncBar'
 
 const TITLES: Record<NavKey, string> = {
   dashboard: 'Dashboard',
@@ -32,19 +33,22 @@ export default function TeamShell() {
   const { user, loading } = useAuth()
   const router = useRouter()
   const [active, setActive] = useState<NavKey>('dashboard')
+  // Al llegar cambios del equipo se vuelve a montar la pantalla con los datos nuevos.
+  const [version, setVersion] = useState(0)
 
   useEffect(() => {
     if (!loading && !user) router.replace('/team/login')
   }, [user, loading, router])
 
-  if (!user) return null
+  if (!user) return loading ? <div className="min-h-screen flex items-center justify-center text-[14px] text-[#8a8680]">Cargando el panel del equipo…</div> : null
 
   return (
     <div className="flex min-h-screen bg-[#FFFDF5]">
       <Sidebar active={active} onNavigate={setActive} />
       <div className="flex-1 flex flex-col min-w-0">
         <Topbar title={TITLES[active]} />
-        <main className="flex-1 p-6 overflow-x-auto">
+        <main key={version} className="flex-1 p-6 overflow-x-auto">
+          <SyncBar onRefresh={() => setVersion(v => v + 1)} />
           {active === 'dashboard' && <Dashboard onNavigate={setActive} />}
           {active === 'production' && <Production />}
           {active === 'clientes' && <Clientes />}

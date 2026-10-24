@@ -1,4 +1,4 @@
-import { Sparkles, Film, LayoutGrid, Star, Clapperboard, BookOpen, Calendar, BarChart3, GraduationCap, Captions, Images, Zap, Camera, ChartNoAxesColumn, Palette, Scissors } from 'lucide-react'
+import { Sparkles, Film, LayoutGrid, Star, Clapperboard, BookOpen, Calendar, BarChart3, GraduationCap, Captions, Images, Zap, Camera, ChartNoAxesColumn, Palette, Scissors, Send } from 'lucide-react'
 import { AppTileProps } from './AppTile'
 import { showInstagram } from '@/lib/features'
 
@@ -32,6 +32,9 @@ export const TILES_NORMAL: AppTileProps[] = [
 ]
 
 export const TILES_PREMIUM: AppTileProps[] = [
+  // Clientes del servicio (24-oct-2026): lo del equipo, primero.
+  { href: '/lo-que-publicamos', icon: Calendar, label: 'Lo que publicamos', desc: 'Tu calendario: lo que tu equipo publica este mes', tone: 'cherry' },
+  { href: '/mi-equipo', icon: Send, label: 'Mi equipo BRÄVE', desc: 'Envía fotos y vídeos, pide ideas', tone: 'pink' },
   { href: '/mi-estrategia', icon: Star, label: 'Mi Estrategia', desc: 'Tu ficha estratégica', tone: 'cherry' },
   { href: '/plan-contenidos', icon: Sparkles, label: 'Plan de Contenidos', desc: 'Tus guiones asignados', tone: 'pink' },
   { href: '/metricas', icon: BarChart3, label: 'Métricas', desc: 'Resultados y crecimiento', tone: 'blue' },
@@ -41,9 +44,7 @@ export const TILES_PREMIUM: AppTileProps[] = [
   { href: '/estudio', icon: Camera, label: 'Estudio de fotos', desc: 'Hazte la foto, déjala bonita y úsala', tone: 'cream', banner: 'estudio' },
   // Foto Pro — 8-oct-2026: Retoque Pro disponible, Sesión IA próximamente.
   // EDITAR VIDEOS — 13-oct-2026: recorte de silencios guiado (todo en el navegador).
-  { href: '/editar-videos', icon: Scissors, label: 'Editar Videos', desc: 'Sube tu reel y corta los silencios', tone: 'blue', banner: 'videos' },
   { href: '/crear-contenido', icon: Film, label: 'Crear guiones', desc: 'Tu idea → gancho → guion', tone: 'green', image: '/tiles/guiones-banner.jpg' },
-  { href: '/carrusel', icon: Images, label: 'Carruseles', desc: 'Carrusel listo para publicar', tone: 'buttermilk', banner: 'carruseles' },
   { href: '/stories', icon: LayoutGrid, label: 'Stories', desc: 'Secuencias listas: pon tu foto y publica', tone: 'cream', image: '/tiles/stories-banner.jpg', imageAspect: '1862 / 845' },
   // STORIES DISEÑO — rework mini-Canva (galería de plantillas, 7-oct-2026).
   { href: '/teleprompter', icon: Captions, label: 'Teleprompter', desc: 'Graba hablando a cámara', tone: 'blue', image: '/tiles/teleprompter-banner.jpg' },

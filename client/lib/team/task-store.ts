@@ -1,5 +1,6 @@
 'use client'
 import type { Task, TaskStatus, TaskPriority, TaskType } from './types'
+import { notifyLocalChange } from './sync/engine'
 
 const TASKS_KEY = 'brave_content_tasks'
 
@@ -15,7 +16,7 @@ function load(): Task[] {
 
 function save(list: Task[]): void {
   if (typeof window === 'undefined') return
-  try { localStorage.setItem(TASKS_KEY, JSON.stringify(list)) } catch { /* ignore */ }
+  try { localStorage.setItem(TASKS_KEY, JSON.stringify(list)); notifyLocalChange() } catch { /* ignore */ }
 }
 
 export function getAllTasks(): Task[] {

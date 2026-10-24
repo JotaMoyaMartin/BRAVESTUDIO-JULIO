@@ -1,5 +1,6 @@
 'use client'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import AskTeamButton from '@/components/equipo/AskTeamButton'
 import Link from 'next/link'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
@@ -462,6 +463,8 @@ function ReelInfo({ reel, saved, onToggleSaved, onOpenTips }: {
             <GuionLink reel={reel} className="flex-1 justify-center" />
           </div>
         )}
+        <AskTeamButton titulo={`Quiero un reel como: ${reel.title}`} texto={reel.instagram_url ?? reel.short_description ?? undefined} seccion="reels-virales" label="Para mi equipo"
+          className="flex-shrink-0 inline-flex items-center gap-1.5 h-12 px-3.5 rounded-[var(--radius-sm)] bg-white/10 text-white hover:bg-white/20 text-sm font-semibold" />
         <button
           onClick={onToggleSaved}
           aria-pressed={saved}

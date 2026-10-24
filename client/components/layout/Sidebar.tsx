@@ -7,7 +7,7 @@ import {
   Home, Sparkles, Star, MessageCircle,
   Film, LayoutGrid, BookOpen, Calendar, LogOut, Menu, X, Zap, Camera,
   Clapperboard, Wand2, Settings, Shield, Crown, GraduationCap, Users, BarChart3,
-  ChartNoAxesColumn, Palette, Scissors, Images,
+  ChartNoAxesColumn, Palette, Scissors, Images, Send,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -51,28 +51,23 @@ const navItems: NavItem[] = [
 ]
 
 const premiumNavItems: NavItem[] = [
+  // CLIENTES DEL SERVICIO (24-oct-2026): el equipo BRÄVE gestiona sus redes;
+  // aquí ven su estrategia y su calendario, hablan con el equipo y hacen sus stories.
+  // Sin Carruseles ni Editar vídeos: eso lo hace el equipo.
   { href: '/inicio', label: 'Inicio', icon: Home },
-  // ASISTENTE (22-oct-2026): chat de Bravi + próximos pasos (fuera de Inicio).
-  { href: '/asistente', label: 'Asistente', icon: MessageCircle },
   { href: '/mi-estrategia', label: 'Mi Estrategia', icon: Star },
-  { href: '/plan-contenidos', label: 'Plan de Contenidos', icon: Sparkles },
-  { href: '/metricas', label: 'Métricas', icon: BarChart3 },
-  // Análisis — Instagram conectado (6-oct-2026): datos propios de la cuenta.
-  ...(showInstagram() ? [{ href: '/analisis', label: 'Análisis', icon: ChartNoAxesColumn }] : []),
-  { href: '/crear-contenido', label: 'Crear guiones', icon: Film },
-  { href: '/biblioteca', label: 'Biblioteca', icon: BookOpen },
+  { href: '/lo-que-publicamos', label: 'Lo que publicamos', icon: Calendar },
+  { href: '/mi-equipo', label: 'Mi equipo BRÄVE', icon: Send },
+  { href: '/plan-contenidos', label: 'Tus guiones', icon: Sparkles },
   { href: '/stories', label: 'Stories', icon: LayoutGrid },
-  // STORIES DISEÑO — rework mini-Canva (galería de plantillas, 7-oct-2026).
-  // CARRUSELES (13-oct-2026): el editor LAB pasa a producto en /carrusel
-  // (sustituye a la herramienta antigua) y entra en el menú lateral.
-  { href: '/carrusel', label: 'Carruseles', icon: Images },
+  { href: '/crear-contenido', label: 'Crear guiones', icon: Film },
   { href: '/inspiracion-reels', label: 'Reels virales', icon: Clapperboard },
   { href: '/banco-ganchos', label: 'Banco de Ganchos', icon: Zap },
-  // ESTUDIO DE FOTOS (22-oct-2026): une Foto inspo + Foto Pro.
   { href: '/estudio', label: 'Estudio de fotos', icon: Camera },
-  // EDITAR VIDEOS (13-oct-2026): recorte de silencios guiado, todo en el navegador.
-  { href: '/editar-videos', label: 'Editar Videos', icon: Scissors },
-  // DISEÑOS quitado del menú (22-oct-2026, Jota): lo cubren Carruseles y Stories.
+  { href: '/asistente', label: 'Asistente', icon: MessageCircle },
+  { href: '/metricas', label: 'Métricas', icon: BarChart3 },
+  ...(showInstagram() ? [{ href: '/analisis', label: 'Análisis', icon: ChartNoAxesColumn }] : []),
+  { href: '/biblioteca', label: 'Biblioteca', icon: BookOpen },
   { href: '/academia', label: 'Academia', icon: GraduationCap, badge: 'NUEVO', highlight: true },
 ]
 

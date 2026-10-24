@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/team/auth-context'
 import { Eye, EyeOff } from 'lucide-react'
+import { IS_DEMO } from '@/lib/demo'
 
 export default function TeamLoginPage() {
   const { login, user, loading } = useAuth()
@@ -18,14 +19,14 @@ export default function TeamLoginPage() {
     if (user && !loading) router.replace('/team')
   }, [user, loading, router])
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     setLoadingBtn(true)
-    const ok = login(email, password)
+    const r = await login(email, password)
     setLoadingBtn(false)
-    if (ok) router.replace('/team')
-    else setError('Email o contraseña incorrectos.')
+    if (r.ok) router.replace('/team')
+    else setError(r.error || 'Email o contraseña incorrectos.')
   }
 
   const quick = (em: string) => {
@@ -113,6 +114,7 @@ export default function TeamLoginPage() {
             </button>
           </form>
 
+          {IS_DEMO && (
           <div className="mt-7 pt-5 border-t border-[#e8e6e3]">
             <div className="text-[11px] uppercase tracking-wider text-[#8a8680] mb-2.5">Acceso rápido (demo)</div>
             <div className="grid grid-cols-2 gap-2">
@@ -133,6 +135,7 @@ export default function TeamLoginPage() {
               ))}
             </div>
           </div>
+          )}
         </div>
       </div>
     </div>

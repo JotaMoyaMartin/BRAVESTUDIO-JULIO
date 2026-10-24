@@ -19,6 +19,8 @@ import TransicionTab from '@/components/admin/TransicionTab'
 import Reto10kTab from '@/components/admin/Reto10kTab'
 import StoriesTab from '@/components/admin/StoriesTab'
 import SkoolTab from '@/components/admin/SkoolTab'
+import EquipoTab from '@/components/admin/EquipoTab'
+import EquipoMiembrosTab from '@/components/admin/EquipoMiembrosTab'
 import { hasActiveAccess } from '@/lib/access'
 
 interface Props {
@@ -143,6 +145,8 @@ export default function AdminClient({
           {activeTab === 'stories-diseno' && <StoriesTab />}
           {activeTab === 'reto10k' && <Reto10kTab />}
           {activeTab === 'skool' && <SkoolTab />}
+          {activeTab === 'equipo' && <EquipoTab />}
+          {activeTab === 'equipo-brave' && <EquipoMiembrosTab />}
           {activeTab === 'suscripciones' && <SubscriptionsTab users={users} />}
           {activeTab === 'soporte' && (
             <SupportTab users={users} userStats={userStats} onUserUpdate={handleUserUpdate} />

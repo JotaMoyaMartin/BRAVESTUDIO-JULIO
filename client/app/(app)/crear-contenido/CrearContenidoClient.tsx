@@ -14,6 +14,7 @@ import {
 import { useDictateText } from '@/lib/speech'
 import { useVoiceNote, formatSeconds, VoiceNoteError } from '@/lib/voice-note'
 import { useSessionState, clearSectionState } from '@/lib/session-store'
+import AskTeamButton from '@/components/equipo/AskTeamButton'
 import { useToast } from '@/components/ui/Toast'
 import { buildBrandFullContext, hasBrandContext, BrandFullContextInput } from '@/lib/ai/brand-context'
 import { openTeleprompter } from '@/lib/teleprompter/input'
@@ -530,6 +531,7 @@ export default function CrearContenidoClient({
                       <Clapperboard size={16} /> Grabar ahora
                     </button>
                   </div>
+                  <AskTeamButton titulo={current.guion.title} texto={guionSpoken(current.guion)} seccion="crear-guiones" label="Pídele a tu equipo que lo edite" className="btn-ghost w-full justify-center mt-2 text-sm" />
                   {savedTitles.includes(current.guion.title) && (
                     <Link href="/biblioteca" className="block text-center text-xs font-semibold text-cherry mt-2">Ver en mi biblioteca →</Link>
                   )}

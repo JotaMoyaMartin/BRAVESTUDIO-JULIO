@@ -36,7 +36,8 @@ const DEFAULT_PREFS: TextPrefs = { fontSize: 30, speed: 1, pos: 'top', width: 'n
 const WIDTH_CLASS: Record<TextWidth, string> = { narrow: 'max-w-[17rem]', normal: 'max-w-md', wide: 'max-w-2xl' }
 // Siempre lo máximo que dé la cámara delantera (hasta 4K, sin inflar píxeles):
 // la alumna no tiene que elegir calidad.
-const QUALITY: RecordingQuality = 'uhd'
+// 1080×1920 (26-oct-2026): en 4K el móvil perdía fotogramas y el vídeo salía entrecortado.
+const QUALITY: RecordingQuality = 'fhd'
 
 function isMobileDevice(): boolean {
   if (typeof navigator === 'undefined') return false

@@ -125,3 +125,16 @@ describe('applyCanvasMirror', () => {
     ])
   })
 })
+describe('computeRecordSize · 1080×1920 (fluido, 26-oct-2026)', () => {
+  it('cámara vertical 1080p → 1080×1920 exacto', () => {
+    expect(computeRecordSize(1080, 1920, 'fhd')).toEqual({ w: 1080, h: 1920 })
+  })
+  it('cámara 4K vertical → baja a 1080×1920 (no 4K: el móvil no da abasto)', () => {
+    expect(computeRecordSize(2160, 3840, 'fhd')).toEqual({ w: 1080, h: 1920 })
+  })
+  it('cámara apaisada 1080p → recorte 9:16 sin inflar de más', () => {
+    const s = computeRecordSize(1920, 1080, 'fhd')
+    expect(s.w / s.h).toBeCloseTo(9 / 16, 1)
+    expect(s.h).toBeLessThanOrEqual(1920)
+  })
+})

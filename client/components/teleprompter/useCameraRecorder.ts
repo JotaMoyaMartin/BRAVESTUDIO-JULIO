@@ -94,9 +94,13 @@ export function applyCanvasMirror(ctx: CanvasRenderingContext2D, w: number, h: n
 /** Resolución del vídeo guardado: 9:16 como lo ve Instagram/TikTok/Reels.
  *  HD por defecto (liviano y universal); 4K real para quien quiere máxima
  *  nitidez (canvas más grande: más peso y batería, mismo encuadre). */
-export type RecordingQuality = 'hd' | 'uhd'
+export type RecordingQuality = 'hd' | 'fhd' | 'uhd'
 export const REC_SIZES: Record<RecordingQuality, { w: number; h: number }> = {
   hd: { w: 720, h: 1280 },
+  // 1080×1920 (26-oct-2026): lo máximo que usa Instagram y lo que un móvil
+  // puede componer frame a frame sin perder fotogramas. El 4K se veía
+  // entrecortado: el móvil no daba abasto a redibujar 4K 30 veces por segundo.
+  fhd: { w: 1080, h: 1920 },
   uhd: { w: 2160, h: 3840 },
 }
 
@@ -163,8 +167,11 @@ export function useCameraRecorder(videoRef: React.RefObject<HTMLVideoElement | n
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const canvasStreamRef = useRef<MediaStream | null>(null)
   const drawRafRef = useRef(0)
+  // Señal para parar el bucle de dibujo (sirve tanto para rAF como para requestVideoFrameCallback).
+  const feedAliveRef = useRef<{ alive: boolean }>({ alive: false })
 
   const stopCanvasFeed = useCallback(() => {
+    feedAliveRef.current.alive = false
     cancelAnimationFrame(drawRafRef.current)
     drawRafRef.current = 0
     canvasStreamRef.current?.getTracks().forEach(t => t.stop())
@@ -205,9 +212,9 @@ export function useCameraRecorder(videoRef: React.RefObject<HTMLVideoElement | n
       // iOS: solo un stream getUserMedia activo — parar el anterior siempre.
       stopTracks()
       const attempts: MediaStreamConstraints[] = [
-        // Máxima resolución que el dispositivo pueda dar (ideal: no falla si no llega),
-        // y audio SIN procesado (voz natural, no robótica).
-        { video: { facingMode: requestFacing, width: { ideal: 3840 }, height: { ideal: 2160 } }, audio: AUDIO_NATURAL },
+        // 1080p a 30 fps: nítido para Reels y fluido (pedir 4K hacía que el móvil
+        // perdiera fotogramas al grabar). Audio SIN procesado (voz natural).
+        { video: { facingMode: requestFacing, width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30, max: 30 } }, audio: AUDIO_NATURAL },
         { video: { facingMode: requestFacing, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: AUDIO_NATURAL },
         { video: { facingMode: requestFacing }, audio: true }, // fallback sencillo
         { video: true, audio: true },
@@ -295,7 +302,10 @@ export function useCameraRecorder(videoRef: React.RefObject<HTMLVideoElement | n
         const ctx = canvas.getContext('2d')
         if (!ctx) throw new Error('2d no disponible')
         const target = canvas.width / canvas.height
+        const feed = { alive: true }
+        feedAliveRef.current = feed
         const draw = () => {
+          if (!feed.alive) return
           const vw = video.videoWidth
           const vh = video.videoHeight
           if (vw > 0 && vh > 0) {
@@ -309,7 +319,26 @@ export function useCameraRecorder(videoRef: React.RefObject<HTMLVideoElement | n
               ctx.drawImage(video, c.sx, c.sy, c.sw, c.sh, 0, 0, canvas.width, canvas.height)
             }
           }
-          drawRafRef.current = requestAnimationFrame(draw)
+          schedule()
+        }
+        // Un dibujo por CADA fotograma nuevo de la cámara (requestVideoFrameCallback),
+        // no al ritmo de la pantalla: sin fotogramas repetidos ni saltados, que era
+        // lo que hacía que el vídeo guardado se viera entrecortado.
+        type RVFC = (cb: () => void) => number
+        const rvfc = (video as HTMLVideoElement & { requestVideoFrameCallback?: RVFC }).requestVideoFrameCallback?.bind(video)
+        let useRvfc = !!rvfc
+        let drewAt = performance.now()
+        const schedule = () => {
+          drewAt = performance.now()
+          if (useRvfc && rvfc) drawRafRef.current = rvfc(draw)
+          else drawRafRef.current = requestAnimationFrame(draw)
+        }
+        // Red de seguridad: si en algún navegador la cámara no avisa de fotogramas
+        // nuevos, a los 700 ms se vuelve al ritmo de pantalla (como antes).
+        if (useRvfc) {
+          window.setTimeout(() => {
+            if (feed.alive && performance.now() - drewAt > 600) { useRvfc = false; draw() }
+          }, 700)
         }
         draw()
         const canvasStream = canvas.captureStream(30)

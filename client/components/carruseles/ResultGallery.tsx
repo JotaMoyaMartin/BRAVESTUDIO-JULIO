@@ -8,7 +8,7 @@
 import { useRef, useState } from 'react'
 import {
   BookOpen, Check, Copy, Download, Loader2, RefreshCw, Shuffle, Sparkles, Type, LayoutGrid, Image as ImageIcon,
-  Palette, Minus, Plus, Wand2,
+  Palette, Minus, Plus, Wand2, ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import PhotoSourceBar from '@/components/editor/PhotoSourceBar'
@@ -37,6 +37,8 @@ interface Props {
   /** Nueva foto IA (sin texto) para esa slide; newVisual = otro encuadre. */
   onRegenerateImage: (index: number, newVisual?: boolean) => void
   onRegenerateAll: () => void
+  /** Un cambio de diseño distinto por slide de una vez (p. ej. fotos nuevas en todas). */
+  onDesignEach?: (patches: Array<Partial<SlideDesign>>) => void
   onSave?: () => void
   onNew: () => void
   /** 'story' = 9:16 con zonas seguras (Diseña tus stories). */
@@ -105,6 +107,18 @@ export default function ResultGallery(props: Props) {
     }
   }
 
+  /** Fotos nuevas del banco en todas las slides, sin repetir entre ellas. */
+  const shuffleAllPhotos = () => {
+    if (!props.onDesignEach) return
+    const used: string[] = []
+    const seed = String(Date.now())
+    props.onDesignEach(results.map((res, i) => {
+      const src = bankPhotoFor(res.visual, i, { text: res.text, seed, avoid: [...used, ...designs.flatMap(d => (d.bg.kind === 'photo' ? [d.bg.src] : []))] })
+      used.push(src)
+      return { bg: { kind: 'photo', src, source: 'banco' }, overlay: designs[i].bg.kind === 'color' ? (designs[i].overlay || 0.32) : designs[i].overlay }
+    }))
+  }
+
   const copyCaption = async () => {
     try {
       await navigator.clipboard.writeText(props.caption || '')
@@ -159,10 +173,27 @@ export default function ResultGallery(props: Props) {
 
       {r && d && (
         <div className="grid gap-5 lg:grid-cols-[minmax(0,420px)_1fr] items-start">
-          {/* Vista grande */}
-          <div className="space-y-2 lg:sticky lg:top-6">
-            <div className={`rounded-[var(--radius-lg)] overflow-hidden shadow-[var(--shadow-medium)] mx-auto lg:mx-0 ${story ? 'max-w-[300px]' : 'max-w-[420px]'}`}>
-              <ComposedSlide ratio={ratio} design={d} title={r.text} support={r.support} index={active} total={total} signature={props.signature} />
+          {/* Vista grande. En móvil y tablet se queda fija arriba (más pequeña)
+              mientras se tocan los ajustes de debajo: se ve el cambio al momento. */}
+          <div className="space-y-2 sticky top-14 md:top-0 lg:top-6 z-20 -mx-5 px-5 py-2 sm:mx-0 sm:px-0 bg-cream lg:bg-transparent lg:py-0 max-lg:border-b max-lg:border-borde/60">
+            <div className="flex items-center justify-center gap-3 lg:block">
+              {total > 1 && (
+                <button type="button" onClick={() => setActive(a => Math.max(0, a - 1))} disabled={active === 0}
+                  className="lg:hidden w-10 h-10 rounded-full bg-white border border-borde flex items-center justify-center text-burdeos disabled:opacity-30"
+                  aria-label={story ? 'Story anterior' : 'Slide anterior'}>
+                  <ChevronLeft size={20} aria-hidden />
+                </button>
+              )}
+              <div className={`rounded-[var(--radius-lg)] overflow-hidden shadow-[var(--shadow-medium)] lg:mx-0 ${story ? 'max-lg:w-[20vh] lg:max-w-[300px]' : 'max-lg:w-[29vh] lg:max-w-[420px]'} max-lg:max-w-[60%]`}>
+                <ComposedSlide ratio={ratio} design={d} title={r.text} support={r.support} index={active} total={total} signature={props.signature} />
+              </div>
+              {total > 1 && (
+                <button type="button" onClick={() => setActive(a => Math.min(total - 1, a + 1))} disabled={active === total - 1}
+                  className="lg:hidden w-10 h-10 rounded-full bg-white border border-borde flex items-center justify-center text-burdeos disabled:opacity-30"
+                  aria-label={story ? 'Story siguiente' : 'Slide siguiente'}>
+                  <ChevronRight size={20} aria-hidden />
+                </button>
+              )}
             </div>
             <div className="flex items-center justify-between max-w-[420px] mx-auto lg:mx-0">
               <span className="text-[14px] font-semibold text-burdeos">{unit} {active + 1} de {total} {!story && <span className="text-tinta-2 font-normal">· {visualTypeLabel(r.visual)}</span>}</span>
@@ -366,7 +397,11 @@ export default function ResultGallery(props: Props) {
 
       {/* Acciones secundarias */}
       <div className="flex flex-wrap gap-2">
-        {ai && <button onClick={props.onRegenerateAll} disabled={props.busyIndex !== null} className="btn-ghost text-sm"><RefreshCw size={15} aria-hidden /> Nuevas fotos IA para todas</button>}
+        {/* Jota (28-oct): «Nuevas fotos IA para todas» no se entendía y rehacía
+            el carrusel entero. Ahora: fotos nuevas del banco en todas, al
+            momento, sin tocar textos ni diseño. La foto IA de una sola slide
+            sigue en «Fondo». */}
+        {props.onDesignEach && <button onClick={shuffleAllPhotos} disabled={props.busyIndex !== null} className="btn-ghost text-sm" title="Pone otra foto del banco BRÄVE en cada slide. Tus textos no cambian."><Shuffle size={15} aria-hidden /> Cambiar las fotos de todas</button>}
         <button onClick={props.onNew} className="btn-ghost text-sm"><Sparkles size={15} aria-hidden /> {props.newLabel ?? 'Nuevo carrusel'}</button>
       </div>
 

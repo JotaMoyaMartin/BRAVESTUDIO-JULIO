@@ -196,7 +196,7 @@ const BRAVE_BURDEOS: StyleConfig = {
   id: 'brave-burdeos',
   name: 'Brave Burdeos',
   tagline: 'El carácter de tu marca.',
-  description: 'Abre y cierra en burdeos con titular contundente; en medio, fotos cálidas de resultado. Con carácter, para posicionar y vender.',
+  description: 'Portada y cierre con foto de salón bajo un velo burdeos y titular contundente; en medio, fotos cálidas de resultado. Con carácter, para posicionar y vender.',
   mood: ['Con carácter', 'Sólido', 'Directo'],
   status: 'live',
   accentColor: '#591427',
@@ -333,7 +333,7 @@ const POSTER_PORTADA: StyleConfig = {
 }
 
 /** Registro de estilos en orden de presentación. */
-export const STYLE_REGISTRY: StyleConfig[] = [EDITORIAL_HAIR_LUXE, SILENCIO_AUTOR, POSTER_PORTADA, ESTUDIO_LIMPIO, BRAVE_BURDEOS]
+export const STYLE_REGISTRY: StyleConfig[] = [SILENCIO_AUTOR, EDITORIAL_HAIR_LUXE, POSTER_PORTADA, BRAVE_BURDEOS, ESTUDIO_LIMPIO]
 
 export function getStyle(id: string): StyleConfig | undefined {
   return STYLE_REGISTRY.find(s => s.id === id)

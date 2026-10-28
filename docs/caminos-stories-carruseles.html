@@ -1,0 +1,193 @@
+<title>Caminos BRÄVE Studio</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Nunito+Sans:wght@400;600;700&display=swap">
+<style>
+/* Layout: una columna de lectura con «mapas» en tarjetas; los caminos se dibujan como pasos en fila que se apilan en móvil */
+:root{
+  --bg:#FBF6F3; --surface:#FFFFFF; --ink:#2A0B12; --muted:#6E4E55;
+  --burdeos:#6B1630; --rosa:#F3DCE0; --oro:#C9973A; --linea:#EADCD8;
+  --ok:#2F7A4F; --warn:#B26A00;
+  --display:"Sora",system-ui,sans-serif; --body:"Nunito Sans",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#1A0B0F; --surface:#26131A; --ink:#F6E9EC; --muted:#C7A9B0;
+  --burdeos:#E07A95; --rosa:#3A1A24; --oro:#E2B866; --linea:#3B222A; --ok:#6CC490; --warn:#E5A54B; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#1A0B0F; --surface:#26131A; --ink:#F6E9EC; --muted:#C7A9B0;
+  --burdeos:#E07A95; --rosa:#3A1A24; --oro:#E2B866; --linea:#3B222A; --ok:#6CC490; --warn:#E5A54B; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.6}
+.wrap{max-width:900px;margin:0 auto;padding-block:40px 80px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:48px}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;line-height:1.2;margin:0}
+h1{font-size:clamp(28px,5vw,42px);color:var(--burdeos)}
+h2{font-size:24px;color:var(--burdeos)}
+h3{font-size:17px}
+p{margin:0;max-width:68ch}
+.lead{font-size:18px;color:var(--muted)}
+.eyebrow{font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--oro)}
+section{display:grid;gap:18px}
+.card{background:var(--surface);border:1px solid var(--linea);border-radius:16px;padding:20px;display:grid;gap:12px;min-width:0}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.path{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.step{background:var(--rosa);color:var(--ink);border-radius:999px;padding:6px 12px;font-size:14px;font-weight:600}
+.arrow{color:var(--muted)}
+.tag{display:inline-block;font-size:12px;font-weight:700;border-radius:6px;padding:2px 8px;border:1px solid currentColor}
+.tag.ok{color:var(--ok)} .tag.warn{color:var(--warn)}
+ul{margin:0;padding-left:20px;display:grid;gap:6px}
+.big{border-left:4px solid var(--oro)}
+table{width:100%;border-collapse:collapse;font-size:15px}
+th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--linea);vertical-align:top}
+th{font-family:var(--display);font-size:13px;color:var(--muted);font-weight:600}
+.tbl{overflow-x:auto}
+.num{font-variant-numeric:tabular-nums}
+.quote{background:var(--rosa);border-radius:16px;padding:18px 20px;font-size:17px}
+</style>
+
+<div class="wrap">
+<header style="display:grid;gap:12px">
+  <span class="eyebrow">BRÄVE Studio + Academia en Skool · 28 oct 2026</span>
+  <h1>Caminos de Stories y Carruseles, y hoja de ruta de la Academia</h1>
+  <p class="lead">Lo que hace hoy una estilista cuando entra a crear, qué sobra, cómo lo simplificaría y cómo se lo explicas en una clase. Al final, el borrador de hoja de ruta en Skool con lo que se desbloquea.</p>
+</header>
+
+<section>
+  <span class="eyebrow">1 · Lo que he visto recorriendo la app</span>
+  <h2>Hoy hay demasiadas puertas y poca imagen</h2>
+  <div class="grid2">
+    <div class="card">
+      <h3>Stories: 5 entradas y 4 editores distintos</h3>
+      <ul>
+        <li><b>Secuencias listas</b> (30 textos escritos) → «Ponle tu foto y descarga».</li>
+        <li><b>Crea la tuya</b>: cuentas lo que pasó en el salón (texto o voz) y la IA lo convierte en stories.</li>
+        <li><b>Diseña tus stories</b>: plantillas con foto + mockups de antes y después.</li>
+        <li><b>Caja de preguntas</b>: preguntas para el sticker y respuestas para contestar en vídeo.</li>
+        <li><b>Stories Diseño</b>: otro catálogo de 13 diseños, escondido detrás de un enlace pequeño.</li>
+      </ul>
+      <p><span class="tag warn">Problema</span> La portada son 4 tarjetas de texto, sin ver ni un diseño. No da ese «wow, lo quiero». Y cada camino abre un editor diferente, así que hay que explicar 4 maneras de editar.</p>
+    </div>
+    <div class="card">
+      <h3>Carruseles: 1 solo camino</h3>
+      <div class="path"><span class="step">Elige estilo (5)</span><span class="arrow">→</span><span class="step">Tema</span><span class="arrow">→</span><span class="step">Textos</span><span class="arrow">→</span><span class="step">Imágenes</span><span class="arrow">→</span><span class="step">Editar y descargar</span></div>
+      <p><span class="tag ok">Bien</span> Entra por los ojos: cada estilo se ve con un carrusel real.</p>
+      <p><span class="tag warn">Falta</span> Un camino rápido sin IA (plantilla lista, cambio texto y foto) y otro para quien ya tiene sus fotos de antes y después. Hoy siempre pasa por escribir el tema y esperar a la IA.</p>
+    </div>
+  </div>
+  <p>Ya arreglado hoy: en el móvil el diseño se queda fijo arriba mientras cambias texto, letra, diseño o fondo, con flechas para pasar de slide. Sirve para Stories y Carruseles.</p>
+</section>
+
+<section>
+  <span class="eyebrow">2 · La propuesta</span>
+  <h2>Los mismos 3 caminos en Stories y en Carruseles</h2>
+  <p>Una estilista no piensa en «herramientas», piensa en lo que tiene delante. Así que cada sección empieza con una pregunta y tres respuestas. Lo que aprenda en Stories le sirve igual en Carruseles: una sola clase lo explica todo.</p>
+  <div class="grid2">
+    <div class="card big">
+      <h3>A · «Quiero algo bonito ya»</h3>
+      <div class="path"><span class="step">Galería de diseños</span><span class="arrow">→</span><span class="step">Toca uno</span><span class="arrow">→</span><span class="step">Cambia foto y texto</span><span class="arrow">→</span><span class="step">Descarga</span></div>
+      <p><b>Para qué existe:</b> para el día que no tiene tiempo ni ideas. Ve diseños terminados con fotos de melenas reales, filtra por lo que quiere (vender, llenar huecos, resultados, consejos) y en 1 minuto lo tiene. Los textos ya vienen adaptados a su marca.</p>
+      <p><b>Junta:</b> Secuencias listas + Diseña tus stories + Stories Diseño en una sola galería.</p>
+    </div>
+    <div class="card big">
+      <h3>B · «Tengo una idea, ayúdame»</h3>
+      <div class="path"><span class="step">Cuéntamelo (voz o texto)</span><span class="arrow">→</span><span class="step">La IA escribe</span><span class="arrow">→</span><span class="step">Elige diseño</span><span class="arrow">→</span><span class="step">Descarga</span></div>
+      <p><b>Para qué existe:</b> para contar algo real del salón (una clienta, un cambio, una duda que le hicieron) sin saber escribirlo. Es el camino que más se parece a ella y el que más vende.</p>
+      <p><b>Junta:</b> Crea la tuya (stories) y el flujo actual de carruseles.</p>
+    </div>
+    <div class="card big">
+      <h3>C · «Tengo mis fotos»</h3>
+      <div class="path"><span class="step">Sube antes y después</span><span class="arrow">→</span><span class="step">Diseños que encajan</span><span class="arrow">→</span><span class="step">Descarga</span></div>
+      <p><b>Para qué existe:</b> acaba de terminar un trabajo y quiere enseñarlo. Sube las fotos primero y la app le enseña solo los diseños donde esas fotos quedan bien (polaroid, móvil, dividido).</p>
+      <p><b>Junta:</b> los mockups de antes y después, ahora también en carrusel.</p>
+    </div>
+    <div class="card">
+      <h3>Extra solo en Stories · «Que me escriban»</h3>
+      <p>Caja de preguntas y encuestas. Se queda como cuarta opción pequeña, porque su objetivo es otro: conversación, no diseño.</p>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Cómo se ve la portada nueva</h3>
+    <ul>
+      <li>Arriba, una tira grande que se mueve sola con diseños terminados (el «wow»), con fotos de salón de lujo, balayage y melenas, nunca caras generadas de Jota.</li>
+      <li>Debajo, las 3 respuestas como botones grandes con una miniatura de lo que sale al final.</li>
+      <li>Al tocar cualquier diseño de la tira, entra directo al camino A con ese diseño abierto.</li>
+      <li>Un solo editor para todo: vista previa fija arriba y 4 pestañas abajo (Texto, Letra, Diseño, Fondo).</li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <span class="eyebrow">3 · Para tu clase grabada</span>
+  <h2>Guion de la clase «Stories y Carruseles en 5 minutos»</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>Minuto</th><th>Qué enseñas</th><th>Frase para decir</th></tr></thead>
+    <tbody>
+      <tr><td class="num">0:00</td><td>Los 3 caminos</td><td>«Cada vez que entres, pregúntate: ¿quiero algo rápido, tengo una idea o tengo fotos?»</td></tr>
+      <tr><td class="num">0:40</td><td>Camino A en directo</td><td>«Elijo un diseño de huecos libres, pongo mi foto y en un minuto está.»</td></tr>
+      <tr><td class="num">1:40</td><td>Camino B con nota de voz</td><td>«Le cuento lo que me ha pasado hoy con una clienta y me lo escribe.»</td></tr>
+      <tr><td class="num">2:50</td><td>Camino C con un antes y después</td><td>«Subo mis fotos y solo me enseña los diseños donde quedan bien.»</td></tr>
+      <tr><td class="num">3:50</td><td>El editor</td><td>«Arriba ves el diseño, abajo lo cambias. Texto, letra, diseño, fondo.»</td></tr>
+      <tr><td class="num">4:30</td><td>Compartir en el tablón</td><td>«Cuando descargues el primero, dale a Compartir en el tablón y cuéntanos cómo te has sentido.»</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <span class="eyebrow">4 · Academia en Skool</span>
+  <h2>Hoja de ruta desde el primer día (borrador)</h2>
+  <p>Lo que cuenta el VSL: bienvenida y perfiles, app BRÄVE Studio, grabar con el móvil, marca personal, mentalidad, reto de contenido, Canva, reels virales, stories que venden, Google y anuncios de Meta, más tablón y directos. Propongo ordenarlo así, para que vea un camino y no una biblioteca:</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Cuándo</th><th>Qué hace</th><th>Qué consigue</th><th>Acceso</th></tr></thead>
+    <tbody>
+      <tr><td>Día 1</td><td>Bienvenida + ADN de marca en la app + presentarse en el tablón</td><td>Su documento de negocio y su primer «me gusta»</td><td><span class="tag ok">Abierto</span></td></tr>
+      <tr><td>Semana 1</td><td>Optimiza tu perfil + primera story y primer carrusel con la app</td><td>Perfil profesional y primeras publicaciones</td><td><span class="tag ok">Abierto</span></td></tr>
+      <tr><td>Semana 2</td><td>Graba con el móvil + marca personal (hablar a cámara, teleprompter)</td><td>Su primer reel hablado</td><td><span class="tag ok">Abierto</span></td></tr>
+      <tr><td>Semanas 3 y 4</td><td>Reto de contenido + reels virales + stories que venden + Canva</td><td>Constancia: publicar cada semana</td><td><span class="tag ok">Abierto</span></td></tr>
+      <tr><td>Nivel 3</td><td>Google: que te encuentren en tu zona</td><td>Más reservas desde Google</td><td><span class="tag warn">Se desbloquea</span></td></tr>
+      <tr><td>Nivel 4</td><td>Anuncios de Meta</td><td>Que más gente descubra su Instagram</td><td><span class="tag warn">Se desbloquea</span></td></tr>
+      <tr><td>Siempre</td><td>Mentalidad, directos semanales, tablón de dudas</td><td>Acompañamiento</td><td><span class="tag ok">Abierto</span></td></tr>
+    </tbody>
+  </table></div>
+  <div class="card">
+    <h3>Cómo funcionan los puntos en Skool (importante para explicarlo bien)</h3>
+    <ul>
+      <li>Los puntos no salen de escribir: <b>cada «me gusta» que recibe una publicación o comentario suyo = 1 punto</b>. Por eso hay que animar a comentar y también a dar «me gusta» a las compañeras.</li>
+      <li>Niveles de Skool: nivel 2 con 5 puntos, nivel 3 con 20 y nivel 4 con 65. Nivel 3 se alcanza en 2–3 semanas participando; nivel 4 en 1–2 meses.</li>
+      <li>Cada curso se puede bloquear hasta un nivel. Hay que comprobar dentro de tu Skool si permite también «por tiempo»; si permite las dos, cada curso usa una sola condición, no «lo que llegue antes».</li>
+      <li>Con una permanencia media de 4 meses, Meta en nivel 4 le da una meta clara para el segundo mes.</li>
+    </ul>
+  </div>
+  <div class="quote">Mensaje de bienvenida propuesto: «Todo lo que necesitas para empezar ya está abierto. Google y Anuncios se desbloquean cuando subes de nivel: cada "me gusta" que recibes en el tablón es un punto. Comparte tus avances, comenta a tus compañeras y los desbloquearás en pocas semanas.»</div>
+</section>
+
+<section>
+  <span class="eyebrow">5 · Conectar la app con Skool</span>
+  <h2>Que cada logro en la app acabe en el tablón</h2>
+  <div class="grid2">
+    <div class="card">
+      <h3>De la app a Skool</h3>
+      <ul>
+        <li>Botón «Compártelo en el tablón» al terminar: ADN de marca, primer carrusel, primera secuencia de stories, primer reel.</li>
+        <li>Abre el post o la categoría de Skool de ese ejercicio y copia un texto para pegar: «Mi primer carrusel con BRÄVE Studio. Me he sentido…».</li>
+        <li>En Inicio, la hoja de ruta con el paso de la semana y el enlace a su clase.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>De Skool a la app</h3>
+      <ul>
+        <li>Cada clase termina con un botón a la herramienta exacta («Abre Stories → camino A»).</li>
+        <li>Un post fijado «Empieza aquí» con los 4 pasos del día 1.</li>
+        <li>Ejercicios con captura: categoría propia en el tablón para encontrarlos y corregirlos rápido.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <span class="eyebrow">6 · Lo que necesito de ti</span>
+  <h2>Decisiones antes de construir</h2>
+  <ul>
+    <li>¿Te gustan los 3 caminos (rápido, idea, mis fotos) para Stories y Carruseles?</li>
+    <li>¿Google en nivel 3 y Meta en nivel 4, o prefieres otro reparto?</li>
+    <li>Acceso a Skool para hacer el análisis completo de clases y recorrido. Lo hago mirando, sin publicar ni cambiar nada sin tu OK.</li>
+    <li>Tu mensaje se cortó en «tenemos que explicarlo bien desde el principio cuando…». ¿Cómo seguía?</li>
+  </ul>
+</section>
+</div>

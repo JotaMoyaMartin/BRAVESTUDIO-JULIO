@@ -33,6 +33,7 @@ import PageHeader from '@/components/ui/PageHeader'
 import AIUnavailableNotice from '@/components/ui/AIUnavailableNotice'
 import ReadySequences from './ReadySequences'
 import StoryDesigner from './StoryDesigner'
+import StoriesHub from './StoriesHub'
 import { SEQUENCE_TYPES, sequenceType, readyToStories, READY_SEQUENCES, type ReadySequence, type SequenceType } from '@/lib/stories/sequences'
 import { BookMarked, Sparkles, ImagePlus, LayoutTemplate, ChevronDown as ChevronDownIcon } from 'lucide-react'
 import {
@@ -65,7 +66,7 @@ const SERVICES = [
 
 const QUESTION_TOPICS = ['Rubios', 'Balayage', 'Canas', 'Alisados', 'Tratamientos', 'Anticaída', 'Cuidado en casa', 'Color', 'General']
 
-type StoriesTab = 'listas' | 'crear' | 'disena' | 'questions'
+type StoriesTab = 'listas' | 'crear' | 'disena' | 'fotos' | 'questions'
 
 export default function StoriesClient({ userId, brandFull }: { userId: string; brandFull: BrandFullContextInput | null }) {
   // null = portada de la sección con las 3 entradas grandes.
@@ -123,24 +124,30 @@ export default function StoriesClient({ userId, brandFull }: { userId: string; b
     )
   }
 
+  // Mismo orden y nombres que la portada (StoriesHub): 3 caminos + 2 extras.
   const tabs: Array<{ id: StoriesTab; label: string; desc: string; meta: string; icon: React.ReactNode; tone: 'burdeos' | 'mantequilla' | 'rosa' | 'crema' }> = [
     {
-      id: 'listas', label: 'Secuencias listas', tone: 'burdeos',
-      desc: 'Elige una secuencia ya escrita para tu servicio, ponle tu foto o clip y descárgala.',
-      meta: '30 secuencias · la forma más rápida', icon: <BookMarked size={22} aria-hidden />,
+      id: 'disena', label: 'Elige un diseño', tone: 'burdeos',
+      desc: 'Diseños terminados con fotos de salón: cambia el texto o la foto y descarga.',
+      meta: 'Sin escribir nada · 1 minuto', icon: <Palette size={22} aria-hidden />,
     },
     {
-      id: 'crear', label: 'Crea la tuya', tone: 'mantequilla',
+      id: 'crear', label: 'Cuéntame tu idea', tone: 'mantequilla',
       desc: 'Cuéntame lo que ha pasado hoy en el salón (escrito o por voz) y la convierto en stories.',
       meta: 'Con IA · tu historia real', icon: <Sparkles size={22} aria-hidden />,
     },
     {
-      id: 'disena', label: 'Diseña tus stories', tone: 'crema',
-      desc: 'Plantillas elegantes con fotos bonitas: cambia el texto, la letra y la foto, y descarga.',
-      meta: 'Sin IA · listas en 1 minuto', icon: <Palette size={22} aria-hidden />,
+      id: 'fotos', label: 'Tengo mis fotos', tone: 'rosa',
+      desc: 'Sube tu antes y después o tu reseña y elige dónde lucen.',
+      meta: 'Con tus fotos', icon: <ImagePlus size={22} aria-hidden />,
     },
     {
-      id: 'questions', label: 'Caja de preguntas', tone: 'rosa',
+      id: 'listas', label: 'Textos ya escritos', tone: 'crema',
+      desc: 'Elige una secuencia ya escrita para tu servicio, ponle tu foto o clip y descárgala.',
+      meta: '30 secuencias', icon: <BookMarked size={22} aria-hidden />,
+    },
+    {
+      id: 'questions', label: 'Caja de preguntas', tone: 'crema',
       desc: 'Preguntas para el sticker de Instagram y respuestas listas para contestarlas en vídeo.',
       meta: 'Para que te escriban', icon: <MessageSquare size={22} aria-hidden />,
     },
@@ -152,37 +159,9 @@ export default function StoriesClient({ userId, brandFull }: { userId: string; b
     crema: 'bg-white text-burdeos border border-borde',
   } as const
 
-  // ── Portada: 3 entradas grandes, cada una con su color ──
+  // ── Portada visual: diseños reales + 3 caminos + 2 extras ──
   if (tab === null) {
-    return (
-      <div className="space-y-6">
-        <PageHeader
-          title="Stories"
-          subtitle="Secuencias de hasta 3 stories que van al grano. ¿Cómo quieres empezar hoy?"
-        />
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {tabs.map((t, i) => (
-            <button
-              key={t.id}
-              onClick={() => { setTab(t.id); setFocusDesign(false) }}
-              className={`group relative overflow-hidden text-left rounded-[var(--radius-lg)] p-5 md:p-6 flex flex-col gap-3 min-h-[150px] md:min-h-[230px] transition-transform hover:-translate-y-0.5 ${toneClass[t.tone]}`}
-              style={{ boxShadow: i === 0 ? 'var(--shadow-strong)' : 'var(--shadow-soft)' }}
-            >
-              <span className="flex items-center justify-between">
-                <span className={`w-11 h-11 rounded-2xl flex items-center justify-center ${t.tone === 'burdeos' ? 'bg-white/15' : 'bg-white/70'}`}>{t.icon}</span>
-                {i === 0 && <span className="text-[12px] font-semibold px-2.5 py-1 rounded-full bg-mantequilla text-burdeos">Recomendado</span>}
-              </span>
-              <span className="text-[22px] font-semibold leading-tight">{t.label}</span>
-              <span className={`text-[15px] leading-snug ${t.tone === 'burdeos' ? 'text-crema/85' : 'text-burdeos/80'}`}>{t.desc}</span>
-              <span className={`mt-auto flex items-center justify-between text-[13px] font-semibold ${t.tone === 'burdeos' ? 'text-mantequilla' : 'text-cereza'}`}>
-                {t.meta}
-                <ArrowRight size={18} className="transition-transform group-hover:translate-x-1" aria-hidden />
-              </span>
-            </button>
-          ))}
-        </div>
-      </div>
-    )
+    return <StoriesHub userId={userId} onOpen={t => { setTab(t); setFocusDesign(false) }} />
   }
 
   const current = tabs.find(t => t.id === tab) ?? tabs[0]
@@ -212,6 +191,7 @@ export default function StoriesClient({ userId, brandFull }: { userId: string; b
       {tab === 'listas' && <ReadySequences onDesign={designReady} onAdapt={adaptReady} />}
       {tab === 'crear' && <StoriesCreator userId={userId} brandFull={brandFull} focusDesign={focusDesign} />}
       {tab === 'disena' && <StoryDesigner userId={userId} />}
+      {tab === 'fotos' && <StoryDesigner userId={userId} onlyPhotos />}
       {tab === 'questions' && <QuestionBox userId={userId} brandFull={brandFull} />}
     </div>
   )

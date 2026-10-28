@@ -67,8 +67,9 @@ export default function MockupEditor({ userId, tpl, onBack }: { userId: string; 
     <div className="space-y-4">
       <button onClick={onBack} className="inline-flex items-center gap-1.5 text-[14px] font-semibold text-cereza hover:underline"><ArrowLeft size={15} aria-hidden /> Otras plantillas</button>
       <div className="grid gap-5 md:grid-cols-[minmax(0,320px)_1fr] items-start">
-        <div className="space-y-3 md:sticky md:top-4">
-          <MockupStory tpl={tpl} state={state} className="w-full max-w-[320px] mx-auto rounded-2xl shadow-[var(--shadow-soft)]" />
+        {/* En móvil la story queda fija arriba mientras subes fotos y textos. */}
+        <div className="space-y-3 sticky top-14 md:top-4 z-20 -mx-5 px-5 py-2 sm:mx-0 sm:px-0 md:py-0 bg-cream md:bg-transparent max-md:border-b max-md:border-borde/60">
+          <MockupStory tpl={tpl} state={state} className="w-full max-md:w-[22vh] max-w-[320px] mx-auto rounded-2xl shadow-[var(--shadow-soft)]" />
           {missing.length > 0 && <p className="text-[13px] text-tinta-2 text-center">Ves fotos de ejemplo: sube las tuyas.</p>}
         </div>
 

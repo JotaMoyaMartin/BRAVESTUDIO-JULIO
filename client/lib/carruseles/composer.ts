@@ -166,6 +166,8 @@ export interface SlideDesign {
   note?: string
   /** Recortes (PNG sin fondo) de la composición «recorte»: 1 a 3. */
   cutouts?: string[]
+  /** Color del velo («r,g,b»). Sin él: negro cálido o crema según el tono. */
+  tint?: string
 }
 
 export const BRAND_COLORS: Array<{ name: string; color: string; tone: 'claro' | 'oscuro' }> = [
@@ -185,8 +187,12 @@ interface StyleComposition {
   tone: 'claro' | 'oscuro'
   overlay: number
   layoutFor: (role: SlideRole, index: number) => LayoutId
-  /** Fondo de color para ciertos roles (BRÄVE Burdeos abre y cierra en color). */
+  /** Fondo de color para ciertos roles. */
   colorFor?: (role: SlideRole, index: number) => string | null
+  /** Velo más fuerte para ciertos roles (portada y cierre). */
+  overlayFor?: (role: SlideRole, index: number) => number | null
+  /** Color del velo («r,g,b»). */
+  tint?: string
 }
 
 const COMPOSITIONS: Record<string, StyleComposition> = {
@@ -198,10 +204,12 @@ const COMPOSITIONS: Record<string, StyleComposition> = {
     fontPair: 'moderna', tone: 'oscuro', overlay: 0.55,
     layoutFor: (role, i) => role === 'hook' ? 'arriba' : role === 'cta' ? 'tarjeta' : role === 'cierre' ? 'centro' : (i % 2 ? 'arriba' : 'revista'),
   },
+  // Jota (28-oct): el burdeos liso «queda pobre». Portada y cierre van con
+  // foto de salón y velo burdeos (estética granate aprobada el 27-oct).
   'brave-burdeos': {
-    fontPair: 'titular', tone: 'claro', overlay: 0.38,
+    fontPair: 'titular', tone: 'claro', overlay: 0.42, tint: '64,6,24',
     layoutFor: (role, i) => role === 'hook' ? 'centro' : role === 'cta' ? 'centro' : (i % 2 ? 'abajo' : 'revista'),
-    colorFor: (role) => (role === 'hook' || role === 'cta' ? '#591427' : null),
+    overlayFor: (role) => (role === 'hook' || role === 'cta' ? 0.68 : null),
   },
   'silencio-autor': {
     fontPair: 'silencio-firma', tone: 'claro', overlay: 0.3,
@@ -271,9 +279,10 @@ export function defaultDesign(args: {
     fontPair: c.fontPair,
     scale: 1,
     tone: color ? (BRAND_COLORS.find(b => b.color === color)?.tone ?? 'claro') : c.tone,
-    overlay: color ? 0 : layout === 'tarjeta' ? 0.12 : c.overlay,
+    overlay: color ? 0 : layout === 'tarjeta' ? 0.12 : (c.overlayFor?.(args.role, args.index) ?? c.overlay),
     bg,
     label: defaultLabel(args.styleId, args.role, args.index),
+    ...(c.tint ? { tint: c.tint } : {}),
   }
 }
 

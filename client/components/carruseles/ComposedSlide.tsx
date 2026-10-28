@@ -35,7 +35,7 @@ const ComposedSlide = forwardRef<HTMLDivElement, Props>(function ComposedSlide(
 
   // Velo de legibilidad según dónde va el texto
   // Texto oscuro sobre foto: velo crema (aclara) en lugar de negro.
-  const v = light ? '20,6,10' : '255,247,238'
+  const v = light ? (design.tint || '20,6,10') : '255,247,238'
   const veil =
     design.bg.kind === 'color' || design.overlay <= 0
       ? 'none'

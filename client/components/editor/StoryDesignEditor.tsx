@@ -393,9 +393,12 @@ export default function StoryDesignEditor({ stories, slides, onChange, activeNum
         </p>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)360px] items-start">
-        {/* Columna canvas: ‹ [canvas] › + tira real + cuadrícula */}
-        <div className="flex min-w-0 flex-col gap-2">
+      <div className="grid gap-2 lg:gap-5 lg:grid-cols-[minmax(0,1fr)360px] items-start">
+        {/* Columna canvas: ‹ [canvas] › + tira real + cuadrícula.
+            En móvil/tablet la columna se «deshace» (contents) para que la story
+            quede fija arriba mientras se usa el panel de debajo. */}
+        <div className="max-lg:contents flex min-w-0 flex-col gap-2">
+          <div className="max-lg:sticky max-lg:top-14 md:top-0 z-20 -mx-5 px-5 sm:mx-0 sm:px-0 py-2 lg:py-0 bg-cream lg:bg-transparent max-lg:border-b max-lg:border-borde/60 flex flex-col gap-2 [--story-h:38dvh] lg:[--story-h:calc(100dvh-200px)]">
           <div className="flex items-center gap-1">
             <button
               onClick={() => goTo(sorted[idx - 1]?.number ?? 1)}
@@ -413,7 +416,7 @@ export default function StoryDesignEditor({ stories, slides, onChange, activeNum
               style={{
                 aspectRatio: `${size.w} / ${size.h}`,
                 // Que la story entera quepa en pantalla (móvil y tablet) sin hacer scroll.
-                maxWidth: 'min(360px, calc((100dvh - 200px) * 0.5625))',
+                maxWidth: 'min(360px, calc(var(--story-h) * 0.5625))',
                 borderRadius: 14,
                 background: showBg ? storyBgCss(slide.bgId!) : 'var(--color-warm-gray)',
                 containerType: 'inline-size',
@@ -537,6 +540,7 @@ export default function StoryDesignEditor({ stories, slides, onChange, activeNum
                 ? 'Editando el texto — toca la foto para pasarla a Ajustar'
                 : 'Toca el texto para editarlo · toca la foto para ponerla'}
           </p>
+          </div>
 
           {/* Copiar el texto de esta story (para pegar en IG sin diseñar) */}
           <button

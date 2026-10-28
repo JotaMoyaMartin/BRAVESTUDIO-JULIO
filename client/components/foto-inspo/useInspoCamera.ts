@@ -482,22 +482,48 @@ export function useInspoCamera(videoRef: React.RefObject<HTMLVideoElement | null
       if (!ctx) throw new Error('canvas 2d no disponible')
       const draw = () => {
         const v = videoRef.current
-        if (!canvasElRef.current || !v || !v.videoWidth) return
-        const rect =
-          zoomModeRef.current === 'constraint'
-            ? zoomedCoverRect(v.videoWidth, v.videoHeight, w, h, 1)
-            : zoomedCoverRect(v.videoWidth, v.videoHeight, w, h, zoomRef.current)
-        applyCanvasMirrorIfFront(ctx, w, h)
-        ctx.drawImage(v, rect.sx, rect.sy, rect.sw, rect.sh, 0, 0, w, h)
-        drawRafRef.current = requestAnimationFrame(draw)
+        if (!canvasElRef.current || !v) return
+        if (v.videoWidth) {
+          const rect =
+            zoomModeRef.current === 'constraint'
+              ? zoomedCoverRect(v.videoWidth, v.videoHeight, w, h, 1)
+              : zoomedCoverRect(v.videoWidth, v.videoHeight, w, h, zoomRef.current)
+          // save/restore: el espejo es acumulativo; sin esto la cámara frontal
+          // alternaba espejo/normal en cada fotograma (parpadeo en el vídeo).
+          ctx.save()
+          applyCanvasMirrorIfFront(ctx, w, h)
+          ctx.drawImage(v, rect.sx, rect.sy, rect.sw, rect.sh, 0, 0, w, h)
+          ctx.restore()
+        }
+        schedule()
+      }
+      // Igual que el teleprompter: un dibujo por CADA fotograma nuevo de la cámara
+      // (requestVideoFrameCallback), no al ritmo de la pantalla, para que no haya
+      // fotogramas repetidos ni saltados. Si el navegador no avisa, rAF.
+      type RVFC = (cb: () => void) => number
+      const rvfc = (video as HTMLVideoElement & { requestVideoFrameCallback?: RVFC }).requestVideoFrameCallback?.bind(video)
+      let useRvfc = !!rvfc
+      let drewAt = performance.now()
+      const schedule = () => {
+        drewAt = performance.now()
+        if (useRvfc && rvfc) drawRafRef.current = rvfc(draw)
+        else drawRafRef.current = requestAnimationFrame(draw)
+      }
+      if (useRvfc) {
+        window.setTimeout(() => {
+          if (canvasElRef.current === canvas && performance.now() - drewAt > 600) { useRvfc = false; draw() }
+        }, 700)
       }
       const canvasStream = canvas.captureStream(30)
       const audioTracks = streamRef.current?.getAudioTracks?.() ?? []
       const combined = new MediaStream([...canvasStream.getVideoTracks(), ...audioTracks])
       const mime = pickMimeType()
       let recorder: MediaRecorder | null = null
+      // Bitrate alto (como el teleprompter): por defecto los navegadores
+      // comprimen muchísimo y el vídeo sale pixelado. Safari lo ignora.
+      const bitrate = qualityRef.current === 'uhd' ? 18_000_000 : 8_000_000
       try {
-        recorder = new MediaRecorder(combined, mime ? { mimeType: mime } : undefined)
+        recorder = new MediaRecorder(combined, { ...(mime ? { mimeType: mime } : {}), videoBitsPerSecond: bitrate })
       } catch {
         try {
           recorder = new MediaRecorder(combined)
@@ -523,7 +549,7 @@ export function useInspoCamera(videoRef: React.RefObject<HTMLVideoElement | null
       mimeUsedRef.current = recorder.mimeType || mime
       recordingRef.current = true
       setRecording(true)
-      drawRafRef.current = requestAnimationFrame(draw)
+      draw()
       return true
     } catch (err) {
       logCaptureError('startRecording', err)

@@ -12,6 +12,7 @@
  *   - persistencia: draft en session-store; resultado final en content_items
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { ArrowLeft } from 'lucide-react'
 import { generateAIContent, extractJSON } from '@/lib/ai/client'
 import { saveToLibrary } from '@/lib/content-utils'
 import { useSessionState } from '@/lib/session-store'
@@ -30,6 +31,8 @@ import CopyStudio, { type CopyTweak } from '@/components/carruseles/CopyStudio'
 import GeneratingView from '@/components/carruseles/GeneratingView'
 import ResultGallery from '@/components/carruseles/ResultGallery'
 import AddToPlanButton from '@/components/plan/AddToPlanButton'
+import CarruselesHub, { ReadyGallery, type CarouselEntry } from '@/components/carruseles/CarruselesHub'
+import { readyCarousel } from '@/lib/carruseles/ready'
 import { defaultDesign, bankPhotoFor, type SlideDesign } from '@/lib/carruseles/composer'
 
 interface Props {
@@ -73,6 +76,11 @@ export default function CarruselesClient({ userId, brandContext }: Props) {
     () => ({ at: rawResults?.at ?? 0, draftId: rawResults?.draftId ?? null, slides: rawResults?.slides ?? [] }),
     [rawResults],
   )
+
+  // Portada con 3 caminos (28-oct): null = portada; 'idea' = flujo con IA de siempre.
+  const [entry, setEntry] = useSessionState<CarouselEntry | null>(`u:${userId}:carruseles:entry`, null)
+  // Fotos del camino «Tengo mis fotos» (blob: viven mientras la pestaña esté abierta).
+  const [ownPhotos, setOwnPhotos] = useState<string[]>([])
 
   // Busy states (transitorios, no persisten)
   const [proposalBusy, setProposalBusy] = useState(false)
@@ -178,6 +186,60 @@ export default function CarruselesClient({ userId, brandContext }: Props) {
   }
 
   const changeStyle = () => setDraft(p => ({ ...p, view: 'style' }))
+
+  // ── Caminos A y C: carrusel ya escrito (sin IA) → directo al editor ──────
+  const loadReady = (id: string, photos: string[] = []) => {
+    const c = readyCarousel(id)
+    if (!c) return
+    setDraft({
+      ...EMPTY_DRAFT,
+      styleId: c.styleId,
+      topic: c.name,
+      topicChips: [c.service],
+      proposal: { slides: c.slides, cta: c.slides[c.slides.length - 1].text, caption: c.caption },
+      view: 'result',
+      signature: draft.signature,
+    })
+    setResultsState({
+      at: Date.now(),
+      draftId: null,
+      // Mismas fotos que la miniatura de la portada (misma semilla que ReadyCover).
+      slides: (() => {
+        const used: string[] = []
+        return c.slides.map((sl, i) => {
+          const base = { index: i, text: sl.text, support: sl.support, visual: sl.visual, status: 'ok' as const }
+          const d = defaultDesign({ styleId: c.styleId, role: sl.role, index: i, visual: sl.visual, text: `${sl.text} ${c.service}`, seed: `ready-${c.id}`, avoid: used })
+          if (d.bg.kind === 'photo') used.push(d.bg.src)
+          if (!photos.length) return { ...base, design: d }
+          return { ...base, design: { ...d, bg: { kind: 'photo' as const, src: photos[i % photos.length], source: 'propia' as const }, overlay: d.overlay || 0.3 } }
+        })
+      })(),
+    })
+    setSaved(false)
+    window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior })
+    // Sus fotos se suben en segundo plano para que no se pierdan al recargar.
+    photos.forEach(src => { void stabilizePhoto(src) })
+  }
+
+  async function stabilizePhoto(blobUrl: string) {
+    if (!blobUrl.startsWith('blob:') || isDemoMode) return
+    try {
+      const blob = await fetch(blobUrl).then(r => r.blob())
+      const form = new FormData()
+      form.append('file', blob, 'foto.jpg')
+      form.append('field', 'foto')
+      const res = await fetch('/api/design/photo', { method: 'POST', body: form })
+      if (!res.ok) return
+      const data = (await res.json()) as { ok?: boolean; signedUrl?: string }
+      if (!data.ok || !data.signedUrl) return
+      setResultsState(prev => ({
+        ...prev,
+        slides: (prev.slides ?? []).map(sl => sl.design?.bg.kind === 'photo' && sl.design.bg.src === blobUrl
+          ? { ...sl, design: { ...sl.design, bg: { ...sl.design.bg, src: data.signedUrl! } } }
+          : sl),
+      }))
+    } catch { /* se queda la foto del navegador */ }
+  }
 
   // ── 2 · propuesta de copy ─────────────────────────────────────────────────
 
@@ -567,13 +629,16 @@ export default function CarruselesClient({ userId, brandContext }: Props) {
     }
   }
 
+  // «Nuevo carrusel» vuelve a la portada de los 3 caminos.
   const newCarousel = () => {
     setDraft(p => ({
       ...EMPTY_DRAFT,
       styleId: p.styleId, // conservamos la dirección creativa elegida
-      view: 'studio',
+      view: 'style',
       signature: p.signature,
     }))
+    setEntry(null)
+    setOwnPhotos([])
     setResultsState({ at: 0, draftId: null, slides: [] })
     setSaved(false)
     setProposalIsDemo(false)
@@ -587,7 +652,27 @@ export default function CarruselesClient({ userId, brandContext }: Props) {
   }
 
   if (draft.view === 'style' || !style) {
-    return <StylePicker onPick={pickStyle} />
+    if (entry === 'idea') {
+      return (
+        <div className="space-y-4">
+          <button onClick={() => setEntry(null)} className="flex items-center gap-1 text-[14px] font-semibold text-cereza hover:underline">
+            <ArrowLeft size={15} aria-hidden /> Carruseles
+          </button>
+          <StylePicker onPick={pickStyle} />
+        </div>
+      )
+    }
+    if (entry === 'listos' || entry === 'fotos') {
+      return (
+        <ReadyGallery
+          photos={entry === 'fotos' ? ownPhotos : null}
+          onPhotos={setOwnPhotos}
+          onPick={id => loadReady(id, entry === 'fotos' ? ownPhotos : [])}
+          onBack={() => setEntry(null)}
+        />
+      )
+    }
+    return <CarruselesHub onOpen={e => { setEntry(e); window.scrollTo({ top: 0 }) }} onReady={id => loadReady(id)} />
   }
 
   if (draft.view === 'generating' && results.length > 0) {
@@ -618,6 +703,10 @@ export default function CarruselesClient({ userId, brandContext }: Props) {
         imagesExpired={imagesExpired}
         onDesignChange={changeDesign}
         onDesignAll={changeDesignAll}
+        onDesignEach={patches => setResultsState(prev => ({
+          ...prev,
+          slides: (prev.slides ?? []).map((sl, i) => ({ ...sl, design: { ...designs[i], ...(patches[i] ?? {}) } })),
+        }))}
         onTextChange={changeText}
         onRegenerateImage={regenerateImage}
         onRegenerateAll={regenerateAll}

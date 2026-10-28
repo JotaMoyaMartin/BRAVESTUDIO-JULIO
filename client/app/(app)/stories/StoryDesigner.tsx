@@ -23,7 +23,7 @@ interface StoryDraft {
 const EMPTY: StoryDraft = { templateId: null, stories: [] }
 
 /** Plantilla → stories con foto BRÄVE (por tema, sin repetir). */
-function fromTemplate(t: StoryTemplate, seed: string): StoryDraft['stories'] {
+export function fromTemplate(t: StoryTemplate, seed: string): StoryDraft['stories'] {
   const used: string[] = []
   return t.stories.map((s, i) => {
     const bg = s.design.bg ?? { kind: 'photo' as const, src: bankPhotoFor(s.visual, i, { text: s.text, seed, avoid: used }), source: 'banco' as const }
@@ -32,9 +32,14 @@ function fromTemplate(t: StoryTemplate, seed: string): StoryDraft['stories'] {
   })
 }
 
-export default function StoryDesigner({ userId }: { userId: string }) {
-  const [draft, setDraft] = useSessionState<StoryDraft>(`u:${userId}:story-designer`, EMPTY)
-  const [mockupId, setMockupId] = useSessionState<string | null>(`u:${userId}:story-designer:mockupId`, null)
+/** Claves de sesión: la portada de Stories abre un diseño directamente. */
+export const designerKey = (userId: string) => `u:${userId}:story-designer`
+export const mockupKey = (userId: string) => `u:${userId}:story-designer:mockupId`
+
+/** onlyPhotos: camino «Tengo mis fotos» → solo diseños donde ella pone sus fotos. */
+export default function StoryDesigner({ userId, onlyPhotos = false }: { userId: string; onlyPhotos?: boolean }) {
+  const [draft, setDraft] = useSessionState<StoryDraft>(designerKey(userId), EMPTY)
+  const [mockupId, setMockupId] = useSessionState<string | null>(mockupKey(userId), null)
   const [cat, setCat] = useState<StoryCategory | 'todas'>('todas')
   const template = storyTemplate(draft.templateId)
   const mockup = mockupTemplate(mockupId)
@@ -46,15 +51,18 @@ export default function StoryDesigner({ userId }: { userId: string }) {
   if (mockup) return <MockupEditor userId={userId} tpl={mockup} onBack={() => setMockupId(null)} />
 
   if (!template || !draft.stories.length) {
-    const mockups = MOCKUP_TEMPLATES.filter(m => cat === 'todas' || m.category === cat)
-    const classics = previews.filter(({ t }) => cat === 'todas' || CLASSIC_CATEGORY[t.id] === cat)
+    const mockups = MOCKUP_TEMPLATES.filter(m => (onlyPhotos ? m.slots.length > 0 : true) && (cat === 'todas' || m.category === cat))
+    const classics = onlyPhotos ? [] : previews.filter(({ t }) => cat === 'todas' || CLASSIC_CATEGORY[t.id] === cat)
+    const cats = onlyPhotos ? STORY_CATEGORIES.filter(c => MOCKUP_TEMPLATES.some(m => m.category === c.id && m.slots.length > 0)) : STORY_CATEGORIES
     const card = 'group text-left space-y-2'
     const frame = 'relative rounded-2xl overflow-hidden shadow-[var(--shadow-soft)] transition-transform group-hover:-translate-y-0.5'
     return (
       <div className="space-y-4">
-        <p className="text-[15px] text-tinta-2">Elige qué quieres contar. Pon tus fotos y tus textos y descárgala: lista para tus historias destacadas.</p>
+        <p className="text-[15px] text-tinta-2">{onlyPhotos
+          ? 'Elige dónde quieres enseñar tus fotos: sube tu antes y después, tu reseña o tu salón y descárgala.'
+          : 'Elige qué quieres contar. Pon tus fotos y tus textos y descárgala: lista para tus historias destacadas.'}</p>
         <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1" role="tablist" aria-label="Categorías">
-          {[{ id: 'todas' as const, label: 'Todas' }, ...STORY_CATEGORIES].map(c => (
+          {[{ id: 'todas' as const, label: 'Todas' }, ...cats].map(c => (
             <button key={c.id} role="tab" aria-selected={cat === c.id} onClick={() => setCat(c.id)}
               className={`flex-shrink-0 rounded-full px-4 py-2 text-[14px] font-semibold border transition-colors ${cat === c.id ? 'bg-burdeos text-crema border-burdeos' : 'bg-white text-ink border-borde hover:border-cereza'}`}>
               {c.label}
@@ -112,6 +120,7 @@ export default function StoryDesigner({ userId }: { userId: string }) {
       saving={false}
       saved={false}
       onDesignChange={(i, patch) => patchStory(i, { design: { ...designs[i], ...patch } })}
+      onDesignEach={patches => setDraft(p => ({ ...p, stories: p.stories.map((st, i) => ({ ...st, design: { ...st.design, ...(patches[i] ?? {}) } as SlideDesign })) }))}
       onDesignAll={patch => setDraft(p => ({ ...p, stories: p.stories.map(s => ({ ...s, design: { ...s.design, ...patch } })) }))}
       onTextChange={(i, text, support) => patchStory(i, { text, support })}
       onRegenerateImage={i => {
